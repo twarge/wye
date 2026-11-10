@@ -8,42 +8,108 @@ struct WorkingCopyView: View {
     @State private var pendingDiscard: DiscardRequest?
     @State private var pendingResolution: ResolutionRequest?
     @State private var isStashing = false
+    @State private var isEditingIgnoreRules = false
+    @State private var filter = ""
+    /// Folders of the tree the user folded, by their IDs.
+    @State private var collapsedFolders: Set<String> = []
+    /// The files left out of the list unless asked for, read on refresh.
+    @State private var hidden = HiddenFiles()
+
+    @AppStorage("workingCopy.layout") private var layout = FileListLayout.list
+    @AppStorage("workingCopy.sort") private var sort = FileListSort.path
+    @AppStorage("workingCopy.showsIgnored") private var showsIgnored = false
+    @AppStorage("workingCopy.showsAssumeUnchanged") private var showsAssumeUnchanged = false
+
+    /// Ignored and assumed-unchanged files, which status leaves out.
+    private struct HiddenFiles {
+        var ignored: [String] = []
+        var assumeUnchanged: [String] = []
+    }
+
+    private struct HiddenTrigger: Hashable {
+        var revision: Int
+        var showsIgnored: Bool
+        var showsAssumeUnchanged: Bool
+    }
 
     var body: some View {
-        let conflicted = model.workingCopy.conflictedEntries
+        let conflicted = FileList.filtered(model.workingCopy.conflictedEntries, by: filter)
+        let changes = FileList.filtered(model.workingCopy.entries.filter { !$0.isConflicted }, by: filter)
+        let ignored = showsIgnored ? filteredPaths(hidden.ignored) : []
+        let assumed = showsAssumeUnchanged ? filteredPaths(hidden.assumeUnchanged) : []
         List(selection: $model.workingCopy.selection) {
-            if conflicted.isEmpty {
-                rows(model.workingCopy.entries)
+            if conflicted.isEmpty && ignored.isEmpty && assumed.isEmpty {
+                changeRows(changes)
             } else {
-                Section("Conflicts") {
-                    ForEach(conflicted) { entry in
-                        ConflictRow(entry: entry) { side in
-                            pendingResolution = ResolutionRequest(path: entry.path, side: side)
-                        } markResolved: {
-                            Task { await model.markResolved(entry.path) }
+                if !conflicted.isEmpty {
+                    Section("Conflicts") {
+                        ForEach(conflicted) { entry in
+                            ConflictRow(entry: entry) { side in
+                                pendingResolution = ResolutionRequest(path: entry.path, side: side)
+                            } markResolved: {
+                                Task { await model.markResolved(entry.path) }
+                            }
+                            .tag(entry.path)
                         }
-                        .tag(entry.path)
                     }
                 }
-                Section("Changes") {
-                    rows(model.workingCopy.entries.filter { !$0.isConflicted })
+                if !changes.isEmpty {
+                    Section("Changes") {
+                        changeRows(changes)
+                    }
+                }
+                if !assumed.isEmpty {
+                    Section("Assumed Unchanged") {
+                        ForEach(assumed, id: \.self) { path in
+                            HiddenFileRow(path: path, systemImage: "lock")
+                                .contextMenu {
+                                    Button("Stop Assuming Unchanged", systemImage: "lock.open") {
+                                        Task { await model.setAssumeUnchanged(false, for: [path]) }
+                                    }
+                                    WorkingCopyHiddenFileMenu(model: model, path: path)
+                                }
+                        }
+                    }
+                }
+                if !ignored.isEmpty {
+                    Section("Ignored") {
+                        ForEach(ignored, id: \.self) { path in
+                            HiddenFileRow(path: path, systemImage: "eye.slash")
+                                .contextMenu {
+                                    WorkingCopyHiddenFileMenu(model: model, path: path)
+                                }
+                        }
+                    }
                 }
             }
         }
         .listStyle(.plain)
         .overlay {
-            if model.workingCopy.entries.isEmpty {
+            if model.workingCopy.entries.isEmpty && ignored.isEmpty && assumed.isEmpty {
                 ContentUnavailableView(
                     "No Local Changes",
                     systemImage: "checkmark.circle",
                     description: Text("The working copy matches the last commit.")
                 )
+            } else if conflicted.isEmpty && changes.isEmpty && ignored.isEmpty && assumed.isEmpty {
+                ContentUnavailableView.search(text: filter)
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            if let state = model.snapshot?.state, state != .clean {
-                WorkingCopyBanner(model: model, state: state)
+            VStack(spacing: 0) {
+                if let state = model.snapshot?.state, state != .clean {
+                    WorkingCopyBanner(model: model, state: state)
+                }
+                FileListControls(filter: $filter, layout: $layout, sort: $sort)
             }
+        }
+        .task(id: HiddenTrigger(
+            revision: model.revision, showsIgnored: showsIgnored, showsAssumeUnchanged: showsAssumeUnchanged
+        )) {
+            await loadHiddenFiles()
+        }
+        .sheet(isPresented: $isEditingIgnoreRules) {
+            IgnoreRulesSheet(model: model)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             CommitComposer(model: model)
@@ -71,8 +137,17 @@ struct WorkingCopyView: View {
                         pendingDiscard = .all
                     }
                     .disabled(!model.workingCopy.hasUnstagedChanges)
+                    Section {
+                        Toggle("Show Ignored Files", systemImage: "eye.slash", isOn: $showsIgnored)
+                        Toggle("Show Assumed-Unchanged Files", systemImage: "lock", isOn: $showsAssumeUnchanged)
+                    }
+                    Section {
+                        Button("Ignore Rules…", systemImage: "list.bullet.rectangle") {
+                            isEditingIgnoreRules = true
+                        }
+                    }
                 }
-                .help("Stash or discard the local changes")
+                .help("Stash or discard the local changes, and choose which files show")
                 Button("Refresh", systemImage: "arrow.clockwise") {
                     Task { await model.refresh() }
                 }
@@ -118,38 +193,102 @@ struct WorkingCopyView: View {
         }
     }
 
-    private func rows(_ entries: [StatusEntry]) -> some View {
-        ForEach(entries) { entry in
-            StatusRow(entry: entry) {
+    /// The changed files, as a list or as a tree, in the chosen order.
+    @ViewBuilder
+    private func changeRows(_ entries: [StatusEntry]) -> some View {
+        switch layout {
+        case .list:
+            ForEach(FileList.sorted(entries, by: sort)) { entry in
+                row(entry, depth: 0, showsFolder: true)
+            }
+        case .tree:
+            let rows = FileList.rows(FileList.tree(entries, sort: sort), collapsed: filter.isEmpty ? collapsedFolders : [])
+            ForEach(rows) { row in
+                switch row.node.kind {
+                case .folder(let entries):
+                    FolderRow(
+                        node: row.node, depth: row.depth, isCollapsed: filter.isEmpty && collapsedFolders.contains(row.id)
+                    ) {
+                        if collapsedFolders.contains(row.id) {
+                            collapsedFolders.remove(row.id)
+                        } else {
+                            collapsedFolders.insert(row.id)
+                        }
+                    } toggleStaging: {
+                        Task { await model.toggleStaging(of: entries) }
+                    }
+                    .contextMenu {
+                        let state = StagingState(entries)
+                        Button(state == .staged ? "Unstage Folder" : "Stage Folder",
+                               systemImage: state == .staged ? "minus.square" : "plus.square") {
+                            Task { await model.toggleStaging(of: entries) }
+                        }
+                        WorkingCopyFolderMenu(model: model, node: row.node)
+                    }
+                case .file(let entry):
+                    self.row(entry, depth: row.depth, showsFolder: false)
+                }
+            }
+        }
+    }
+
+    private func filteredPaths(_ paths: [String]) -> [String] {
+        let words = filter.split(whereSeparator: \.isWhitespace)
+        guard !words.isEmpty else { return paths }
+        return paths.filter { path in
+            words.allSatisfy { path.range(of: $0, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
+        }
+    }
+
+    private func loadHiddenFiles() async {
+        var files = HiddenFiles()
+        do {
+            if showsIgnored {
+                files.ignored = try await model.repository.ignoredPaths()
+            }
+            if showsAssumeUnchanged {
+                files.assumeUnchanged = try await model.repository.assumeUnchangedPaths()
+            }
+        } catch {
+            model.error = PresentedError(error)
+        }
+        guard !Task.isCancelled else { return }
+        hidden = files
+    }
+
+    private func row(_ entry: StatusEntry, depth: Int, showsFolder: Bool) -> some View {
+        StatusRow(entry: entry, showsFolder: showsFolder) {
+            Task { await model.toggleStaging(of: entry) }
+        }
+        .padding(.leading, CGFloat(depth) * FolderRow.indent)
+        .tag(entry.path)
+        .contextMenu {
+            Button(entry.unstaged == nil ? "Unstage" : "Stage", systemImage: entry.unstaged == nil ? "minus.square" : "plus.square") {
                 Task { await model.toggleStaging(of: entry) }
             }
-            .tag(entry.path)
-            .contextMenu {
-                Button(entry.unstaged == nil ? "Unstage" : "Stage", systemImage: entry.unstaged == nil ? "minus.square" : "plus.square") {
-                    Task { await model.toggleStaging(of: entry) }
-                }
-                if entry.unstaged != nil {
-                    Divider()
-                    Button("Discard Changes…", systemImage: "trash", role: .destructive) {
-                        pendingDiscard = .file(entry.path, isUntracked: entry.unstaged == .untracked)
-                    }
+            if entry.unstaged != nil {
+                Divider()
+                Button("Discard Changes…", systemImage: "trash", role: .destructive) {
+                    pendingDiscard = .file(entry.path, isUntracked: entry.unstaged == .untracked)
                 }
             }
-            .swipeActions(edge: .leading) {
-                Button(entry.unstaged == nil ? "Unstage" : "Stage", systemImage: entry.unstaged == nil ? "minus.square" : "plus.square") {
-                    Task { await model.toggleStaging(of: entry) }
-                }
-                .tint(.accentColor)
+            Divider()
+            WorkingCopyFileMenu(model: model, entry: entry)
+        }
+        .swipeActions(edge: .leading) {
+            Button(entry.unstaged == nil ? "Unstage" : "Stage", systemImage: entry.unstaged == nil ? "minus.square" : "plus.square") {
+                Task { await model.toggleStaging(of: entry) }
             }
-            .swipeActions(edge: .trailing) {
-                if entry.unstaged != nil {
-                    // Not destructive in role: that would take the row away
-                    // before the discard is confirmed.
-                    Button("Discard", systemImage: "trash") {
-                        pendingDiscard = .file(entry.path, isUntracked: entry.unstaged == .untracked)
-                    }
-                    .tint(.red)
+            .tint(.accentColor)
+        }
+        .swipeActions(edge: .trailing) {
+            if entry.unstaged != nil {
+                // Not destructive in role: that would take the row away
+                // before the discard is confirmed.
+                Button("Discard", systemImage: "trash") {
+                    pendingDiscard = .file(entry.path, isUntracked: entry.unstaged == .untracked)
                 }
+                .tint(.red)
             }
         }
     }
@@ -212,6 +351,7 @@ private struct ResolutionRequest {
 
 private struct StatusRow: View {
     var entry: StatusEntry
+    var showsFolder = true
     var toggle: () -> Void
 
     var body: some View {
@@ -226,24 +366,174 @@ private struct StatusRow: View {
             .accessibilityLabel(entry.unstaged == nil ? "Unstage" : "Stage")
             .accessibilityValue(stagingValue)
 
-            FileLabel(entry: entry)
+            FileLabel(entry: entry, showsFolder: showsFolder)
         }
         .padding(.vertical, 2)
     }
 
     private var stagingSymbol: String {
-        switch (entry.staged, entry.unstaged) {
-        case (nil, _): "square"
-        case (_, nil): "checkmark.square.fill"
-        default: "minus.square.fill"
-        }
+        StagingState([entry]).symbol
     }
 
     private var stagingValue: String {
-        switch (entry.staged, entry.unstaged) {
-        case (nil, _): "Not staged"
-        case (_, nil): "Staged"
-        default: "Partly staged"
+        StagingState([entry]).accessibilityValue
+    }
+}
+
+extension StagingState {
+    var symbol: String {
+        switch self {
+        case .unstaged: "square"
+        case .staged: "checkmark.square.fill"
+        case .partlyStaged: "minus.square.fill"
+        }
+    }
+
+    var accessibilityValue: String {
+        switch self {
+        case .unstaged: "Not staged"
+        case .staged: "Staged"
+        case .partlyStaged: "Partly staged"
+        }
+    }
+}
+
+/// A folder of the tree of changed files: it folds, and its checkbox stages
+/// or unstages everything under it.
+private struct FolderRow: View {
+    static let indent: CGFloat = 16
+
+    var node: FileTreeNode
+    var depth: Int
+    var isCollapsed: Bool
+    var toggleCollapsed: () -> Void
+    var toggleStaging: () -> Void
+
+    var body: some View {
+        let state = StagingState(node.entries)
+        HStack(spacing: 8) {
+            Button(action: toggleStaging) {
+                Image(systemName: state.symbol)
+                    .font(.title3)
+                    .foregroundStyle(state == .unstaged ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(state == .staged ? "Unstage Folder" : "Stage Folder")
+            .accessibilityValue(state.accessibilityValue)
+
+            Button(action: toggleCollapsed) {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(isCollapsed ? .zero : .degrees(90))
+                        .frame(width: 10)
+                    Image(systemName: "folder")
+                        .foregroundStyle(.secondary)
+                    Text(node.name)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 8)
+                    Text(node.entries.count.formatted())
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(node.name)
+            .accessibilityValue(isCollapsed ? "Collapsed" : "Expanded")
+            .accessibilityHint(isCollapsed ? "Shows the files in this folder" : "Hides the files in this folder")
+        }
+        .padding(.vertical, 2)
+        .padding(.leading, CGFloat(depth) * Self.indent)
+    }
+}
+
+/// An ignored or assumed-unchanged file, shown on request.
+private struct HiddenFileRow: View {
+    var path: String
+    var systemImage: String
+
+    var body: some View {
+        let parts = path.hasSuffix("/") ? (name: String(path.dropLast()).splitPath.name + "/", folder: String(path.dropLast()).splitPath.folder) : path.splitPath
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .foregroundStyle(.secondary)
+                .frame(width: 17)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(parts.name)
+                    .lineLimit(1)
+                    .foregroundStyle(.secondary)
+                if !parts.folder.isEmpty {
+                    Text(parts.folder)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.head)
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+/// The search field, the list or tree switch and the order of the files.
+private struct FileListControls: View {
+    @Binding var filter: String
+    @Binding var layout: FileListLayout
+    @Binding var sort: FileListSort
+
+    var body: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 4) {
+                Image(systemName: "line.3.horizontal.decrease")
+                    .foregroundStyle(.secondary)
+                TextField("Filter", text: $filter)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                    .noAutocapitalization()
+                if !filter.isEmpty {
+                    Button("Clear", systemImage: "xmark.circle.fill") { filter = "" }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(.fill.tertiary, in: .rect(cornerRadius: 6))
+
+            Picker("Layout", selection: $layout) {
+                ForEach(FileListLayout.allCases) { layout in
+                    Label(layout.title, systemImage: layout.systemImage).tag(layout)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .help("Show the files as a list or under their folders")
+
+            Menu {
+                Picker("Sort By", selection: $sort) {
+                    ForEach(FileListSort.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.inline)
+            } label: {
+                Label("Sort", systemImage: "arrow.up.arrow.down")
+                    .labelStyle(.iconOnly)
+            }
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Sort the files")
+        }
+        .font(.callout)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.bar)
+        .overlay(alignment: .bottom) {
+            Divider()
         }
     }
 }
@@ -288,6 +578,7 @@ private struct ConflictRow: View {
 /// A file's badge, name and folder.
 private struct FileLabel: View {
     var entry: StatusEntry
+    var showsFolder = true
 
     var body: some View {
         let path = entry.path.splitPath
@@ -296,7 +587,7 @@ private struct FileLabel: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(path.name)
                     .lineLimit(1)
-                if !path.folder.isEmpty {
+                if showsFolder, !path.folder.isEmpty {
                     Text(path.folder)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -314,8 +605,12 @@ private struct CommitComposer: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField(model.workingCopy.isAmending ? "Amended Subject" : "Commit Subject", text: $model.workingCopy.subject)
-                .font(.headline)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                TextField(model.workingCopy.isAmending ? "Amended Subject" : "Commit Subject", text: $model.workingCopy.subject)
+                    .font(.headline)
+                SubjectLengthMarker(subject: model.workingCopy.subject)
+                MessageMenu(model: model)
+            }
             TextField("Description", text: $model.workingCopy.details, axis: .vertical)
                 .lineLimit(2...8)
             HStack {
@@ -380,10 +675,12 @@ struct WorkingCopyDetailView: View {
         var isWholeHunk: Bool
     }
 
-    /// What to reload on: another file, or the same file after a refresh.
+    /// What to reload on: another file, the same file after a refresh, or
+    /// other diff options.
     private struct Trigger: Hashable {
         var path: String?
         var revision: Int
+        var options: DiffOptions
     }
 
     var body: some View {
@@ -391,6 +688,16 @@ struct WorkingCopyDetailView: View {
             if let loaded, loaded.path == model.workingCopy.selection {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
+                        if !DiffPreferences.shared.options.isExact, loaded.staged != nil || loaded.unstaged != nil {
+                            Label(
+                                "Whitespace changes are hidden, so hunks and lines cannot be staged one by one. Stage the whole file, or show whitespace changes in Settings.",
+                                systemImage: "info.circle"
+                            )
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.top, 10)
+                        }
                         if let staged = loaded.staged {
                             FileDiffView(
                                 file: staged, caption: "Staged", isCollapsed: isCollapsed("staged"),
@@ -410,7 +717,7 @@ struct WorkingCopyDetailView: View {
                 ContentUnavailableView("No File Selected", systemImage: "doc.text")
             }
         }
-        .task(id: Trigger(path: model.workingCopy.selection, revision: model.revision)) {
+        .task(id: Trigger(path: model.workingCopy.selection, revision: model.revision, options: DiffPreferences.shared.options)) {
             await load()
         }
         .confirmationDialog(
@@ -431,7 +738,8 @@ struct WorkingCopyDetailView: View {
     /// Stage or unstage controls, and on the unstaged side discard, for a
     /// file whose lines can be told apart.
     private func actions(for file: FileDiff, side: WorkingCopySide) -> DiffLineActions? {
-        guard !file.isBinary, file.change != .conflicted else { return nil }
+        // A diff that hides whitespace changes cannot say exactly what to stage.
+        guard !file.isBinary, file.change != .conflicted, DiffPreferences.shared.options.isExact else { return nil }
         switch side {
         case .staged:
             return DiffLineActions(verb: "Unstage", systemImage: "minus.square", selection: $stagedSelection) { lines in
@@ -453,8 +761,9 @@ struct WorkingCopyDetailView: View {
             return
         }
         do {
-            let staged = try await model.repository.stagedDiff(of: path)
-            let unstaged = try await model.repository.unstagedDiff(of: path)
+            let options = DiffPreferences.shared.options
+            let staged = try await model.repository.stagedDiff(of: path, options: options)
+            let unstaged = try await model.repository.unstagedDiff(of: path, options: options)
             guard !Task.isCancelled else { return }
             // Line IDs only mean something within the diff they were read
             // from, so a selection does not outlive a change to it.

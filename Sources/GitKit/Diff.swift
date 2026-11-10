@@ -61,6 +61,13 @@ public struct StatusEntry: Identifiable, Hashable, Sendable {
     /// The change between the index and the working tree.
     public var unstaged: FileChange?
 
+    public init(path: String, originalPath: String? = nil, staged: FileChange?, unstaged: FileChange?) {
+        self.path = path
+        self.originalPath = originalPath
+        self.staged = staged
+        self.unstaged = unstaged
+    }
+
     public var id: String { path }
 
     public var isConflicted: Bool { unstaged == .conflicted }

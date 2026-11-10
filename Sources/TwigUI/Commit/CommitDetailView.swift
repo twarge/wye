@@ -49,6 +49,7 @@ private struct CommitDetailContent: View {
     private struct LoadKey: Hashable {
         var commitID: OID?
         var parentIndex: Int
+        var diffOptions: DiffOptions
     }
 
     private var parentIndex: Int {
@@ -84,7 +85,7 @@ private struct CommitDetailContent: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task(id: LoadKey(commitID: commitID, parentIndex: parentIndex)) {
+        .task(id: LoadKey(commitID: commitID, parentIndex: parentIndex, diffOptions: DiffPreferences.shared.options)) {
             await load()
         }
     }
@@ -108,6 +109,7 @@ private struct CommitDetailContent: View {
                         file: file,
                         isCollapsed: isCollapsed(file.id),
                         fileActions: FileActions(for: file, in: loaded.commit.id, open: open)
+                            .adding(workingCopyCommandsFor: file, in: loaded.commit.id, model: model)
                     )
                 }
             }
@@ -142,10 +144,10 @@ private struct CommitDetailContent: View {
         let parentIndex = parentIndex
         do {
             let commit = try await model.repository.commit(commitID)
-            let files = try await model.repository.changes(in: commitID, parent: parentIndex)
+            let files = try await model.repository.changes(in: commitID, parent: parentIndex, options: DiffPreferences.shared.options)
             guard !Task.isCancelled else { return }
             if loaded?.commit.id != commitID {
-                collapsed = []
+                collapsed = DiffPreferences.shared.initiallyCollapsed(files)
             }
             loaded = Loaded(commit: commit, parentIndex: parentIndex, files: files)
         } catch {

@@ -70,8 +70,7 @@ struct RemoteListSheet: View {
                     Task { await model.removeRemote(remote) }
                 }
             } message: { remote in
-                Text("Its \(remote.branches.count) remote \(remote.branches.count == 1 ? "branch goes" : "branches go") too. "
-                     + "Nothing on the remote itself is changed, and local branches are kept.")
+                Text(RemoveRemoteSheet.consequences(of: remote))
             }
         }
         .frame(minWidth: 420, minHeight: 300)
@@ -80,8 +79,8 @@ struct RemoteListSheet: View {
     }
 }
 
-/// Adds a remote, or renames one and changes its URL.
-private struct RemoteEditor: View {
+/// Adds a remote, or renames one and changes its URLs.
+struct RemoteEditor: View {
     enum Subject: Identifiable {
         case new
         case existing(Remote)
@@ -100,6 +99,8 @@ private struct RemoteEditor: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var url = ""
+    /// Empty to push to the fetch URL.
+    @State private var pushURL = ""
 
     var body: some View {
         NavigationStack {
@@ -111,6 +112,14 @@ private struct RemoteEditor: View {
                     .textContentType(.URL)
                     .autocorrectionDisabled()
                     .noAutocapitalization()
+                Section {
+                    TextField("Push URL", text: $pushURL, prompt: Text("Same as the URL"))
+                        .textContentType(.URL)
+                        .autocorrectionDisabled()
+                        .noAutocapitalization()
+                } footer: {
+                    Text("Only when pushes go somewhere other than fetches, such as your own copy of the project.")
+                }
             }
             .formStyle(.grouped)
             .navigationTitle(isNew ? "New Remote" : "Edit Remote")
@@ -125,6 +134,11 @@ private struct RemoteEditor: View {
             }
         }
         .frame(minWidth: 380)
+        .task {
+            if case .existing(let remote) = subject {
+                pushURL = (try? await model.repository.pushURL(ofRemote: remote.name)) ?? ""
+            }
+        }
         .onAppear {
             if case .existing(let remote) = subject {
                 name = remote.name
@@ -144,13 +158,13 @@ private struct RemoteEditor: View {
     }
 
     private func save() {
-        let name = trimmed(name), url = trimmed(url)
+        let name = trimmed(name), url = trimmed(url), pushURL = trimmed(pushURL)
         let subject = subject
         dismiss()
         Task {
             switch subject {
-            case .new: await model.addRemote(named: name, url: url)
-            case .existing(let remote): await model.editRemote(remote, name: name, url: url)
+            case .new: await model.addRemote(named: name, url: url, pushURL: pushURL)
+            case .existing(let remote): await model.editRemote(remote, name: name, url: url, pushURL: pushURL)
             }
         }
     }

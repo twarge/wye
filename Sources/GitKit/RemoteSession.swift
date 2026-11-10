@@ -17,6 +17,10 @@ final class RemoteSession {
     /// For a force push: where each remote reference must still be, by full
     /// name, for the push to go ahead. A missing value means it must not exist.
     var leases: [String: OID?] = [:]
+    /// Tags being pushed, by full name, with what they point at here. git
+    /// refuses to move a tag the remote already has somewhere else, but
+    /// libgit2 leaves that check to the caller.
+    var protectedTags: [String: OID] = [:]
 
     private var credentialAttempts = 0
     private var lastReport = ContinuousClock.now
@@ -158,13 +162,19 @@ final class RemoteSession {
         }
 
         callbacks.push_negotiation = { updates, count, payload in
-            guard let session = RemoteSession.from(payload), !session.leases.isEmpty, let updates else { return 0 }
+            guard let session = RemoteSession.from(payload),
+                  !session.leases.isEmpty || !session.protectedTags.isEmpty, let updates else { return 0 }
             for index in 0..<count {
-                guard let update = updates[index]?.pointee, let name = update.dst_refname.map({ String(cString: $0) }),
-                      let expected = session.leases[name] else { continue }
+                guard let update = updates[index]?.pointee,
+                      let name = update.dst_refname.map({ String(cString: $0) }) else { continue }
                 // `src` is where the remote's reference is now; zero if it does not exist.
                 let current = OID(update.src)
                 let actual: OID? = current == RemoteSession.noObject ? nil : current
+                if let local = session.protectedTags[name], let actual, actual != local {
+                    session.failure = .tagExistsOnRemote(String(name.dropFirst("refs/tags/".count)))
+                    return GIT_EUSER.rawValue
+                }
+                guard let expected = session.leases[name] else { continue }
                 if actual != expected {
                     let branch = name.hasPrefix("refs/heads/") ? String(name.dropFirst("refs/heads/".count)) : name
                     session.failure = .remoteMoved(branch: branch)

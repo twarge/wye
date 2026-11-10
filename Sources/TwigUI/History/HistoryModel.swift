@@ -13,28 +13,67 @@ final class HistoryModel {
         var id: OID { commit.id }
     }
 
-    /// A line of the list: a commit, or the heading above a month's commits.
+    /// A line of the list: a commit, or the heading above a day's, week's or
+    /// month's commits.
     enum Item: Identifiable {
         /// The heading carries the graph lines that run past it.
-        case month(Date, before: OID, lines: [CommitGraph.Line])
+        case heading(Date, HistoryPreferences.Grouping, before: OID, lines: [CommitGraph.Line])
         case commit(Row)
 
         enum ID: Hashable {
-            case month(OID)
+            case heading(OID)
             case commit(OID)
         }
 
         var id: ID {
             switch self {
-            case .month(_, let before, _): .month(before)
+            case .heading(_, _, let before, _): .heading(before)
             case .commit(let row): .commit(row.id)
             }
         }
     }
 
-    var selection: OID?
+    /// The commit the detail column shows. Setting it to one outside the
+    /// multiple selection ends that selection.
+    var selection: OID? {
+        didSet {
+            if let selection, !multipleSelection.contains(selection) {
+                multipleSelection = []
+            }
+        }
+    }
+
+    /// The commits selected together, when there are two or more. The one
+    /// `selection` names stays in detail while it is among them.
+    private(set) var multipleSelection: Set<OID> = []
+
+    /// The list's selection: one commit, or several.
+    var listSelection: Set<OID> {
+        get {
+            if multipleSelection.count > 1 { return multipleSelection }
+            return selection.map { [$0] } ?? []
+        }
+        set {
+            guard newValue.count > 1 else {
+                multipleSelection = []
+                selection = newValue.first
+                return
+            }
+            if selection.map({ !newValue.contains($0) }) ?? true {
+                selection = newValue.subtracting(multipleSelection).first ?? newValue.first
+            }
+            multipleSelection = newValue
+        }
+    }
+
+    /// Sheets and files the commit menus ask for.
+    let requests = CommitActionRequests()
+    /// The commit the list scrolls to next.
+    private(set) var scrollTarget: OID?
+
     private(set) var items: [Item] = []
     private(set) var scope: HistoryScope = .allReferences
+    private(set) var layout = HistoryPreferences.shared.layout
     /// How many commits the whole history holds, once counted.
     private(set) var commitCount: Int?
     /// Whether every commit has been read.
@@ -50,7 +89,7 @@ final class HistoryModel {
     private let pageSize = 300
     private var cursor: HistoryCursor?
     private var graph = CommitGraph()
-    private var lastMonth: DateComponents?
+    private var lastPeriod: DateComponents?
     private var isLoadingMore = false
     /// Counts reloads, so a page read for an earlier one is dropped, and a
     /// search knows to run again.
@@ -67,7 +106,15 @@ final class HistoryModel {
         guard scope != self.scope else { return }
         self.scope = scope
         selection = nil
+        multipleSelection = []
         items = []
+        await reload()
+    }
+
+    /// Lays the history out again for changed view options.
+    func apply(_ layout: HistoryLayout) async {
+        guard layout != self.layout else { return }
+        self.layout = layout
         await reload()
     }
 
@@ -83,7 +130,7 @@ final class HistoryModel {
         // The list keeps showing what it has until the first page arrives.
         let page: [Commit]
         do {
-            let cursor = try await repository.openHistory(scope)
+            let cursor = try await repository.openHistory(scope, options: layout.options)
             guard generation == self.generation else {
                 await repository.closeHistory(cursor)
                 return
@@ -98,14 +145,16 @@ final class HistoryModel {
 
         items = []
         graph = CommitGraph()
-        lastMonth = nil
+        lastPeriod = nil
         graphWidth = 1
         append(page)
-        if let selection, !items.contains(where: { $0.id == .commit(selection) }) {
+        if let selection, !contains(selection) {
             self.selection = nil
         }
+        multipleSelection = multipleSelection.filter(contains)
+        if multipleSelection.count < 2 { multipleSelection = [] }
 
-        let count = try? await repository.commitCount(in: scope)
+        let count = try? await repository.commitCount(in: scope, options: layout.options)
         if generation == self.generation {
             commitCount = count ?? 0
         }
@@ -122,16 +171,66 @@ final class HistoryModel {
         append(page)
     }
 
+    /// Selects a commit and scrolls to it, reading on until it is reached.
+    /// Returns `false` when the history does not hold it.
+    @discardableResult
+    func reveal(_ id: OID, readingAtMost limit: Int = 50_000) async -> Bool {
+        await search.cancelAndClear()
+        while !contains(id), !isComplete, rowCount < limit {
+            let count = items.count
+            await loadMore()
+            if items.count == count { break }
+        }
+        guard contains(id) else { return false }
+        selection = id
+        scrollTarget = id
+        return true
+    }
+
+    func didScroll() {
+        scrollTarget = nil
+    }
+
+    /// The commits among `ids`, in the order the list shows them: newest
+    /// first, as the history lists them.
+    func commits(_ ids: Set<OID>) -> [Commit] {
+        if search.isActive {
+            return search.results.filter { ids.contains($0.id) }
+        }
+        return items.compactMap { item in
+            if case .commit(let row) = item, ids.contains(row.id) { return row.commit }
+            return nil
+        }
+    }
+
+    private var rowCount: Int { items.count }
+
+    private func contains(_ id: OID) -> Bool {
+        items.contains { $0.id == .commit(id) }
+    }
+
     private func append(_ commits: [Commit]) {
         isComplete = commits.count < pageSize
         let calendar = Calendar.current
+        let components: Set<Calendar.Component>? = switch layout.grouping {
+        case .day: [.year, .month, .day]
+        case .week: [.yearForWeekOfYear, .weekOfYear]
+        case .month: [.year, .month]
+        case .none: nil
+        }
+        let firstParentOnly = layout.options.firstParentOnly
         for commit in commits {
-            let month = calendar.dateComponents([.year, .month], from: commit.author.date)
-            if month != lastMonth {
-                lastMonth = month
-                items.append(.month(commit.author.date, before: commit.id, lines: graph.openLines))
+            if let components {
+                let period = calendar.dateComponents(components, from: commit.author.date)
+                if period != lastPeriod {
+                    lastPeriod = period
+                    items.append(.heading(commit.author.date, layout.grouping, before: commit.id, lines: graph.openLines))
+                }
             }
-            let row = graph.append(commit.id, parents: commit.parentIDs)
+            // Following first parents only, the other parents are not listed
+            // and get no lane.
+            let parents = firstParentOnly ? Array(commit.parentIDs.prefix(1)) : commit.parentIDs
+            let row = graph.append(commit.id, parents: parents)
             graphWidth = max(graphWidth, row.width)
             items.append(.commit(Row(commit: commit, graph: row)))
         }

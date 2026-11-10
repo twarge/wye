@@ -5,54 +5,66 @@ import SwiftUI
 struct HistoryView: View {
     @Bindable var model: RepositoryModel
     @State private var isCreatingBranch = false
-    @State private var isComparing = false
     @FocusState private var isSearchFocused: Bool
+
+    private var preferences: HistoryPreferences { .shared }
 
     var body: some View {
         @Bindable var history = model.history
         @Bindable var search = history.search
-        List(selection: $history.selection) {
-            if search.isActive {
-                // Matches are rarely next to each other, so the graph would
-                // only mislead: results are plain rows in the history's order.
-                ForEach(search.results) { commit in
-                    SearchResultRow(commit: commit, labels: model.refLabels[commit.id] ?? [])
-                        .tag(commit.id)
-                        .commitActions(model: model, commit: commit)
-                }
-                if !search.isComplete {
-                    SearchProgressRow(examined: search.examined)
-                        .listRowSeparator(.hidden)
-                        .selectionDisabled()
-                        .task(id: search.results.count) {
-                            await search.loadMore()
-                        }
-                }
-            } else {
-                ForEach(history.items) { item in
-                    switch item {
-                    case .month(let date, _, let lines):
-                        MonthRow(date: date, lines: lines, graphWidth: history.graphWidth)
+        ScrollViewReader { proxy in
+            List(selection: $history.listSelection) {
+                if search.isActive {
+                    // Matches are rarely next to each other, so the graph would
+                    // only mislead: results are plain rows in the history's order.
+                    ForEach(search.results) { commit in
+                        SearchResultRow(commit: commit, labels: model.refLabels[commit.id] ?? [])
+                            .tag(commit.id)
+                    }
+                    if !search.isComplete {
+                        SearchProgressRow(examined: search.examined)
+                            .listRowSeparator(.hidden)
                             .selectionDisabled()
-                    case .commit(let row):
-                        CommitRow(row: row, labels: model.refLabels[row.id] ?? [], graphWidth: history.graphWidth)
-                            .tag(row.id)
-                            .commitActions(model: model, commit: row.commit)
+                            .task(id: search.results.count) {
+                                await search.loadMore()
+                            }
+                    }
+                } else {
+                    ForEach(history.items) { item in
+                        switch item {
+                        case .heading(let date, let grouping, _, let lines):
+                            HeadingRow(date: date, grouping: grouping, lines: lines, graphWidth: graphWidth)
+                                .selectionDisabled()
+                        case .commit(let row):
+                            CommitRow(row: row, labels: model.refLabels[row.id] ?? [], graphWidth: graphWidth,
+                                      showsGraph: preferences.showsGraph, size: rowSize)
+                                .tag(row.id)
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 14))
+                    .listRowSeparator(.hidden)
+
+                    if !history.isComplete, !history.items.isEmpty {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .listRowSeparator(.hidden)
+                            .selectionDisabled()
+                            // Runs again as rows arrive, for as long as it stays on screen.
+                            .task(id: history.items.count) {
+                                await history.loadMore()
+                            }
                     }
                 }
-                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 14))
-                .listRowSeparator(.hidden)
-
-                if !history.isComplete, !history.items.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .listRowSeparator(.hidden)
-                        .selectionDisabled()
-                        // Runs again as rows arrive, for as long as it stays on screen.
-                        .task(id: history.items.count) {
-                            await history.loadMore()
-                        }
+            }
+            .contextMenu(forSelectionType: OID.self) { ids in
+                selectionMenu(ids)
+            }
+            .onChange(of: history.scrollTarget) {
+                guard let target = history.scrollTarget else { return }
+                withAnimation {
+                    proxy.scrollTo(HistoryModel.Item.ID.commit(target), anchor: .center)
                 }
+                history.didScroll()
             }
         }
         .listStyle(.plain)
@@ -85,28 +97,69 @@ struct HistoryView: View {
                 try? await Task.sleep(for: .milliseconds(250))
                 guard !Task.isCancelled else { return }
             }
-            await search.search(query, in: history.scope)
+            await search.search(query, in: history.scope, options: history.layout.options)
+        }
+        .task(id: preferences.layout) {
+            await history.apply(preferences.layout)
         }
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                if history.multipleSelection.count > 1 {
+                    Menu("\(history.multipleSelection.count) Selected", systemImage: "checklist") {
+                        MultipleCommitsMenu(model: model, commits: history.commits(history.multipleSelection))
+                    }
+                    .help("Act on the selected commits")
+                }
                 Button("New Branch", systemImage: "plus") { isCreatingBranch = true }
                     .help("Create a branch at the selected commit")
-                Button("Compare", systemImage: "arrow.left.arrow.right") { isComparing = true }
-                    .help("Compare the selected commit with another commit, branch or tag")
+                Button("Compare", systemImage: "arrow.left.arrow.right") {
+                    history.requests.compare = CompareRequest(from: history.selection?.hex ?? "HEAD", to: "HEAD")
+                }
+                .help("Compare the selected commit with another commit, branch or tag")
+                Menu("View Options", systemImage: "line.3.horizontal.decrease.circle") {
+                    HistoryViewOptions()
+                    Divider()
+                    Button("Apply Patch…", systemImage: "doc.badge.plus") { history.requests.isImportingPatch = true }
+                        .disabled(model.snapshot?.state ?? .clean != .clean)
+                }
+                .help("Choose how the history is shown")
                 Button("Refresh", systemImage: "arrow.clockwise") {
                     Task { await model.refresh() }
                 }
                 .help("Read the repository again")
             }
+            if Platform.selectsSeveralInEditMode {
+                ToolbarItem(placement: .primaryAction) {
+                    SelectionModeButton()
+                }
+            }
         }
         .sheet(isPresented: $isCreatingBranch) {
             NewBranchSheet(model: model, startingPoint: history.selection)
         }
-        .sheet(isPresented: $isComparing) {
-            CompareView(model: model, base: history.selection)
+        .commitActionPresenters(model)
+    }
+
+    /// The context menu for the commits it was opened on: one commit's
+    /// actions, or those for several.
+    @ViewBuilder
+    private func selectionMenu(_ ids: Set<OID>) -> some View {
+        let commits = model.history.commits(ids)
+        if commits.count == 1, let commit = commits.first {
+            CommitActionsMenu(model: model, commit: commit)
+        } else if commits.count > 1 {
+            MultipleCommitsMenu(model: model, commits: commits)
         }
+    }
+
+    private var graphWidth: Int {
+        preferences.showsGraph ? model.history.graphWidth : 0
+    }
+
+    private var rowSize: HistoryPreferences.RowSize {
+        Platform.choosesHistoryRowSize ? preferences.rowSize : .regular
     }
 
     /// What a search depends on: it runs again when any of these changes.
@@ -138,23 +191,38 @@ struct HistoryView: View {
     }
 }
 
-private struct MonthRow: View {
+private struct HeadingRow: View {
     var date: Date
+    var grouping: HistoryPreferences.Grouping
     var lines: [CommitGraph.Line]
     var graphWidth: Int
 
     var body: some View {
-        Text(date, format: .dateTime.month(.wide).year())
+        Text(title)
             .font(.caption.weight(.medium))
             .textCase(.uppercase)
             .foregroundStyle(.secondary)
-            .padding(.leading, GraphCell.width(forLanes: graphWidth) + 6)
+            .padding(.leading, graphWidth > 0 ? GraphCell.width(forLanes: graphWidth) + 6 : 0)
             .padding(.top, 12)
             .padding(.bottom, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(alignment: .leading) {
-                GraphCell(passing: lines, width: graphWidth)
+                if graphWidth > 0 {
+                    GraphCell(passing: lines, width: graphWidth)
+                }
             }
+    }
+
+    private var title: String {
+        switch grouping {
+        case .day:
+            date.formatted(.dateTime.weekday(.wide).day().month(.wide).year())
+        case .week:
+            "Week of " + (Calendar.current.dateInterval(of: .weekOfYear, for: date)?.start ?? date)
+                .formatted(.dateTime.day().month(.wide).year())
+        case .month, .none:
+            date.formatted(.dateTime.month(.wide).year())
+        }
     }
 }
 
@@ -162,6 +230,8 @@ private struct CommitRow: View {
     var row: HistoryModel.Row
     var labels: [RefLabel]
     var graphWidth: Int
+    var showsGraph: Bool
+    var size: HistoryPreferences.RowSize
 
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -187,13 +257,16 @@ private struct CommitRow: View {
                     Spacer(minLength: 8)
                     date
                 }
-                .padding(.vertical, 5)
+                .font(size == .compact ? .callout : nil)
+                .padding(.vertical, size == .compact ? 2 : 5)
             }
         }
-        .padding(.leading, GraphCell.width(forLanes: graphWidth) + 6)
+        .padding(.leading, showsGraph ? GraphCell.width(forLanes: graphWidth) + 6 : 0)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(alignment: .leading) {
-            GraphCell(row: row.graph, width: graphWidth)
+            if showsGraph {
+                GraphCell(row: row.graph, width: graphWidth)
+            }
         }
         .accessibilityElement(children: .combine)
     }
@@ -264,7 +337,7 @@ struct NewBranchSheet: View {
         let startingPoint = startingPoint
         dismiss()
         Task {
-            await model.perform { repository in
+            await model.perform(checksOut ? .checkout : .createBranch) { repository in
                 let branch = try await repository.createBranch(named: name, at: startingPoint)
                 if checksOut {
                     try await repository.checkOut(branch: branch)

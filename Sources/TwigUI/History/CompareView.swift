@@ -17,10 +17,19 @@ struct CompareView: View {
 
     /// Starts from `base` against `HEAD`.
     init(model: RepositoryModel, base: OID?) {
-        self.model = model
-        _left = State(initialValue: base?.hex ?? "HEAD")
-        _right = State(initialValue: "HEAD")
+        self.init(model: model, from: base?.hex ?? "HEAD", to: "HEAD")
     }
+
+    /// Starts from two revisions, comparing them at once.
+    init(model: RepositoryModel, from: String, to: String) {
+        self.model = model
+        _left = State(initialValue: from)
+        _right = State(initialValue: to)
+        comparesAtOnce = from != to
+    }
+
+    /// Whether the sheet compares as it opens, having been given both sides.
+    private let comparesAtOnce: Bool
 
     var body: some View {
         NavigationStack {
@@ -41,6 +50,9 @@ struct CompareView: View {
             }
         }
         .sheetMinimumSize(width: 640, height: 520)
+        .task {
+            if comparesAtOnce { await compare() }
+        }
     }
 
     private var fields: some View {

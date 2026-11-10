@@ -6,7 +6,9 @@ struct QuickOpenView: View {
     var purpose: QuickOpenPurpose
     var currentBranch: String?
     var items: [QuickOpenItem]
-    var choose: (QuickOpenItem) -> Void
+    /// Called with the chosen item, and whether a repository should open in
+    /// a new tab rather than in this window.
+    var choose: (QuickOpenItem, _ inNewTab: Bool) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
@@ -18,18 +20,15 @@ struct QuickOpenView: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 List {
-                    ForEach(results, id: \.item.id) { result in
-                        Button {
-                            choose(result.item)
-                        } label: {
-                            QuickOpenRow(item: result.item, match: result.match)
+                    if query.allSatisfy(\.isWhitespace) {
+                        // Nothing typed: everything, under its heading.
+                        ForEach(sections(of: results), id: \.section) { group in
+                            Section(group.section.title) {
+                                rows(group.results, highlighted: highlightedID(in: results))
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .listRowBackground(
-                            result.item.id == highlightedID(in: results)
-                                ? RoundedRectangle(cornerRadius: 6).fill(.tint.opacity(0.2)) : nil
-                        )
-                        .id(result.item.id)
+                    } else {
+                        rows(results, highlighted: highlightedID(in: results))
                     }
                 }
                 .listStyle(.plain)
@@ -39,6 +38,17 @@ struct QuickOpenView: View {
             }
             .safeAreaInset(edge: .top, spacing: 0) {
                 searchField
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if purpose == .jump, Platform.hasWindowTabs {
+                    Text("⌘↩ opens a repository in a new tab")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.bar)
+                }
             }
             .overlay {
                 if results.isEmpty {
@@ -72,7 +82,12 @@ struct QuickOpenView: View {
                 .autocorrectionDisabled()
                 .noAutocapitalization()
                 .focused($isFieldFocused)
-                .onSubmit(chooseHighlighted)
+                .onSubmit { chooseHighlighted(inNewTab: false) }
+                .onKeyPress(keys: [.return]) { press in
+                    guard press.modifiers.contains(.command) else { return .ignored }
+                    chooseHighlighted(inNewTab: true)
+                    return .handled
+                }
                 .onKeyPress(.downArrow) { move(by: 1) }
                 .onKeyPress(.upArrow) { move(by: -1) }
                 .onKeyPress(.escape) {
@@ -105,12 +120,43 @@ struct QuickOpenView: View {
         return .handled
     }
 
-    private func chooseHighlighted() {
+    private typealias Result = (item: QuickOpenItem, match: FuzzyMatch)
+
+    @ViewBuilder
+    private func rows(_ results: [Result], highlighted: QuickOpenItem.ID?) -> some View {
+        ForEach(results, id: \.item.id) { result in
+            Button {
+                choose(result.item, false)
+            } label: {
+                QuickOpenRow(item: result.item, match: result.match)
+            }
+            .buttonStyle(.plain)
+            .listRowBackground(
+                result.item.id == highlighted ? RoundedRectangle(cornerRadius: 6).fill(.tint.opacity(0.2)) : nil
+            )
+            .id(result.item.id)
+        }
+    }
+
+    /// The results under their headings, in the order they already have.
+    private func sections(of results: [Result]) -> [(section: QuickOpenItem.Section, results: [Result])] {
+        var groups: [(section: QuickOpenItem.Section, results: [Result])] = []
+        for result in results {
+            if groups.last?.section == result.item.section {
+                groups[groups.count - 1].results.append(result)
+            } else {
+                groups.append((result.item.section, [result]))
+            }
+        }
+        return groups
+    }
+
+    private func chooseHighlighted(inNewTab: Bool) {
         let results = self.results
         guard let id = highlightedID(in: results), let result = results.first(where: { $0.item.id == id }) else {
             return
         }
-        choose(result.item)
+        choose(result.item, inNewTab)
     }
 }
 

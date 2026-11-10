@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 /// The few places where macOS and iOS genuinely differ, kept in one file so
 /// the rest of the interface is written once.
@@ -34,13 +37,13 @@ enum Platform {
         #endif
     }
 
-    /// Where Fetch, Pull and Push go: the window toolbar on macOS, and the
-    /// bottom bar on iOS, where the navigation bar has little room to spare.
-    static var remoteToolbarPlacement: ToolbarItemPlacement {
+    /// Whether the click being handled is an Option-click, which opens a
+    /// command's options instead of running it. iOS uses a long press.
+    @MainActor static var isOptionClick: Bool {
         #if os(macOS)
-        .primaryAction
+        NSEvent.modifierFlags.contains(.option)
         #else
-        .bottomBar
+        false
         #endif
     }
 
@@ -51,6 +54,60 @@ enum Platform {
         true
         #else
         false
+        #endif
+    }
+
+    /// Whether a file can be shown in the system's file browser. macOS has
+    /// the Finder; iOS has no public way to open the Files app at a file.
+    static var canRevealFiles: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
+    }
+
+    static var revealInFileBrowserTitle: String { "Reveal in Finder" }
+
+    /// Shows a file selected in the Finder.
+    @MainActor static func revealInFileBrowser(_ url: URL) {
+        #if os(macOS)
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+        #endif
+    }
+
+    /// Whether a file can be opened in the app the system picks for it.
+    /// iOS opens files from Quick Look's share button instead.
+    static var canOpenFilesInOtherApps: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
+    }
+
+    @MainActor static func openWithDefaultApp(_ url: URL) {
+        #if os(macOS)
+        NSWorkspace.shared.open(url)
+        #endif
+    }
+
+    /// What removing an untracked file is called: there is a Trash only on macOS.
+    static var trashTitle: String {
+        #if os(macOS)
+        "Move to Trash"
+        #else
+        "Delete"
+        #endif
+    }
+
+    /// What happens to an untracked file removed from its menu, for the
+    /// confirmation that asks first.
+    static var trashNote: String {
+        #if os(macOS)
+        "It is moved to the Trash, where it can be put back from."
+        #else
+        "It is deleted and cannot be recovered."
         #endif
     }
 
@@ -85,6 +142,59 @@ extension Font {
 }
 
 extension View {
+    /// Puts Fetch, Pull and Push where each platform has room: the window
+    /// toolbar on macOS; on iOS a floating bar at the bottom of the content,
+    /// where the navigation bar has little room to spare.
+    ///
+    /// On iOS the bar is a safe area inset rather than a bottom toolbar: a
+    /// list then scrolls its last rows clear of it, which it did not do
+    /// under the toolbar on iPad. It is SwiftUI content too, so its counts
+    /// change with the branch; a bottom toolbar's badges, bridged to bar
+    /// button items, kept the count they were created with.
+    @ViewBuilder
+    func remoteBar<Bar: View>(@ViewBuilder _ bar: () -> Bar) -> some View {
+        #if os(macOS)
+        toolbar {
+            ToolbarItemGroup(placement: .primaryAction) { bar() }
+        }
+        #else
+        safeAreaInset(edge: .bottom, spacing: 0) {
+            HStack(spacing: 20) { bar() }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .imageScale(.large)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .padding(.bottom, 8)
+                .frame(maxWidth: .infinity)
+        }
+        #endif
+    }
+
+    /// A count on a Fetch, Pull or Push button: a toolbar badge on macOS,
+    /// drawn on the button in the iOS bar, where buttons have no badges.
+    @ViewBuilder
+    func remoteCount(_ count: Int) -> some View {
+        #if os(macOS)
+        badge(count)
+        #else
+        overlay(alignment: .topTrailing) {
+            if count > 0 {
+                Text(count.formatted())
+                    .font(.caption2.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(.red, in: .capsule)
+                    .offset(x: 10, y: -8)
+                    .allowsHitTesting(false)
+            }
+        }
+        .accessibilityValue(count > 0 ? "\(count)" : "")
+        #endif
+    }
+
     /// Leaves letter case alone, for usernames, tokens and URLs. Only iOS
     /// capitalizes as the user types.
     func noAutocapitalization() -> some View {
@@ -153,6 +263,163 @@ extension View {
         frame(minWidth: width, minHeight: height)
         #else
         self
+        #endif
+    }
+}
+
+// MARK: Window tabs
+
+extension Platform {
+    /// Whether windows can be gathered into tabs. Only macOS has window tabs;
+    /// on iPad each window is its own scene.
+    static var hasWindowTabs: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
+    }
+
+    /// Opens a new window with `open` and attaches it to the front window as
+    /// a tab. SwiftUI can open a window but has no way to say "as a tab".
+    @MainActor
+    static func openAsTab(_ open: () -> Void) {
+        #if os(macOS)
+        let front = NSApp.keyWindow
+        let existing = Set(NSApp.windows.map(ObjectIdentifier.init))
+        open()
+        Task { @MainActor in
+            // The new window exists a moment after it is asked for.
+            for _ in 0..<20 {
+                let fresh = NSApp.windows.first {
+                    !existing.contains(ObjectIdentifier($0)) && $0.canBecomeMain && $0.tabbingMode != .disallowed
+                }
+                if let front, let fresh {
+                    if fresh.tabGroup !== front.tabGroup || front.tabGroup == nil {
+                        front.addTabbedWindow(fresh, ordered: .above)
+                    }
+                    fresh.makeKeyAndOrderFront(nil)
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(25))
+            }
+        }
+        #else
+        open()
+        #endif
+    }
+}
+
+// MARK: Undo
+
+extension Platform {
+    /// Whether the Edit menu's own Undo and Redo give way to Twig's. On macOS
+    /// they do, and hand ⌘Z on to a text field that has focus. On iOS the
+    /// system's stay, for text, and Twig's follow them without shortcuts,
+    /// with an Undo button in the toolbar besides.
+    static var replacesUndoMenu: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
+    }
+
+    /// Whether the repository window shows Undo and Redo buttons.
+    static var showsUndoButtons: Bool {
+        !replacesUndoMenu
+    }
+
+    static var undoButtonPlacement: ToolbarItemPlacement {
+        #if os(macOS)
+        .automatic
+        #else
+        .secondaryAction
+        #endif
+    }
+}
+
+/// The undo state of the text being edited, if any: what the Edit menu
+/// offers instead of Twig's own undo while a text field has focus.
+@MainActor
+@Observable
+final class TextEditingUndo {
+    static let shared = TextEditingUndo()
+
+    /// Whether a text field or text view has focus.
+    private(set) var isEditing = false
+    private(set) var canUndo = false
+    private(set) var canRedo = false
+    private(set) var undoTitle = "Undo"
+    private(set) var redoTitle = "Redo"
+
+    private init() {
+        #if os(macOS)
+        // After every event, as AppKit itself validates its menus.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didUpdateNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated { TextEditingUndo.shared.update() }
+        }
+        #endif
+    }
+
+    /// Undoes or redoes in the text that has focus.
+    func perform(redo: Bool) {
+        #if os(macOS)
+        NSApp.sendAction(Selector((redo ? "redo:" : "undo:")), to: nil, from: nil)
+        #endif
+    }
+
+    #if os(macOS)
+    private func update() {
+        let text = NSApp.keyWindow?.firstResponder as? NSText
+        let manager = text?.undoManager
+        set(\.isEditing, text != nil)
+        set(\.canUndo, manager?.canUndo ?? false)
+        set(\.canRedo, manager?.canRedo ?? false)
+        set(\.undoTitle, manager?.undoMenuItemTitle ?? "Undo")
+        set(\.redoTitle, manager?.redoMenuItemTitle ?? "Redo")
+    }
+
+    /// Assigns only real changes, so the menu is not rebuilt after every event.
+    private func set<Value: Equatable>(_ keyPath: ReferenceWritableKeyPath<TextEditingUndo, Value>, _ value: Value) {
+        if self[keyPath: keyPath] != value { self[keyPath: keyPath] = value }
+    }
+    #endif
+}
+
+// MARK: History
+
+extension Platform {
+    /// Whether the history offers compact and regular rows. iOS chooses by
+    /// the width it has.
+    static var choosesHistoryRowSize: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
+    }
+
+    /// Whether choosing several rows takes an edit mode, as on iOS, rather
+    /// than Shift- and Command-clicks.
+    static var selectsSeveralInEditMode: Bool {
+        #if os(macOS)
+        false
+        #else
+        true
+        #endif
+    }
+}
+
+/// Turns on choosing several rows, where that takes an edit mode.
+struct SelectionModeButton: View {
+    var body: some View {
+        #if os(macOS)
+        EmptyView()
+        #else
+        EditButton()
         #endif
     }
 }

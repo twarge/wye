@@ -19,13 +19,18 @@ the `git` command line tool. Everything goes through
 - **Commit detail:** the changes as diffs, or the files at that commit; file
   history and blame.
 - **Working copy:** stage and unstage files, hunks or single lines; discard;
-  commit and amend; stash; resolve conflicts.
+  commit and amend; stash; resolve conflicts. Changed files as a list or a
+  folder tree; ignore, stop tracking, rename, trash or restore a file from
+  its menu; commit templates and recent messages; diff options for context
+  lines and whitespace.
 - **Branching:** merge, rebase, cherry-pick, revert and reset; create, rename
   and delete branches and tags.
-- **Remotes:** fetch, pull and push with progress, with access tokens kept in
-  the Keychain.
+- **Remotes:** fetch, pull (merge, rebase or fast-forward only, stashing
+  local changes around it) and push with progress, sync, push to any remote
+  and name, publish and delete tags and remote branches, open remotes on
+  their website; access tokens kept in the Keychain.
 - **App:** notices changes other tools make and refreshes; a full menu bar
-  and keyboard shortcuts, also on iPad; quick open (⌘K) for branches, tags
+  and keyboard shortcuts, also on iPad; window tabs on macOS (⌘T); quick open (⇧⌘O) for branches, tags
   and repositories; repository groups, search and sorting.
 
 See [docs/roadmap.md](docs/roadmap.md) for what comes next,

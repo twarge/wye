@@ -19,6 +19,8 @@ public enum WorkingCopyError: Error, Hashable, Sendable, LocalizedError {
     case notConflicted(path: String)
     /// The file is conflicted, and has to be resolved rather than discarded.
     case conflicted(path: String)
+    /// Lines were picked from a diff that leaves out whitespace changes.
+    case inexactDiff
 
     public var errorDescription: String? {
         switch self {
@@ -40,6 +42,8 @@ public enum WorkingCopyError: Error, Hashable, Sendable, LocalizedError {
             "“\(path)” has no conflict to resolve."
         case .conflicted(let path):
             "“\(path)” has a conflict. Resolve it instead of discarding it."
+        case .inexactDiff:
+            "Hunks and lines cannot be staged or discarded while whitespace changes are hidden. Show them in Settings, or stage the whole file."
         }
     }
 }

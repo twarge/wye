@@ -30,26 +30,45 @@ extension WorkingCopyState {
 extension RepositoryModel {
     // MARK: Lines and hunks
 
+    // The diffs on screen are read with the app's diff options, so the
+    // lines picked in them are found again with the same options.
+
     func stage(lines: Set<Int>, of file: FileDiff) async {
-        await perform { try await $0.stage(lines: lines, of: file) }
+        let options = DiffPreferences.shared.options
+        await perform(.stage) { try await $0.stage(lines: lines, of: file, options: options) }
     }
 
     func unstage(lines: Set<Int>, of file: FileDiff) async {
-        await perform { try await $0.unstage(lines: lines, of: file) }
+        let options = DiffPreferences.shared.options
+        await perform(.unstage) { try await $0.unstage(lines: lines, of: file, options: options) }
     }
 
     func discard(lines: Set<Int>, of file: FileDiff) async {
-        await perform { try await $0.discard(lines: lines, of: file) }
+        let options = DiffPreferences.shared.options
+        await perform(.discard(paths: [file.path])) { try await $0.discard(lines: lines, of: file, options: options) }
+    }
+
+    /// Stages every change among `entries`, or when all of them are staged
+    /// already, unstages them: what a folder's checkbox does.
+    func toggleStaging(of entries: [StatusEntry]) async {
+        let entries = entries.filter { !$0.isConflicted }
+        let unstaged = entries.filter { $0.unstaged != nil }.map(\.path)
+        if unstaged.isEmpty {
+            let staged = entries.filter { $0.staged != nil }.map(\.path)
+            await perform(.unstage) { try await $0.unstage(staged) }
+        } else {
+            await perform(.stage) { try await $0.stage(unstaged) }
+        }
     }
 
     // MARK: Discarding
 
     func discardChanges(in paths: [String]) async {
-        await perform { try await $0.discardChanges(in: paths) }
+        await perform(.discard(paths: paths)) { try await $0.discardChanges(in: paths) }
     }
 
     func discardAllChanges() async {
-        await perform { try await $0.discardAllChanges() }
+        await perform(.discard()) { try await $0.discardAllChanges() }
     }
 
     // MARK: Amending
@@ -86,7 +105,9 @@ extension RepositoryModel {
         }
         let message = composedMessage
         do {
+            let start = await repository.beginUndoable(.amend)
             try await repository.amend(message: message)
+            undoStack.take(await repository.finishUndoable(start), for: .amend)
             workingCopy.amend = nil
             workingCopy.subject = draft.subject
             workingCopy.details = draft.details
@@ -116,20 +137,22 @@ extension RepositoryModel {
     // MARK: Stashes
 
     func saveStash(message: String, options: StashOptions) async {
-        await perform { try await $0.saveStash(message: message, options: options) }
+        await perform(.stashSave(includingUntracked: options.contains(.includeUntracked))) {
+            try await $0.saveStash(message: message, options: options)
+        }
     }
 
     func apply(_ stash: Stash) async {
-        await perform { try await $0.applyStash(stash) }
+        await perform(.stashApply) { try await $0.applyStash(stash) }
     }
 
     func pop(_ stash: Stash) async {
-        await perform { try await $0.popStash(stash) }
+        await perform(.stashPop) { try await $0.popStash(stash) }
         clearStashSelection(ifGone: stash)
     }
 
     func drop(_ stash: Stash) async {
-        await perform { try await $0.dropStash(stash) }
+        await perform(.stashDrop) { try await $0.dropStash(stash) }
         clearStashSelection(ifGone: stash)
     }
 

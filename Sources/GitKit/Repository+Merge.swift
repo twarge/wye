@@ -67,6 +67,12 @@ extension Repository {
     /// into `HEAD`. `message` replaces the usual "Merge branch 'x'".
     @discardableResult
     public func merge(_ reference: String, mode: MergeMode, message: String? = nil) throws -> MergeOutcome {
+        try merge(reference, mode: mode, message: message, fastForwardLog: nil)
+    }
+
+    /// The merge, with the reflog message a fast-forward records: a pull
+    /// writes its own, as git's does.
+    func merge(_ reference: String, mode: MergeMode, message: String?, fastForwardLog: String?) throws -> MergeOutcome {
         try requireNoOperation()
         var theirs: OpaquePointer?
         var referencePointer: OpaquePointer?
@@ -89,7 +95,7 @@ extension Repository {
             let commit = try lookupCommit(theirID)
             defer { git_commit_free(commit) }
             try checkOutTree(of: commit)
-            try moveHeadTarget(to: theirID, log: "merge \(shortName(of: reference)): Fast-forward")
+            try moveHeadTarget(to: theirID, log: fastForwardLog ?? "merge \(shortName(of: reference)): Fast-forward")
             return .fastForwarded(to: theirID)
         }
 

@@ -34,23 +34,23 @@ extension RepositoryModel {
     // MARK: Checking out
 
     func checkOutBranch(_ id: String) async {
-        await perform { try await $0.checkOut(branch: id) }
+        await perform(.checkout) { _ in try await self.withAutostash("Check Out") { try $0.checkOut(branch: id) } }
     }
 
     func checkOutTag(_ id: String) async {
-        await perform { try await $0.checkOut(tag: id) }
+        await perform(.checkout) { try await $0.checkOut(tag: id) }
     }
 
     func checkOutCommit(_ id: OID) async {
-        await perform { try await $0.checkOut(commit: id) }
+        await perform(.checkout) { try await $0.checkOut(commit: id) }
     }
 
     /// Checks out a remote branch as a local branch that tracks it, creating
     /// that branch unless one already tracks it.
     func trackRemoteBranch(_ id: String) async {
-        await perform { repository in
+        await perform(.checkout) { repository in
             let local = try await repository.createTrackingBranch(for: id)
-            try await repository.checkOut(branch: local)
+            try await self.withAutostash("Check Out") { try $0.checkOut(branch: local) }
             self.selection = .branch(local)
         }
     }
@@ -58,7 +58,7 @@ extension RepositoryModel {
     // MARK: Branches and tags
 
     func renameBranch(_ id: String, to name: String) async {
-        await perform { repository in
+        await perform(.renameBranch) { repository in
             let renamed = try await repository.renameBranch(id, to: name)
             if self.selection == .branch(id) {
                 self.selection = .branch(renamed)
@@ -67,7 +67,7 @@ extension RepositoryModel {
     }
 
     func deleteBranch(_ id: String, force: Bool) async {
-        await perform { repository in
+        await perform(.deleteBranch) { repository in
             try await repository.deleteBranch(id, force: force)
             if self.selection == .branch(id) {
                 self.selection = .history
@@ -76,15 +76,15 @@ extension RepositoryModel {
     }
 
     func setUpstream(of id: String, to upstream: String?) async {
-        await perform { try await $0.setUpstream(of: id, to: upstream) }
+        await perform(.setUpstream) { try await $0.setUpstream(of: id, to: upstream) }
     }
 
     func createTag(named name: String, at commit: OID, message: String?) async {
-        await perform { _ = try await $0.createTag(named: name, at: commit, message: message) }
+        await perform(.createTag) { _ = try await $0.createTag(named: name, at: commit, message: message) }
     }
 
     func deleteTag(_ id: String) async {
-        await perform { repository in
+        await perform(.deleteTag) { repository in
             try await repository.deleteTag(id)
             if self.selection == .tag(id) {
                 self.selection = .history
@@ -93,14 +93,14 @@ extension RepositoryModel {
     }
 
     func resetCurrentBranch(to commit: OID, mode: ResetMode) async {
-        await perform { try await $0.reset(to: commit, mode: mode) }
+        await perform(.reset(mode)) { try await $0.reset(to: commit, mode: mode) }
     }
 
     // MARK: Merging and rewriting
 
     func mergeIntoCurrent(_ reference: String, mode: MergeMode, message: String?) async {
-        await perform { repository in
-            let outcome = try await repository.merge(reference, mode: mode, message: message)
+        await perform(.merge) { repository in
+            let outcome = try await self.withAutostash("Merge") { try $0.merge(reference, mode: mode, message: message) }
             if case .conflicts = outcome {
                 self.showConflicts()
             }
@@ -108,19 +108,19 @@ extension RepositoryModel {
     }
 
     func rebaseCurrent(onto reference: String) async {
-        await runSequence { try await $0.rebase(onto: reference) }
+        await runSequence(.rebase) { _ in try await self.withAutostash("Rebase") { try $0.rebase(onto: reference) } }
     }
 
     /// Applies commits on top of `HEAD`. They come newest first, as the
     /// history lists them, and are applied oldest first, as they were made.
     func cherryPick(_ ids: [OID]) async {
-        await runSequence { try await $0.cherryPick(ids.reversed()) }
+        await runSequence(.cherryPick(count: ids.count)) { try await $0.cherryPick(ids.reversed()) }
     }
 
     /// Undoes commits, given newest first as the history lists them, in that
     /// order, so each undo applies to what came after it.
     func revert(_ ids: [OID]) async {
-        await runSequence { try await $0.revert(ids) }
+        await runSequence(.revert(count: ids.count)) { try await $0.revert(ids) }
     }
 
     // MARK: An operation in progress
@@ -139,11 +139,18 @@ extension RepositoryModel {
 
     /// Runs something that can stop on a conflict, and shows the conflicts if
     /// it does.
-    private func runSequence(_ operation: @escaping (Repository) async throws -> OperationOutcome) async {
-        await perform { repository in
+    private func runSequence(
+        _ undoable: UndoOperation? = nil, _ operation: @escaping (Repository) async throws -> OperationOutcome
+    ) async {
+        let body: (Repository) async throws -> Void = { repository in
             if case .stopped = try await operation(repository) {
                 self.showConflicts()
             }
+        }
+        if let undoable {
+            await perform(undoable, body)
+        } else {
+            await perform(body)
         }
     }
 

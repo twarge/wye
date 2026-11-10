@@ -5,6 +5,9 @@ import SwiftUI
 public struct TwigScene: Scene {
     @State private var library = RepositoryLibrary()
 
+    /// Names the repository window, so a command can open another one.
+    static let windowID = "repository"
+
     public init() {
         // Twig keeps its own git configuration: inside the sandbox it cannot
         // read the one in the user's home folder.
@@ -12,7 +15,7 @@ public struct TwigScene: Scene {
     }
 
     public var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: Self.windowID) {
             RootView()
                 .environment(library)
         }
@@ -55,6 +58,11 @@ struct RootView: View {
             actions.close = { close() }
         }
         .task {
+            if model == nil, let id = library.openInNextWindow,
+               let bookmark = library.bookmarks.first(where: { $0.id == id }) {
+                library.openInNextWindow = nil
+                open(bookmark)
+            }
             // Reopen what this window showed when the app last quit.
             if model == nil, let bookmark = library.bookmarks.first(where: { $0.id.uuidString == openRepositoryID }) {
                 open(bookmark)
@@ -69,7 +77,9 @@ struct RootView: View {
         }
         .onChange(of: scenePhase) {
             // Catch up with whatever changed while the app was in the background.
-            guard scenePhase == .active, let model else { return }
+            guard scenePhase == .active else { return }
+            library.syncWatchedFolders()
+            guard let model else { return }
             Task { await model.refresh() }
         }
     }

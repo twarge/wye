@@ -6,6 +6,34 @@ public struct HistoryCursor: Hashable, Sendable {
     private let id = UUID()
 }
 
+/// How a history is read: in which order, and whether it follows merges.
+public struct HistoryOptions: Hashable, Sendable, Codable {
+    public enum Order: String, Hashable, Sendable, Codable, CaseIterable {
+        /// Newest first by commit date, parents after all their children:
+        /// `git log --date-order`.
+        case date
+        /// Parents after all their children, each line of history kept
+        /// together rather than interleaved by date: `git log --topo-order`.
+        case topological
+    }
+
+    public var order: Order
+    /// Follows only the first parent of each merge: `git log --first-parent`.
+    public var firstParentOnly: Bool
+
+    public init(order: Order = .date, firstParentOnly: Bool = false) {
+        self.order = order
+        self.firstParentOnly = firstParentOnly
+    }
+
+    var sorting: UInt32 {
+        switch order {
+        case .date: GIT_SORT_TOPOLOGICAL.rawValue | GIT_SORT_TIME.rawValue
+        case .topological: GIT_SORT_TOPOLOGICAL.rawValue
+        }
+    }
+}
+
 /// Owns a libgit2 revision walk.
 final class Walk {
     let pointer: OpaquePointer
@@ -21,9 +49,13 @@ final class Walk {
 
 extension Repository {
     /// Starts reading a history, newest commit first with parents after their
-    /// children. Close the cursor when done with it.
-    public func openHistory(_ scope: HistoryScope) throws -> HistoryCursor {
-        let walk = try makeWalk(scope, sorting: GIT_SORT_TOPOLOGICAL.rawValue | GIT_SORT_TIME.rawValue)
+    /// children, in the order `options` asks for. Close the cursor when done
+    /// with it.
+    public func openHistory(_ scope: HistoryScope, options: HistoryOptions = HistoryOptions()) throws -> HistoryCursor {
+        let walk = try makeWalk(scope, sorting: options.sorting)
+        if options.firstParentOnly {
+            try check(git_revwalk_simplify_first_parent(walk.pointer))
+        }
         let cursor = HistoryCursor()
         walks[cursor] = walk
         return cursor
@@ -52,8 +84,11 @@ extension Repository {
     }
 
     /// How many commits a history holds.
-    public func commitCount(in scope: HistoryScope) throws -> Int {
+    public func commitCount(in scope: HistoryScope, options: HistoryOptions = HistoryOptions()) throws -> Int {
         let walk = try makeWalk(scope, sorting: GIT_SORT_NONE.rawValue)
+        if options.firstParentOnly {
+            try check(git_revwalk_simplify_first_parent(walk.pointer))
+        }
         var count = 0
         var oid = git_oid()
         while git_revwalk_next(&oid, walk.pointer) == 0 {

@@ -44,12 +44,16 @@ struct FileDiffView: View {
                 note(file.change == .renamed ? "Renamed without changes" : "No changes to show")
             } else {
                 let gutter = file.gutterWidth
+                let style = DiffTextStyle(
+                    tabWidth: DiffPreferences.shared.tabWidth, showsInvisibles: DiffPreferences.shared.showsInvisibles
+                )
                 ForEach(file.hunks) { hunk in
                     hunkHeader(hunk)
                     ForEach(hunk.lines) { line in
                         DiffLineView(
                             line: line,
                             gutter: gutter,
+                            style: style,
                             isSelected: isSelected(line),
                             toggle: actions != nil && line.isChange ? { toggle(line) } : nil
                         )
@@ -190,6 +194,7 @@ private struct HunkControls: View {
 private struct DiffLineView: View {
     var line: FileDiff.Line
     var gutter: CGFloat
+    var style: DiffTextStyle
     var isSelected: Bool
     /// Selects or deselects the line, for a line that can be staged on its own.
     var toggle: (() -> Void)?
@@ -221,13 +226,30 @@ private struct DiffLineView: View {
             Text(marker)
                 .frame(width: 16)
                 .foregroundStyle(.secondary)
-            Text(line.text.isEmpty ? " " : line.text)
+            content
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .foregroundStyle(line.kind == .noNewline ? .secondary : .primary)
         }
         .font(.code)
         .padding(.vertical, 1)
         .background(background)
+    }
+
+    /// The line's text, with tabs laid out and, when asked for, spaces and
+    /// tabs drawn faintly as dots and arrows.
+    private var content: Text {
+        guard line.kind != .noNewline, !line.text.isEmpty else { return Text(line.text.isEmpty ? " " : line.text) }
+        let runs = style.runs(line.text)
+        guard runs.count > 1 || runs.first?.isInvisible == true else { return Text(runs.first?.text ?? line.text) }
+        var text = AttributedString()
+        for run in runs {
+            var piece = AttributedString(run.text)
+            if run.isInvisible {
+                piece.foregroundColor = .secondary.opacity(0.6)
+            }
+            text += piece
+        }
+        return Text(text)
     }
 
     private func number(_ value: Int?) -> some View {

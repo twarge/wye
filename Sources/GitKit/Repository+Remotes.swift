@@ -6,28 +6,35 @@ extension Repository {
 
     /// Fetches from one remote, or from every remote when `remote` is `nil`,
     /// removing remote branches that are gone from the remote when `prune`
-    /// is set.
+    /// is set. `tags` says which tags come too.
     public func fetch(
         remote name: String? = nil,
         prune: Bool = true,
+        tags: FetchTags = .automatic,
         credentials: (any CredentialProvider)? = nil,
         transfer: Transfer? = nil
     ) throws {
         defer { transfer?.finish() }
+        try fetchRemotes(name, prune: prune, tags: tags, session: RemoteSession(transfer: transfer, credentials: credentials))
+    }
+
+    /// Fetches without finishing the transfer, for operations that go on
+    /// to do more under the same progress display.
+    func fetchRemotes(_ name: String?, prune: Bool, tags: FetchTags, session: RemoteSession) throws {
         let names = try name.map { [$0] } ?? remoteNames()
         guard !names.isEmpty else { throw RemoteError.noRemotes }
-        let session = RemoteSession(transfer: transfer, credentials: credentials)
         for name in names {
             session.resetForNextRemote()
-            try fetch(name, prune: prune, session: session)
+            try fetch(name, prune: prune, tags: tags, session: session)
         }
     }
 
-    private func fetch(_ name: String, prune: Bool, session: RemoteSession) throws {
+    private func fetch(_ name: String, prune: Bool, tags: FetchTags, session: RemoteSession) throws {
         let remote = try lookupRemote(name)
         defer { git_remote_free(remote) }
         if let url = git_remote_url(remote).map({ String(cString: $0) }) {
             try Self.requireSupportedURL(url)
+            try useResolvedURL(url, for: remote, push: false)
         }
         session.report(TransferProgress(phase: .connecting))
 
@@ -35,6 +42,11 @@ extension Repository {
         try check(git_fetch_options_init(&options, UInt32(GIT_FETCH_OPTIONS_VERSION)))
         options.callbacks = session.callbacks()
         options.prune = prune ? GIT_FETCH_PRUNE : GIT_FETCH_NO_PRUNE
+        options.download_tags = switch tags {
+        case .automatic: GIT_REMOTE_DOWNLOAD_TAGS_UNSPECIFIED
+        case .all: GIT_REMOTE_DOWNLOAD_TAGS_ALL
+        case .none: GIT_REMOTE_DOWNLOAD_TAGS_NONE
+        }
         try withExtendedLifetime(session) {
             try session.check(git_remote_fetch(remote, nil, &options, nil))
         }
@@ -58,71 +70,289 @@ extension Repository {
         transfer: Transfer? = nil
     ) throws -> PushResult {
         defer { transfer?.finish() }
-        guard case .branch(let branchReference, _) = try head() else { throw RemoteError.notOnBranch }
-        let branchName = String(branchReference.dropFirst("refs/heads/".count))
+        return try pushCurrentBranch(
+            to: remote, force: force, session: RemoteSession(transfer: transfer, credentials: credentials)
+        )
+    }
 
+    func pushCurrentBranch(to remote: String?, force: Bool, session: RemoteSession) throws -> PushResult {
+        guard case .branch(let branchReference, _) = try head() else { throw RemoteError.notOnBranch }
         let upstream = upstreamConfiguration(of: branchReference)
         let remoteName = try remote ?? upstream?.remote ?? defaultRemoteName()
         // An upstream on another remote than the one asked for does not apply.
         let destination = upstream.flatMap { $0.remote == remoteName ? $0.merge : nil } ?? branchReference
         // Only a branch with no upstream at all gets one; pushing elsewhere
         // leaves an existing upstream alone.
-        let publishes = upstream?.merge == nil
+        return try pushBranch(
+            branchReference, to: remoteName, as: destination, setUpstream: upstream?.merge == nil, force: force,
+            session: session
+        )
+    }
 
+    /// Pushes any local branch, by its full reference name, to a branch of
+    /// a chosen name on a chosen remote: the same name when `remoteBranch`
+    /// is `nil`. With `setUpstream`, the local branch then tracks it.
+    /// A forced push has the same safeguard as ``push(to:force:credentials:transfer:)``.
+    @discardableResult
+    public func push(
+        branch localReference: String,
+        to remote: String,
+        as remoteBranch: String? = nil,
+        setUpstream: Bool = false,
+        force: Bool = false,
+        credentials: (any CredentialProvider)? = nil,
+        transfer: Transfer? = nil
+    ) throws -> PushResult {
+        defer { transfer?.finish() }
+        guard localReference.hasPrefix("refs/heads/") else { throw BranchingError.notABranch(localReference) }
+        let name = remoteBranch?.trimmingCharacters(in: .whitespaces) ?? ""
+        let destination = name.isEmpty
+            ? localReference : (name.hasPrefix("refs/") ? name : "refs/heads/" + name)
+        return try pushBranch(
+            localReference, to: remote, as: destination, setUpstream: setUpstream, force: force,
+            session: RemoteSession(transfer: transfer, credentials: credentials)
+        )
+    }
+
+    private func pushBranch(
+        _ branchReference: String, to remoteName: String, as destination: String, setUpstream: Bool, force: Bool,
+        session: RemoteSession
+    ) throws -> PushResult {
+        var leases: [String: OID?] = [:]
+        if force {
+            leases[destination] = trackingTarget(of: destination, on: remoteName)
+        }
+        try pushReferences(
+            [(force ? "+" : "") + "\(branchReference):\(destination)"], to: remoteName, leases: leases,
+            session: session
+        )
+        if setUpstream {
+            let branchName = String(branchReference.dropFirst("refs/heads/".count))
+            try setUpstreamConfiguration(of: branchName, remote: remoteName, merge: destination)
+        }
+        return PushResult(remote: remoteName, reference: destination, setUpstream: setUpstream)
+    }
+
+    /// Pushes refspecs to a remote and checks what the remote said about
+    /// each. `leases` are the force-with-lease expectations, by remote
+    /// reference name.
+    private func pushReferences(
+        _ refspecs: [String], to remoteName: String, leases: [String: OID?] = [:], protectedTags: [String: OID] = [:],
+        session: RemoteSession
+    ) throws {
         let remotePointer = try lookupRemote(remoteName)
         defer { git_remote_free(remotePointer) }
         if let url = (git_remote_pushurl(remotePointer) ?? git_remote_url(remotePointer)).map({ String(cString: $0) }) {
             try Self.requireSupportedURL(url)
+            try useResolvedURL(url, for: remotePointer, push: git_remote_pushurl(remotePointer) != nil)
         }
-
-        let session = RemoteSession(transfer: transfer, credentials: credentials)
-        if force {
-            session.leases[destination] = trackingTarget(of: destination, on: remoteName)
-        }
+        session.leases = leases
+        session.protectedTags = protectedTags
+        session.rejections = []
         session.report(TransferProgress(phase: .connecting))
 
         var options = git_push_options()
         try check(git_push_options_init(&options, UInt32(GIT_PUSH_OPTIONS_VERSION)))
         options.callbacks = session.callbacks()
-        let refspec = (force ? "+" : "") + "\(branchReference):\(destination)"
-        let code = withStringArray([refspec]) { refspecs in
+        let code = withStringArray(refspecs) { refspecs in
             withExtendedLifetime(session) {
                 git_remote_push(remotePointer, &refspecs, &options)
             }
         }
-        if code == GIT_ENONFASTFORWARD.rawValue {
-            throw RemoteError.nonFastForward(branch: String(destination.dropFirst("refs/heads/".count)))
+        if code == GIT_ENONFASTFORWARD.rawValue, !session.isCancelled {
+            let destination = refspecs.first?.split(separator: ":").last.map(String.init) ?? ""
+            throw RemoteError.nonFastForward(branch: shortName(of: destination))
         }
         try session.check(code)
         if let rejection = session.rejections.first {
             throw RemoteError.pushRejected(reference: rejection.reference, reason: rejection.reason)
         }
+    }
 
-        if publishes {
-            try setUpstreamConfiguration(of: branchName, remote: remoteName, merge: destination)
+    // MARK: Tags and branches on a remote
+
+    /// Pushes tags, by full reference name, to a remote. A tag the remote
+    /// already has at another commit is refused, as git refuses it.
+    public func pushTags(
+        _ tags: [String], to remote: String,
+        credentials: (any CredentialProvider)? = nil, transfer: Transfer? = nil
+    ) throws {
+        defer { transfer?.finish() }
+        guard !tags.isEmpty else { return }
+        let names = tags.map { $0.hasPrefix("refs/tags/") ? $0 : "refs/tags/" + $0 }
+        var targets: [String: OID] = [:]
+        for name in names {
+            var oid = git_oid()
+            try check(git_reference_name_to_id(&oid, pointer, name))
+            targets[name] = OID(oid)
         }
-        return PushResult(remote: remoteName, reference: destination, setUpstream: publishes)
+        try pushReferences(
+            names.map { "\($0):\($0)" }, to: remote, protectedTags: targets,
+            session: RemoteSession(transfer: transfer, credentials: credentials)
+        )
+    }
+
+    /// Pushes every local tag to a remote, as `git push --tags` does.
+    /// Returns how many tags there were.
+    @discardableResult
+    public func pushAllTags(
+        to remote: String, credentials: (any CredentialProvider)? = nil, transfer: Transfer? = nil
+    ) throws -> Int {
+        let tags = try referenceNames(matching: "refs/tags/*")
+        try pushTags(tags, to: remote, credentials: credentials, transfer: transfer)
+        return tags.count
+    }
+
+    /// Deletes a tag on a remote. The local tag, if there is one, is kept.
+    public func deleteRemoteTag(
+        _ tag: String, on remote: String,
+        credentials: (any CredentialProvider)? = nil, transfer: Transfer? = nil
+    ) throws {
+        defer { transfer?.finish() }
+        let name = tag.hasPrefix("refs/tags/") ? tag : "refs/tags/" + tag
+        try pushReferences([":" + name], to: remote, session: RemoteSession(transfer: transfer, credentials: credentials))
+    }
+
+    /// Deletes a branch on its remote, given by its remote branch's full
+    /// name (`refs/remotes/origin/topic`), and the remote branch here.
+    public func deleteRemoteBranch(
+        _ remoteBranch: String, credentials: (any CredentialProvider)? = nil, transfer: Transfer? = nil
+    ) throws {
+        defer { transfer?.finish() }
+        let (remote, reference) = try remoteSide(of: remoteBranch)
+        try pushReferences([":" + reference], to: remote, session: RemoteSession(transfer: transfer, credentials: credentials))
+        try removeTrackingReference(remoteBranch)
+    }
+
+    /// Renames a branch on its remote: pushes its commit under the new name,
+    /// then deletes the old name, in one push. Local branches that followed
+    /// the old name follow the new one. Returns the new remote branch's
+    /// full name.
+    @discardableResult
+    public func renameRemoteBranch(
+        _ remoteBranch: String, to newName: String,
+        credentials: (any CredentialProvider)? = nil, transfer: Transfer? = nil
+    ) throws -> String {
+        defer { transfer?.finish() }
+        let (remote, reference) = try remoteSide(of: remoteBranch)
+        let name = newName.trimmingCharacters(in: .whitespaces)
+        var valid: Int32 = 0
+        try check(git_branch_name_is_valid(&valid, name))
+        guard valid != 0 else { throw BranchingError.notABranch(name) }
+        let destination = "refs/heads/" + name
+        let tip = try commitID(ofReference: remoteBranch)
+        // Pushed by commit, not by the remote branch's name: the push
+        // rewrites that name when the deletion lands.
+        try pushReferences(
+            ["\(tip.hex):\(destination)", ":" + reference], to: remote,
+            session: RemoteSession(transfer: transfer, credentials: credentials)
+        )
+        try removeTrackingReference(remoteBranch)
+        let renamed = "refs/remotes/\(remote)/\(name)"
+        // The push records the new name here only if it maps through a
+        // fetch refspec; make sure it is there either way.
+        var oid = tip.raw
+        var created: OpaquePointer?
+        try check(git_reference_create(&created, pointer, renamed, &oid, 1, "push: renamed from \(reference)"))
+        git_reference_free(created)
+
+        for branch in try referenceNames(matching: "refs/heads/*") {
+            if let upstream = upstreamConfiguration(of: branch), upstream.remote == remote, upstream.merge == reference {
+                try setUpstreamConfiguration(
+                    of: String(branch.dropFirst("refs/heads/".count)), remote: remote, merge: destination
+                )
+            }
+        }
+        return renamed
+    }
+
+    /// The remote, and the reference on it, that a remote branch stands for.
+    private func remoteSide(of remoteBranch: String) throws -> (remote: String, reference: String) {
+        guard remoteBranch.hasPrefix("refs/remotes/") else { throw BranchingError.notABranch(remoteBranch) }
+        var buffer = git_buf()
+        defer { git_buf_dispose(&buffer) }
+        try check(git_branch_remote_name(&buffer, pointer, remoteBranch))
+        let remote = String(cString: buffer.ptr)
+        let remotePointer = try lookupRemote(remote)
+        defer { git_remote_free(remotePointer) }
+        var source = git_buf()
+        defer { git_buf_dispose(&source) }
+        for index in 0..<git_remote_refspec_count(remotePointer) {
+            guard let refspec = git_remote_get_refspec(remotePointer, index),
+                  git_refspec_direction(refspec) == GIT_DIRECTION_FETCH,
+                  git_refspec_dst_matches(refspec, remoteBranch) != 0,
+                  git_refspec_rtransform(&source, refspec, remoteBranch) == 0,
+                  let name = source.ptr else { continue }
+            return (remote, String(cString: name))
+        }
+        let prefix = "refs/remotes/\(remote)/"
+        return (remote, "refs/heads/" + remoteBranch.dropFirst(prefix.count))
+    }
+
+    private func removeTrackingReference(_ name: String) throws {
+        var reference: OpaquePointer?
+        guard git_reference_lookup(&reference, pointer, name) == 0 else { return }
+        defer { git_reference_free(reference) }
+        try check(git_reference_delete(reference))
     }
 
     // MARK: Pull
 
     /// Fetches the current branch's upstream remote, then brings the branch
-    /// up to its upstream: a fast-forward when possible, otherwise a merge.
-    /// A merge that conflicts leaves the repository merging.
+    /// up to its upstream as `pull.rebase` and `pull.ff` in the repository's
+    /// configuration say, merging when they say nothing. A merge that
+    /// conflicts leaves the repository merging.
     public func pull(
         credentials: (any CredentialProvider)? = nil,
         transfer: Transfer? = nil
     ) throws -> PullResult {
-        guard case .branch(let branchReference, _) = try head() else {
-            transfer?.finish()
-            throw RemoteError.notOnBranch
+        try pull(options: PullOptions(), credentials: credentials, transfer: transfer).result
+    }
+
+    /// Fetches the current branch's upstream remote, then merges, rebases or
+    /// fast-forwards onto the upstream as `options` say, setting local
+    /// changes aside first when `options.autostash` is set.
+    public func pull(
+        options: PullOptions,
+        credentials: (any CredentialProvider)? = nil,
+        transfer: Transfer? = nil
+    ) throws -> PullOutcome {
+        defer { transfer?.finish() }
+        return try pullUpstream(options: options, session: RemoteSession(transfer: transfer, credentials: credentials))
+    }
+
+    /// Fetches a remote branch's remote, then brings the current branch up
+    /// to that remote branch, given by its full name
+    /// (`refs/remotes/origin/topic`), as `options` say.
+    public func pull(
+        from remoteBranch: String,
+        options: PullOptions,
+        credentials: (any CredentialProvider)? = nil,
+        transfer: Transfer? = nil
+    ) throws -> PullOutcome {
+        defer { transfer?.finish() }
+        guard case .branch(let branchReference, _) = try head() else { throw RemoteError.notOnBranch }
+        let (remote, reference) = try remoteSide(of: remoteBranch)
+        try fetchRemotes(
+            remote, prune: true, tags: .automatic, session: RemoteSession(transfer: transfer, credentials: credentials)
+        )
+        guard (try? commitID(ofReference: remoteBranch)) != nil else {
+            throw RemoteError.remoteBranchGone(shortName(of: remoteBranch))
         }
+        let mode = options.mode ?? configuredPullMode(for: branchReference) ?? .merge
+        return try integrateWithAutostash(
+            remoteBranch, mode: mode, autostash: options.autostash,
+            message: mergeMessage(branch: reference, remote: remote)
+        )
+    }
+
+    func pullUpstream(options: PullOptions, session: RemoteSession) throws -> PullOutcome {
+        guard case .branch(let branchReference, _) = try head() else { throw RemoteError.notOnBranch }
         let branchName = String(branchReference.dropFirst("refs/heads/".count))
-        guard let upstream = upstreamConfiguration(of: branchReference), upstream.merge != nil else {
-            transfer?.finish()
+        guard let upstream = upstreamConfiguration(of: branchReference), let merge = upstream.merge else {
             throw RemoteError.noUpstream(branch: branchName)
         }
-        try fetch(remote: upstream.remote, prune: true, credentials: credentials, transfer: transfer)
+        try fetchRemotes(upstream.remote, prune: true, tags: .automatic, session: session)
 
         var branch: OpaquePointer?
         try check(git_reference_lookup(&branch, pointer, branchReference))
@@ -134,107 +364,122 @@ extension Repository {
             throw RemoteError.noUpstream(branch: branchName)
         }
         try check(found)
-        defer { git_reference_free(upstreamReference) }
+        let upstreamName = String(cString: git_reference_name(upstreamReference))
+        git_reference_free(upstreamReference)
 
+        let mode = options.mode ?? configuredPullMode(for: branchReference) ?? .merge
+        return try integrateWithAutostash(
+            upstreamName, mode: mode, autostash: options.autostash,
+            message: mergeMessage(branch: merge, remote: upstream.remote)
+        )
+    }
+
+    /// git's message for merging a branch of a remote.
+    private func mergeMessage(branch reference: String, remote: String) -> String {
+        let remoteURL = (try? remoteURL(of: remote)).flatMap { $0 } ?? remote
+        return "Merge branch '\(shortName(of: reference))' of \(remoteURL)"
+    }
+
+    private func integrateWithAutostash(
+        _ reference: String, mode: PullMode, autostash: Bool, message: String
+    ) throws -> PullOutcome {
+        guard autostash else {
+            return PullOutcome(result: try integrate(reference, mode: mode, message: message), autostash: .notNeeded)
+        }
+        let stashed = try withAutostash(message: "autostash before pulling") { repository in
+            try repository.integrate(reference, mode: mode, message: message)
+        }
+        return PullOutcome(result: stashed.value, autostash: stashed.autostash)
+    }
+
+    /// Brings `HEAD`'s branch up to a fetched reference: a fast-forward when
+    /// it has nothing of its own, otherwise a merge or a rebase, through the
+    /// same engine as merging and rebasing a branch.
+    private func integrate(_ reference: String, mode: PullMode, message: String) throws -> PullResult {
+        try requireNoOperation()
+        var referencePointer: OpaquePointer?
+        try check(git_reference_lookup(&referencePointer, pointer, reference))
+        defer { git_reference_free(referencePointer) }
         var theirs: OpaquePointer?
-        try check(git_annotated_commit_from_ref(&theirs, pointer, upstreamReference))
+        try check(git_annotated_commit_from_ref(&theirs, pointer, referencePointer))
         defer { git_annotated_commit_free(theirs) }
-        let theirID = OID(git_annotated_commit_id(theirs))
 
         var analysis = git_merge_analysis_t(rawValue: 0)
         var preference = git_merge_preference_t(rawValue: 0)
         var heads: [OpaquePointer?] = [theirs]
         try check(git_merge_analysis(&analysis, &preference, pointer, &heads, 1))
-
         if analysis.rawValue & GIT_MERGE_ANALYSIS_UP_TO_DATE.rawValue != 0 {
             return .upToDate
         }
-        if analysis.rawValue & GIT_MERGE_ANALYSIS_FASTFORWARD.rawValue != 0,
-           preference.rawValue & GIT_MERGE_PREFERENCE_NO_FASTFORWARD.rawValue == 0 {
-            try fastForward(branch, to: theirID)
-            return .fastForwarded(to: theirID)
-        }
+        let canFastForward = analysis.rawValue
+            & (GIT_MERGE_ANALYSIS_FASTFORWARD.rawValue | GIT_MERGE_ANALYSIS_UNBORN.rawValue) != 0
 
-        let upstreamName = String(cString: git_reference_shorthand(upstreamReference))
-        let remoteURL = (try? remoteURL(of: upstream.remote)) ?? upstream.remote
-        let theirBranch = upstream.merge.map { String($0.dropFirst("refs/heads/".count)) } ?? upstreamName
-        return try mergeForPull(
-            theirs, id: theirID, message: "Merge branch '\(theirBranch)' of \(remoteURL)"
-        )
-    }
-
-    private func fastForward(_ branch: OpaquePointer?, to id: OID) throws {
-        let commit = try lookupCommit(id)
-        defer { git_commit_free(commit) }
-        var options = git_checkout_options()
-        try check(git_checkout_options_init(&options, UInt32(GIT_CHECKOUT_OPTIONS_VERSION)))
-        options.checkout_strategy = GIT_CHECKOUT_SAFE.rawValue
-        // Fails, touching nothing, if a local change is in the way.
-        try check(git_checkout_tree(pointer, commit, &options))
-        var oid = id.raw
-        var moved: OpaquePointer?
-        try check(git_reference_set_target(&moved, branch, &oid, "pull: Fast-forward"))
-        git_reference_free(moved)
-    }
-
-    /// Merges the fetched commit into `HEAD`, committing unless it conflicts.
-    private func mergeForPull(_ theirs: OpaquePointer?, id: OID, message: String) throws -> PullResult {
-        // Checked before merging, so a missing identity does not strand a
-        // merge that cannot be committed.
-        var signature: UnsafeMutablePointer<git_signature>?
-        guard git_signature_default(&signature, pointer) == 0 else {
-            throw RepositoryError.identityNotConfigured
-        }
-        defer { git_signature_free(signature) }
-
-        var mergeOptions = git_merge_options()
-        try check(git_merge_options_init(&mergeOptions, UInt32(GIT_MERGE_OPTIONS_VERSION)))
-        var checkoutOptions = git_checkout_options()
-        try check(git_checkout_options_init(&checkoutOptions, UInt32(GIT_CHECKOUT_OPTIONS_VERSION)))
-        checkoutOptions.checkout_strategy = GIT_CHECKOUT_SAFE.rawValue | GIT_CHECKOUT_ALLOW_CONFLICTS.rawValue
-        var heads: [OpaquePointer?] = [theirs]
-        // On failure libgit2 removes the merge state it began.
-        try check(git_merge(pointer, &heads, 1, &mergeOptions, &checkoutOptions))
-
-        var index: OpaquePointer?
-        try check(git_repository_index(&index, pointer))
-        defer { git_index_free(index) }
-        if git_index_has_conflicts(index) != 0 {
-            return .conflicts(paths: try conflictedPaths(in: index))
-        }
-
-        var treeID = git_oid()
-        try check(git_index_write_tree(&treeID, index))
-        var tree: OpaquePointer?
-        try check(git_tree_lookup(&tree, pointer, &treeID))
-        defer { git_tree_free(tree) }
-        let head = try headCommit()
-        let their = try lookupCommit(id)
-        var parents: [OpaquePointer?] = [head, their]
-        defer { parents.forEach { git_commit_free($0) } }
-
-        var commitID = git_oid()
-        try check(git_commit_create(
-            &commitID, pointer, "HEAD", signature, signature, nil, message + "\n", tree, parents.count, &parents
-        ))
-        try check(git_repository_state_cleanup(pointer))
-        return .merged(commit: OID(commitID))
-    }
-
-    private func conflictedPaths(in index: OpaquePointer?) throws -> [String] {
-        var iterator: OpaquePointer?
-        try check(git_index_conflict_iterator_new(&iterator, index))
-        defer { git_index_conflict_iterator_free(iterator) }
-        var paths: [String] = []
-        var ancestor: UnsafePointer<git_index_entry>?
-        var ours: UnsafePointer<git_index_entry>?
-        var theirs: UnsafePointer<git_index_entry>?
-        while git_index_conflict_next(&ancestor, &ours, &theirs, iterator) == 0 {
-            if let path = (ours ?? theirs ?? ancestor)?.pointee.path {
-                paths.append(String(cString: path))
+        if canFastForward || mode == .merge {
+            switch try merge(reference, mode: .fastForwardWhenPossible, message: message, fastForwardLog: "pull: Fast-forward") {
+            case .upToDate: return .upToDate
+            case .fastForwarded(let id): return .fastForwarded(to: id)
+            case .committed(let id): return .merged(commit: id)
+            case .conflicts(let paths): return .conflicts(paths: paths)
             }
         }
-        return paths
+        switch mode {
+        case .fastForwardOnly:
+            throw RemoteError.cannotFastForward(branch: shortName(of: try head().branchName ?? "HEAD"),
+                                                onto: shortName(of: reference))
+        case .rebase:
+            switch try rebase(onto: reference) {
+            case .finished:
+                return .rebased(onto: try commitID(ofReference: reference))
+            case .stopped(let commit, let conflicts):
+                return .rebaseStopped(at: commit, conflicts: conflicts)
+            }
+        case .merge:
+            preconditionFailure("Merging is handled above.")
+        }
+    }
+
+    /// How the repository's configuration says a branch, by full reference
+    /// name, should be pulled: `pull.ff = only` first, as git puts it first,
+    /// then `branch.<name>.rebase`, then `pull.rebase`. `nil` when none of
+    /// them is set.
+    public func configuredPullMode(for branchReference: String? = nil) -> PullMode? {
+        var configuration: OpaquePointer?
+        guard git_repository_config_snapshot(&configuration, pointer) == 0 else { return nil }
+        defer { git_config_free(configuration) }
+        if GitEnvironment.string(for: "pull.ff", in: configuration)?.lowercased() == "only" {
+            return .fastForwardOnly
+        }
+        let branch = (branchReference ?? (try? head())?.branchName).map { shortName(of: $0) }
+        let rebase = branch.flatMap { GitEnvironment.string(for: "branch.\($0).rebase", in: configuration) }
+            ?? GitEnvironment.string(for: "pull.rebase", in: configuration)
+        switch rebase?.lowercased() {
+        case "true", "yes", "on", "1", "merges", "m", "interactive", "i": return .rebase
+        case "false", "no", "off", "0": return .merge
+        default: return nil
+        }
+    }
+
+    // MARK: Sync
+
+    /// Pulls the current branch as `options` say, then pushes it, under one
+    /// progress display. A pull that stops part way, on conflicts, pushes
+    /// nothing.
+    public func sync(
+        options: PullOptions,
+        credentials: (any CredentialProvider)? = nil,
+        transfer: Transfer? = nil
+    ) throws -> SyncResult {
+        defer { transfer?.finish() }
+        let pulled = try pullUpstream(options: options, session: RemoteSession(transfer: transfer, credentials: credentials))
+        switch pulled.result {
+        case .conflicts, .rebaseStopped:
+            return SyncResult(pull: pulled, push: nil)
+        case .upToDate, .fastForwarded, .merged, .rebased:
+            let pushed = try pushCurrentBranch(
+                to: nil, force: false, session: RemoteSession(transfer: transfer, credentials: credentials)
+            )
+            return SyncResult(pull: pulled, push: pushed)
+        }
     }
 
     // MARK: Clone
@@ -300,6 +545,29 @@ extension Repository {
         try check(git_remote_set_url(pointer, name, url))
     }
 
+    /// The separate URL a remote pushes to, if it has one.
+    public func pushURL(ofRemote name: String) throws -> String? {
+        let remote = try lookupRemote(name)
+        defer { git_remote_free(remote) }
+        return git_remote_pushurl(remote).map { String(cString: $0) }
+    }
+
+    /// Gives a remote a separate URL to push to, or with `nil` (or an empty
+    /// string) makes it push to its fetch URL again.
+    public func setPushURL(_ url: String?, ofRemote name: String) throws {
+        let url = url?.trimmingCharacters(in: .whitespaces)
+        if let url, !url.isEmpty {
+            try check(git_remote_set_pushurl(pointer, name, url))
+            return
+        }
+        git_remote_free(try lookupRemote(name))
+        var configuration: OpaquePointer?
+        try check(git_repository_config(&configuration, pointer))
+        defer { git_config_free(configuration) }
+        let code = git_config_delete_entry(configuration, "remote.\(name).pushurl")
+        if code != GIT_ENOTFOUND.rawValue { try check(code) }
+    }
+
     // MARK: Helpers
 
     private func remoteNames() throws -> [String] {
@@ -307,6 +575,19 @@ extension Repository {
         try check(git_remote_list(&names, pointer))
         defer { git_strarray_dispose(&names) }
         return (0..<names.count).compactMap { names.strings[$0].map { String(cString: $0) } }
+    }
+
+    /// The full names of the references matching a glob, such as `refs/tags/*`.
+    private func referenceNames(matching glob: String) throws -> [String] {
+        var iterator: OpaquePointer?
+        try check(git_reference_iterator_glob_new(&iterator, pointer, glob))
+        defer { git_reference_iterator_free(iterator) }
+        var names: [String] = []
+        var name: UnsafePointer<CChar>?
+        while git_reference_next_name(&name, iterator) == 0 {
+            if let name { names.append(String(cString: name)) }
+        }
+        return names
     }
 
     /// `origin` if there is one, otherwise the only remote.
@@ -386,6 +667,49 @@ extension Repository {
         guard valid != 0 else { throw RemoteError.invalidRemoteName(name) }
     }
 
+    // MARK: Remote URLs
+
+    /// Hands libgit2 the resolved form of a relative remote URL for this
+    /// one operation, leaving the configuration as it is. git reads such a
+    /// path from the top of the working tree, or from the repository folder
+    /// of a bare repository, where it runs its commands; libgit2 would read
+    /// it against the process's own current folder.
+    private func useResolvedURL(_ url: String, for remote: OpaquePointer?, push: Bool) throws {
+        guard let path = Self.relativeLocalPath(in: url) else { return }
+        let base = git_repository_workdir(pointer).map { URL(filePath: String(cString: $0), directoryHint: .isDirectory) }
+            ?? gitDirectory
+        let resolved = Self.resolve(path, against: base)
+        if push {
+            try check(git_remote_set_instance_pushurl(remote, resolved))
+        } else {
+            try check(git_remote_set_instance_url(remote, resolved))
+        }
+    }
+
+    /// The path in a URL that is a relative local path: not a URL with a
+    /// scheme, not an scp-like `host:path`, and not absolute.
+    static func relativeLocalPath(in url: String) -> String? {
+        guard !url.isEmpty, !url.contains("://"), !url.hasPrefix("/"), !isSCPLike(url) else { return nil }
+        return url
+    }
+
+    private static func resolve(_ path: String, against base: URL) -> String {
+        var resolved = base.appending(path: path).standardizedFileURL.path(percentEncoded: false)
+        // `appending` keeps a trailing slash; git's paths have none.
+        while resolved.count > 1, resolved.hasSuffix("/") {
+            resolved.removeLast()
+        }
+        return resolved
+    }
+
+    /// `user@host:path` or `host:path`, the short form of an SSH address.
+    /// A single letter before the colon would be a Windows drive, and a
+    /// slash before it makes it a local path, as git reads it.
+    static func isSCPLike(_ url: String) -> Bool {
+        guard !url.contains("://"), let colon = url.firstIndex(of: ":") else { return false }
+        return !url[..<colon].contains("/") && url[..<colon].count > 1
+    }
+
     /// Refuses SSH addresses up front, with a better message than libgit2's.
     /// HTTPS, plain HTTP, the git protocol and local paths all work.
     static func requireSupportedURL(_ url: String) throws {
@@ -394,10 +718,7 @@ extension Repository {
             if scheme == "ssh" || scheme.hasPrefix("ssh+") || scheme.hasSuffix("+ssh") {
                 throw RemoteError.sshNotSupported(url: url)
             }
-        } else if let colon = url.firstIndex(of: ":"),
-                  !url[..<colon].contains("/"), url[..<colon].count > 1 {
-            // `user@host:path`, the short form of an SSH address. A single
-            // letter before the colon would be a Windows drive.
+        } else if isSCPLike(url) {
             throw RemoteError.sshNotSupported(url: url)
         }
     }

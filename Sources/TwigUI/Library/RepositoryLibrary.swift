@@ -20,6 +20,9 @@ struct RepositoryBookmark: Identifiable, Codable, Hashable {
         /// A folder elsewhere that the user picked, as bookmark data that
         /// carries the permission to open it again.
         case external(Data)
+        /// A folder inside a watched folder, by its path from there. The
+        /// watched folder's permission covers it.
+        case watched(folder: UUID, path: String)
     }
 }
 
@@ -55,9 +58,16 @@ enum LibraryError: LocalizedError {
 @MainActor
 @Observable
 final class RepositoryLibrary {
-    private(set) var bookmarks: [RepositoryBookmark] = []
+    var bookmarks: [RepositoryBookmark] = []
+    /// A repository for the next new window to open, set just before one is
+    /// asked for. The window clears it.
+    var openInNextWindow: RepositoryBookmark.ID?
     /// The repository list's groups, by name.
     private(set) var groups: [RepositoryGroup] = []
+    /// Folders whose repositories are listed for as long as they are there.
+    var folders: [WatchedFolder] = []
+    /// Each watched folder as resolved and opened for this run.
+    var openFolders: [UUID: OpenWatchedFolder] = [:]
 
     private let storage: URL
     private let documents: URL
@@ -71,8 +81,10 @@ final class RepositoryLibrary {
         if let data = try? Data(contentsOf: storage), let saved = try? LibraryFile.decode(data) {
             bookmarks = saved.repositories
             groups = saved.groups
+            folders = saved.folders
         }
         discoverDocuments()
+        openWatchedFolders()
     }
 
     /// Adds the repository in a folder, or returns the bookmark it already has.
@@ -169,7 +181,7 @@ final class RepositoryLibrary {
         }
     }
 
-    private func resolve(
+    func resolve(
         _ bookmark: RepositoryBookmark
     ) throws -> (url: URL, isScoped: Bool, refreshedLocation: RepositoryBookmark.Location?) {
         switch bookmark.location {
@@ -181,6 +193,9 @@ final class RepositoryLibrary {
             // A stale bookmark still resolves, but should be made anew.
             let fresh = isStale ? (try? url.repositoryBookmark()).map(RepositoryBookmark.Location.external) : nil
             return (url, true, fresh)
+        case .watched(let folder, let path):
+            guard let open = openFolders[folder] else { throw CocoaError(.fileNoSuchFile) }
+            return (open.url.appending(path: path, directoryHint: .isDirectory), false, nil)
         }
     }
 
@@ -209,14 +224,14 @@ final class RepositoryLibrary {
         return path.dropFirst(base.count).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 
-    private func sortAndSave() {
+    func sortAndSave() {
         bookmarks.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         groups.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         do {
             try FileManager.default.createDirectory(
                 at: storage.deletingLastPathComponent(), withIntermediateDirectories: true
             )
-            try LibraryFile(repositories: bookmarks, groups: groups).encoded().write(to: storage, options: .atomic)
+            try LibraryFile(repositories: bookmarks, groups: groups, folders: folders).encoded().write(to: storage, options: .atomic)
         } catch {
             // The list is still right for this run; it is only not saved.
         }

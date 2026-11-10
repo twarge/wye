@@ -12,6 +12,14 @@ struct ReflogView: View {
             ForEach(reflog.entries) { entry in
                 ReflogRow(entry: entry, reference: reflog.reference)
                     .tag(entry.index)
+                    .contextMenu {
+                        Button("Reveal in History", systemImage: "scope") {
+                            Task { await model.revealInHistory(entry.newID) }
+                        }
+                        Button("Copy Hash", systemImage: "doc.on.doc") {
+                            Platform.copyToClipboard(entry.newID.hex)
+                        }
+                    }
             }
         }
         .listStyle(.plain)

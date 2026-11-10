@@ -20,6 +20,10 @@ struct SettingsView: View {
                 Text("Recorded as the author of the commits you make in Twig, unless a repository sets its own.")
             }
 
+            DiffSettingsSection()
+            CommittingSettingsSection()
+            PullSettingsSection()
+
             AccountsSection()
 
             Section("About") {

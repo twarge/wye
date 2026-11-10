@@ -22,12 +22,15 @@ struct RepositoryView: View {
                 .navigationSplitViewColumnWidth(min: 320, ideal: 500)
                 // On the content column, so it shows whatever the sidebar selects.
                 .remoteControls(for: model)
+                .undoControls(for: model)
         } detail: {
             detail
         }
         .focusedSceneValue(model)
         .alert(for: $model.error)
         .branchingSheets(model)
+        .remoteDialogs(for: model)
+        .fileRequestDialogs(model)
         .task {
             await model.refresh()
         }

@@ -12,10 +12,21 @@ struct LibraryFile: Codable, Equatable {
     var version = 2
     var repositories: [RepositoryBookmark]
     var groups: [RepositoryGroup]
+    /// Added later than the rest, so missing from older saved lists.
+    var folders: [WatchedFolder]
 
-    init(repositories: [RepositoryBookmark], groups: [RepositoryGroup]) {
+    init(repositories: [RepositoryBookmark], groups: [RepositoryGroup], folders: [WatchedFolder] = []) {
         self.repositories = repositories
         self.groups = groups
+        self.folders = folders
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 2
+        repositories = try container.decode([RepositoryBookmark].self, forKey: .repositories)
+        groups = try container.decodeIfPresent([RepositoryGroup].self, forKey: .groups) ?? []
+        folders = try container.decodeIfPresent([WatchedFolder].self, forKey: .folders) ?? []
     }
 
     static func decode(_ data: Data) throws -> LibraryFile {

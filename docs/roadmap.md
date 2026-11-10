@@ -10,7 +10,10 @@ Tick an item when it lands on main.
 - [ ] SSH: keys generated or imported into the app and kept in the Keychain.
       libgit2 needs libssh2 and a crypto library for this; neither is built yet.
 - [x] Clone, into a chosen folder on macOS and into Documents on iOS.
-- [ ] Add, rename and remove remotes; track a remote branch on checkout.
+- [x] Add, rename and remove remotes; track a remote branch on checkout.
+- [x] Pull by merge, rebase or fast-forward only, with autostash; sync;
+      push to any remote and name; fetch options; relative remote URLs.
+- [x] Delete and rename remote branches; open remotes and branches on the web.
 - [ ] Hosting accounts (pull requests, repository lists).
 
 ## Working copy
@@ -18,12 +21,18 @@ Tick an item when it lands on main.
 - [x] Stage and unstage single hunks and lines.
 - [x] Discard changes, with confirmation.
 - [x] Amend the last commit.
-- [ ] Commit templates.
+- [x] Commit templates, subject length marker and recent messages.
 - [x] Stash: save, apply, pop and drop.
 - [x] Resolve merge conflicts.
 - [x] Notice changes on disk and refresh without being asked.
 - [ ] Image diffs; syntax colouring; side-by-side diffs.
-- [ ] Ignore files; Git LFS.
+- [x] Ignore files from their menu, edit the ignore rules; stop tracking and
+      assume unchanged.
+- [x] Folder tree, sorting and filtering of the changed files; file actions
+      (open, Quick Look, reveal, rename, Trash, restore from a commit).
+- [x] Diff options: context lines, ignoring whitespace, invisible characters,
+      tab width, folding large commits.
+- [ ] Git LFS.
 
 ## History
 
@@ -33,17 +42,20 @@ Tick an item when it lands on main.
 - [x] Compare two commits or branches.
 - [x] Reflog.
 - [x] Show diffs of a merge against each parent.
+- [x] View options: graph, first parent only, date or topological order, grouping, row size.
+- [x] Act on several commits; save a commit as a patch and apply a patch file.
+- [x] Edit the last commit's message.
 
 ## Branching
 
 - [x] Merge, rebase, cherry-pick and revert.
 - [ ] Interactive rebase: reorder, squash, reword, drop.
 - [x] Rename and delete branches; create and delete tags.
-- [ ] Publish tags.
+- [x] Publish tags.
 - [x] Reset to a commit.
 - [x] Group branches by folder in the sidebar.
 - [ ] Submodules: update, add, remove. Worktrees: add, remove, open.
-- [ ] Undo for the operations above.
+- [x] Undo and redo for the operations above, and for staging, stashes and discards.
 
 ## App
 

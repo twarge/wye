@@ -18,13 +18,13 @@ Each item is marked:
 | Tabs: several repositories in one window, Show All Tabs, Move Tab to New Window | Missing. One repository per window. |
 | Back / Forward through the views visited (⌘[ ⌘]) | Missing |
 | Open Recent menu | Missing |
-| "Show HEAD Branch" (⌘0): jump to the checked-out branch's history | Missing |
-| Reveal in Finder / Files for the repository and for a file | Missing |
+| "Show HEAD Branch" (⌘0): jump to the checked-out branch's history | Done. View ▸ Show HEAD selects `HEAD`'s commit in the history. |
+| Reveal in Finder / Files for the repository and for a file | Partial. A changed file, from its menu, on macOS; not the repository. iOS has no public way to open Files at a file. |
 | Open in Terminal | Not planned (sandbox) |
 | Quick actions: one palette that runs any command, not only navigation | Partial. Quick open jumps to branches, tags and repositories; it does not run commands. |
 | Activity window: a log of every operation with its output and errors | Missing. Only the running operation shows. |
 | Customizable toolbar | Missing |
-| Copy file path, copy commit info (hash, author, date, subject) | Partial. Copy hash only. |
+| Copy file path, copy commit info (hash, author, date, subject) | Done. File paths (relative and full) from the working copy and commit detail; a commit's hash or its info, for one commit or several. |
 
 ## Repository list
 
@@ -40,28 +40,28 @@ Each item is marked:
 
 | Feature | Status |
 | --- | --- |
-| View changed files as a folder tree | Missing. List only. |
-| Sort by status or by name; filter the file list | Missing |
-| Show unchanged files, ignored files, assume-unchanged files | Missing |
+| View changed files as a folder tree | Done. A List / Tree switch; folders fold, and a folder's checkbox stages everything under it. |
+| Sort by status or by name; filter the file list | Done. By path, name or status, and a filter field. |
+| Show unchanged files, ignored files, assume-unchanged files | Partial. Ignored and assume-unchanged files on request; unchanged files not. |
 | Compare working tree to `HEAD`, working tree to index, index to `HEAD` as whole-tree views | Partial. Per file, staged and unstaged, only. |
 | Snapshots: stash the changes and keep them in place | Missing |
 | Stash only some files or hunks | Missing |
-| Apply a patch file to the working copy; save changes as a patch | Missing |
-| Ignore a file, a folder or an extension from its menu; edit the ignore list | Missing |
-| Stop tracking a file; mark assume-unchanged | Missing |
-| Move a file to the Trash, rename it, open it, Quick Look it | Missing |
-| Restore one file from another revision | Missing |
-| Commit subject length marker and reflow of the description | Missing |
-| Commit message templates and a history of past messages | Missing |
+| Apply a patch file to the working copy; save changes as a patch | Partial. A patch file applies to the working copy, or to it and the index, from the history's menus, undoably. Saving uncommitted changes as a patch is missing. |
+| Ignore a file, a folder or an extension from its menu; edit the ignore list | Done. In `.gitignore` or `.git/info/exclude`, offering to stop tracking files the rule matches; an editor in the working copy's menu. |
+| Stop tracking a file; mark assume-unchanged | Done |
+| Move a file to the Trash, rename it, open it, Quick Look it | Done. Rename stages the move as `git mv` does. Open is macOS only; on iOS, Quick Look's share button opens files elsewhere. |
+| Restore one file from another revision | Done. From a file's menu in commit detail, into the working tree. |
+| Commit subject length marker and reflow of the description | Partial. The marker (limits set in Settings); no reflow. |
+| Commit message templates and a history of past messages | Done. The repository's `commit.template` when it is inside the repository, templates kept in Settings, and the last 20 messages. |
 | Autocomplete in the message: changed file names, people, issue references, fixup targets | Missing |
 | Fixup and squash commits aimed at an earlier commit, with autosquash | Missing |
 | Generate or rephrase a commit message with a language model | Not planned for now |
 | Choose the author for one commit; several author profiles | Missing |
 | Sign commits; show whether a commit's signature verifies | Missing |
 | Image diffs, side by side and overlaid | Missing |
-| Syntax colouring; show whitespace; ignore whitespace changes | Missing |
-| Context line count for diffs | Missing. Fixed at three. |
-| Auto-collapse diffs once a commit changes many files | Missing. Large files are cut short instead. |
+| Syntax colouring; show whitespace; ignore whitespace changes | Partial. Invisible characters and three ways to ignore whitespace; no syntax colouring. Hunks and lines are staged only from exact diffs, so partial staging pauses while whitespace is ignored. |
+| Context line count for diffs | Done. 1 to 10, 15, 25 or 50, in Settings. |
+| Auto-collapse diffs once a commit changes many files | Done. Past 5, 10, 25 or 50 files, or never. |
 | Open in an external diff or merge tool | Not planned (sandbox) |
 | A built-in three-way merge view for conflicts | Missing. Ours / theirs / mark resolved only. |
 | Git LFS: track patterns, fetch, pull, push, show pointer files properly | Missing. Needs a transfer client written for the sandbox. |
@@ -70,19 +70,19 @@ Each item is marked:
 
 | Feature | Status |
 | --- | --- |
-| Hide the graph; first-parent only | Missing |
-| Sort by date instead of topologically | Missing |
-| Group by day or week, or not at all | Missing. Months only. |
-| Compact and regular row sizes | Missing on macOS; iOS switches by width. |
+| Hide the graph; first-parent only | Done |
+| Sort by date instead of topologically | Done |
+| Group by day or week, or not at all | Done |
+| Compact and regular row sizes | Done on macOS; iOS switches by width. |
 | Filter by author, date range, branch | Partial. Search covers message, author, hash and path. |
-| Select several commits and act on them together | Missing |
+| Select several commits and act on them together | Done. Cherry-pick, revert, copy hashes or info, compare first and last. |
 | Drag a commit onto a branch to cherry-pick; drag branches to merge or rebase | Missing |
-| Save a commit as a patch file; export a commit's files | Missing |
-| Compare a commit with any other revision from its menu | Partial. The Compare sheet exists; there is no "compare with…" on a commit. |
-| Reveal a reference or a search result in the full history | Partial |
-| Edit a commit's message, author or date after the fact | Missing |
+| Save a commit as a patch file; export a commit's files | Partial. Save as Patch writes `git format-patch`'s format; exporting a commit's files is missing. |
+| Compare a commit with any other revision from its menu | Done |
+| Reveal a reference or a search result in the full history | Done for search results, reflog entries and `HEAD`. |
+| Edit a commit's message, author or date after the fact | Partial. The last commit's message, undoably. Older commits, authors and dates are missing. |
 | Interactive rebase: reorder, squash, fixup, reword, drop, edit | Missing |
-| Undo the last operation (⌘Z) across commits, merges, deletes and discards | Missing |
+| Undo the last operation (⌘Z) across commits, merges, deletes and discards | Done, with Redo, kept across launches. Not undoable: fetch, pull and push; finishing, skipping or aborting a stopped merge, rebase, cherry-pick or revert, and an operation that stops on a conflict (Abort undoes that); resolving conflicts; remote management; file moves, ignore rules and the other file actions not yet recorded. |
 | Avatars for authors | Missing. Initials only; fetching portraits has privacy cost. |
 | Issue references and links in messages made clickable | Missing |
 | Notes | Missing |
@@ -96,10 +96,10 @@ Each item is marked:
 | Archive branches (hide without deleting), automatically after a time | Missing |
 | Pin branches to the top | Missing |
 | Check out a branch into a new worktree | Missing |
-| Push a branch to a chosen remote and name ("push to…") | Missing. Pushes to the upstream only. |
-| Publish a tag; push all tags; delete a remote tag | Missing |
-| Rename and delete a remote branch | Missing |
-| Pull one remote branch into the current branch from its menu | Missing |
+| Push a branch to a chosen remote and name ("push to…") | Done |
+| Publish a tag; push all tags; delete a remote tag | Done |
+| Rename and delete a remote branch | Done. A rename pushes the new name and deletes the old one. |
+| Pull one remote branch into the current branch from its menu | Done |
 | Rebase onto (move a range of commits to a new base) | Missing |
 | Merge preview: say beforehand whether it will conflict | Missing |
 | Sort and limit long lists of tags and remote branches | Missing |
@@ -113,14 +113,14 @@ Each item is marked:
 | Feature | Status |
 | --- | --- |
 | SSH remotes, with keys generated or imported into the app | Missing. libgit2 is built without SSH. |
-| Fetch with options: one remote, all, prune, tags | Partial. Fetch and prune exist; no options sheet. |
-| Pull with options: rebase instead of merge, fast-forward only, autostash | Partial. Merge only. |
-| Sync: pull then push in one step | Missing |
-| Stash automatically around pull, checkout, merge and rebase | Missing |
-| Prune obsolete remote branches from the remote's menu | Partial. Happens on fetch. |
-| Edit a remote's refspecs and its push URL | Missing |
-| Open the remote, a branch or a commit on its website | Missing |
-| Relative-path and `file://` remote URLs resolved as git resolves them | Partial. Relative paths fail. |
+| Fetch with options: one remote, all, prune, tags | Done. libgit2 brings all of a remote's tags where git brings only those on fetched commits. |
+| Pull with options: rebase instead of merge, fast-forward only, autostash | Done. `pull.rebase`, `branch.<name>.rebase` and `pull.ff = only` are read; `pull.ff = false` is not. |
+| Sync: pull then push in one step | Done |
+| Stash automatically around pull, checkout, merge and rebase | Done. Ask, always or never, in Settings. A stash kept while an operation is stopped on conflicts is popped by hand. |
+| Prune obsolete remote branches from the remote's menu | Done. Fetch from the remote's menu prunes. |
+| Edit a remote's refspecs and its push URL | Partial. Push URL only. |
+| Open the remote, a branch or a commit on its website | Partial. Remotes and remote branches from their menus; commits have `RepositoryModel.webURL(forCommit:)` but no menu item yet. |
+| Relative-path and `file://` remote URLs resolved as git resolves them | Done |
 | Pull requests: list, read, comment, create, check out, merge, close | Missing |
 | Sign in to hosting services (OAuth device flow, tokens), several accounts | Partial. One token per host. |
 | Manage SSH public keys on a service | Missing |
@@ -144,8 +144,8 @@ Each item is marked:
 | --- | --- |
 | A settings screen per repository: author, default remote, pull behaviour | Missing |
 | Edit the repository's git configuration | Missing |
-| Remote settings: URLs, refspecs, default branches | Partial. Name and URL. |
-| Ignore patterns editor | Missing |
+| Remote settings: URLs, refspecs, default branches | Partial. Name, URL and push URL. |
+| Ignore patterns editor | Done. From the working copy's menu. |
 | Repair an invalid or damaged repository; run maintenance (gc) | Missing |
 
 ## App settings
@@ -153,8 +153,8 @@ Each item is marked:
 | Feature | Status |
 | --- | --- |
 | Author profiles, switched per repository | Missing. One identity. |
-| Appearance: theme, diff font and size, tab width | Missing |
-| Global git configuration editor (default branch name, pull mode, pruning) | Missing |
+| Appearance: theme, diff font and size, tab width | Partial. Tab width only. |
+| Global git configuration editor (default branch name, pull mode, pruning) | Partial. Pull mode and autostash are app settings, not git configuration. |
 | Fetch in the background on a schedule | Missing |
 | Notifications when a background fetch finds new commits | Missing |
 | iOS: Shortcuts actions, widgets, Files provider, share sheet "clone this URL" | Missing |

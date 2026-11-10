@@ -35,7 +35,7 @@ final class SearchModel {
 
     /// Starts searching `scope` for `query`, dropping any earlier search.
     /// Stops after the first page of matches; `loadMore` reads on.
-    func search(_ query: HistoryQuery, in scope: HistoryScope) async {
+    func search(_ query: HistoryQuery, in scope: HistoryScope, options: HistoryOptions = HistoryOptions()) async {
         generation += 1
         let generation = generation
         await closeCursor()
@@ -46,7 +46,7 @@ final class SearchModel {
         guard !query.isEmpty else { return }
         isComplete = false
         do {
-            let cursor = try await repository.openHistory(scope)
+            let cursor = try await repository.openHistory(scope, options: options)
             guard generation == self.generation else {
                 await repository.closeHistory(cursor)
                 return
@@ -64,6 +64,15 @@ final class SearchModel {
     func loadMore() async {
         guard !isComplete, !isLoadingMore else { return }
         await read(until: results.count + pageSize, generation: generation)
+    }
+
+    /// Abandons the search and empties the field, so the list shows the
+    /// whole history again.
+    func cancelAndClear() async {
+        text = ""
+        results = []
+        examined = 0
+        await cancel()
     }
 
     /// Abandons the search, leaving the text as it is.

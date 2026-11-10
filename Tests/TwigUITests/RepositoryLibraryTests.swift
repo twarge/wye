@@ -1,4 +1,5 @@
 import Foundation
+import GitKit
 import Testing
 @testable import TwigUI
 
@@ -68,5 +69,88 @@ import Testing
         #expect(RepositoryDragReference.id(from: RepositoryDragReference.url(for: id)) == id)
         #expect(RepositoryDragReference.id(from: URL(filePath: "/tmp/project")) == nil)
         #expect(!RepositoryDragReference.url(for: id).isFileURL)
+    }
+}
+
+@MainActor
+@Suite struct WatchedFolderTests {
+    let folder = FileManager.default.temporaryDirectory.appending(path: "TwigUITests-\(UUID().uuidString)")
+    var storage: URL { folder.appending(path: "Repositories.json") }
+    var documents: URL { folder.appending(path: "Documents") }
+    var watched: URL { folder.appending(path: "Repositories") }
+
+    init() throws {
+        try FileManager.default.createDirectory(at: folder.appending(path: "Documents"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: folder.appending(path: "Repositories"), withIntermediateDirectories: true)
+    }
+
+    private func makeRepository(_ path: String, in root: URL) throws {
+        _ = try Repository.create(at: root.appending(path: path))
+    }
+
+    @Test func listsWhatIsInTheFolderAndFollowsIt() throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try makeRepository("alpha", in: watched)
+        try makeRepository("nested/beta", in: watched)
+        try FileManager.default.createDirectory(at: watched.appending(path: "notes"), withIntermediateDirectories: true)
+        try makeRepository("elsewhere", in: folder)
+
+        let library = RepositoryLibrary(storage: storage, documents: documents)
+        let outside = try library.add(folder.appending(path: "elsewhere"))
+        try library.watch(watched)
+        #expect(library.bookmarks.map(\.name) == ["alpha", "beta", "elsewhere"])
+        // Watching the same folder again changes nothing.
+        try library.watch(watched)
+        #expect(library.folders.count == 1)
+        #expect(library.bookmarks.count == 3)
+
+        // A repository arrives and another leaves.
+        try makeRepository("gamma", in: watched)
+        try FileManager.default.removeItem(at: watched.appending(path: "alpha"))
+        library.syncWatchedFolders()
+        #expect(library.bookmarks.map(\.name) == ["beta", "elsewhere", "gamma"])
+
+        // The list and the folder survive a relaunch.
+        let relaunched = RepositoryLibrary(storage: storage, documents: documents)
+        #expect(relaunched.folders.map(\.name) == ["Repositories"])
+        #expect(relaunched.bookmarks.map(\.name) == ["beta", "elsewhere", "gamma"])
+        let beta = try #require(relaunched.bookmarks.first)
+        #expect(try relaunched.access(to: beta).url.lastPathComponent == "beta")
+
+        // One added by hand is never dropped, even when its files go.
+        try FileManager.default.removeItem(at: folder.appending(path: "elsewhere"))
+        relaunched.syncWatchedFolders()
+        #expect(relaunched.bookmarks.contains { $0.id == outside.id })
+
+        relaunched.stopWatching(try #require(relaunched.folders.first))
+        #expect(relaunched.bookmarks.map(\.name) == ["elsewhere"])
+    }
+
+    @Test func noticesARepositoryArrivingWithoutBeingAsked() async throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let library = RepositoryLibrary(storage: storage, documents: documents)
+        try library.watch(watched)
+        #expect(library.bookmarks.isEmpty)
+
+        try makeRepository("arrived", in: watched)
+        for _ in 0..<100 where library.bookmarks.isEmpty {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(library.bookmarks.map(\.name) == ["arrived"])
+
+        try FileManager.default.removeItem(at: watched.appending(path: "arrived"))
+        for _ in 0..<100 where !library.bookmarks.isEmpty {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(library.bookmarks.isEmpty)
+    }
+
+    @Test func aRepositoryAlreadyAddedIsNotListedTwice() throws {
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try makeRepository("alpha", in: watched)
+        let library = RepositoryLibrary(storage: storage, documents: documents)
+        let added = try library.add(watched.appending(path: "alpha"))
+        try library.watch(watched)
+        #expect(library.bookmarks.map(\.id) == [added.id])
     }
 }

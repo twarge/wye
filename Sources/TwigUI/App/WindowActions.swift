@@ -20,7 +20,7 @@ final class WindowActions {
 
     /// What quick open chose, acted on once its sheet is gone, so a sheet it
     /// leads to does not try to appear while the first is leaving.
-    fileprivate var chosen: (item: QuickOpenItem, purpose: QuickOpenPurpose)?
+    fileprivate var chosen: (item: QuickOpenItem, purpose: QuickOpenPurpose, inNewTab: Bool)?
 
     /// Adds the picked folders, opening the repository when there is just
     /// one, unless told not to. Returns the repositories added before any
@@ -56,6 +56,7 @@ private struct WindowActionsPresenter: ViewModifier {
     var model: RepositoryModel?
 
     @Environment(RepositoryLibrary.self) private var library
+    @Environment(\.openWindow) private var openWindow
 
     func body(content: Content) -> some View {
         content
@@ -78,8 +79,8 @@ private struct WindowActionsPresenter: ViewModifier {
                         for: purpose, snapshot: model?.snapshot, repositories: library.bookmarks,
                         currentRepository: model?.id
                     )
-                ) { item in
-                    actions.chosen = (item, purpose)
+                ) { item, inNewTab in
+                    actions.chosen = (item, purpose, inNewTab)
                     actions.quickOpen = nil
                 }
             }
@@ -90,11 +91,19 @@ private struct WindowActionsPresenter: ViewModifier {
     }
 
     private func goToChosen() {
-        guard let (item, purpose) = actions.chosen else { return }
+        guard let (item, purpose, inNewTab) = actions.chosen else { return }
         actions.chosen = nil
         switch (item.target, purpose) {
         case (.repository(let bookmark), _):
-            if bookmark.id != model?.id { actions.open(bookmark) }
+            if inNewTab, Platform.hasWindowTabs {
+                // The new window picks the repository up as it appears.
+                library.openInNextWindow = bookmark.id
+                Platform.openAsTab { openWindow(id: TwigScene.windowID) }
+            } else if bookmark.id != model?.id {
+                actions.open(bookmark)
+            }
+        case (.command(let command), _):
+            command.run(model: model, window: actions)
         case (.branch(let name), .merge), (.remoteBranch(let name), .merge), (.tag(let name), .merge):
             model?.present(.merge(name))
         case (.branch(let name), .rebase), (.remoteBranch(let name), .rebase):

@@ -34,11 +34,13 @@ final class ViewRequests {
 ///
 /// | Keys | Command |
 /// | --- | --- |
-/// | ⌘N | New Window (the system's) |
-/// | ⌘O, ⇧⌘O | Add Repository…, Clone Repository… |
-/// | ⌘K | Quick Open… |
+/// | ⌘N, ⌘T | New Window (the system's), New Tab |
+/// | ⌘O, ⌥⌘O | Add Repository…, Clone Repository… |
+/// | ⇧⌘O | Quick Open… |
 /// | ⌘F | Find in History |
+/// | ⌘Z, ⇧⌘Z | Undo, Redo (the text's while a field has focus) |
 /// | ⌘1 to ⌘4 | Working Copy, History, Stashes, Reflog |
+/// | ⌘0 | Show HEAD |
 /// | ⌘R | Refresh |
 /// | ⇧⌘F, ⇧⌘P, ⇧⌘U | Fetch, Pull, Push |
 /// | ⇧⌘B, ⇧⌘M | New Branch…, Merge… |
@@ -50,20 +52,27 @@ final class ViewRequests {
 struct TwigCommands: Commands {
     @FocusedValue(RepositoryModel.self) private var model
     @FocusedValue(WindowActions.self) private var window
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
         CommandGroup(after: .newItem) {
+            if Platform.hasWindowTabs {
+                Button("New Tab") {
+                    Platform.openAsTab { openWindow(id: TwigScene.windowID) }
+                }
+                .keyboardShortcut("t")
+            }
             Section {
                 Button("Add Repository…") { window?.isAddingRepository = true }
                     .keyboardShortcut("o")
                     .disabled(window == nil)
                 Button("Clone Repository…") { window?.isCloning = true }
-                    .keyboardShortcut("o", modifiers: [.command, .shift])
+                    .keyboardShortcut("o", modifiers: [.command, .option])
                     .disabled(window == nil)
             }
             Section {
                 Button("Quick Open…") { window?.quickOpen = .jump }
-                    .keyboardShortcut("k")
+                    .keyboardShortcut("o", modifiers: [.command, .shift])
                     .disabled(window == nil)
             }
             Section {
@@ -71,6 +80,9 @@ struct TwigCommands: Commands {
                     .disabled(model == nil)
             }
         }
+
+        UndoCommands(model: model)
+        HistoryCommands(model: model)
 
         CommandGroup(before: .textEditing) {
             Button("Find in History") { model?.showHistorySearch() }
@@ -122,12 +134,20 @@ private struct RepositoryMenu: View {
             Button("Fetch") { Task { await model?.fetch() } }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
                 .disabled(isTransferring || model?.hasRemotes != true)
+            Button("Fetch…") { model?.remotes.sheet = .fetchOptions }
+                .disabled(isTransferring || model?.hasRemotes != true)
             Button("Pull") { Task { await model?.pull() } }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
+                .disabled(isTransferring || upstream == nil)
+            Button("Pull…") { model?.remotes.sheet = .pullOptions }
+                .disabled(isTransferring || model?.headBranchName == nil || model?.hasRemotes != true)
+            Button("Sync") { Task { await model?.sync() } }
                 .disabled(isTransferring || upstream == nil)
             Button("Push") { Task { await model?.push() } }
                 .keyboardShortcut("u", modifiers: [.command, .shift])
                 .disabled(isTransferring || model?.currentBranch == nil || model?.hasRemotes != true)
+            Button("Push to…") { model?.remotes.sheet = .pushTo(branch: model?.snapshot?.head.branchName) }
+                .disabled(isTransferring || model?.hasRemotes != true)
             Button("Force Push…") { model?.remotes.isConfirmingForcePush = true }
                 .disabled(isTransferring || upstream == nil)
             Button("Remotes…") { model?.remotes.isManagingRemotes = true }

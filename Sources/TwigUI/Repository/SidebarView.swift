@@ -59,6 +59,7 @@ struct SidebarView: View {
                                 }
                             } label: {
                                 Label(remote.name, systemImage: "cloud")
+                                    .contextMenu { RemoteRowActions(model: model, remote: remote) }
                             }
                         }
                     }
@@ -120,6 +121,7 @@ struct SidebarView: View {
             Button("Delete…", systemImage: "trash", role: .destructive) {
                 model.present(.deleteTag(id))
             }
+            TagRemoteActions(model: model, tag: id)
         default:
             EmptyView()
         }
@@ -153,6 +155,7 @@ struct SidebarView: View {
             model.present(.renameBranch(id))
         }
         upstreamMenu(for: id)
+        PushToMenuItem(model: model, branch: id)
         Button("Delete…", systemImage: "trash", role: .destructive) {
             model.present(.deleteBranch(id))
         }
@@ -179,6 +182,7 @@ struct SidebarView: View {
             model.present(.rebase(onto: id))
         }
         .disabled(isBusy || model.headBranchName == nil)
+        RemoteBranchRemoteActions(model: model, branch: id)
     }
 
     /// Which remote branch a local branch follows.

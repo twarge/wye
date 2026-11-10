@@ -38,25 +38,27 @@ extension FileDiff.Line {
 
 extension Repository {
     /// Stages some of a file's unstaged lines, given by their IDs in `file`,
-    /// its unstaged diff as last read.
-    public func stage(lines: Set<Int>, of file: FileDiff) throws {
-        try apply(lines, of: file, side: .unstaged, reversed: false, location: GIT_APPLY_LOCATION_INDEX) {
+    /// its unstaged diff as last read with `options`.
+    public func stage(lines: Set<Int>, of file: FileDiff, options: DiffOptions = .standard) throws {
+        try apply(lines, of: file, side: .unstaged, options: options, reversed: false, location: GIT_APPLY_LOCATION_INDEX) {
             try stage([file.path])
         }
     }
 
     /// Unstages some of a file's staged lines, given by their IDs in `file`,
-    /// its staged diff as last read.
-    public func unstage(lines: Set<Int>, of file: FileDiff) throws {
-        try apply(lines, of: file, side: .staged, reversed: true, location: GIT_APPLY_LOCATION_INDEX) {
+    /// its staged diff as last read with `options`.
+    public func unstage(lines: Set<Int>, of file: FileDiff, options: DiffOptions = .standard) throws {
+        try apply(lines, of: file, side: .staged, options: options, reversed: true, location: GIT_APPLY_LOCATION_INDEX) {
             try unstage([file.path])
         }
     }
 
     /// Throws away some of a file's unstaged lines in the working tree, given
-    /// by their IDs in `file`, its unstaged diff as last read.
-    public func discard(lines: Set<Int>, of file: FileDiff, untracked: UntrackedRemoval = .trash) throws {
-        try apply(lines, of: file, side: .unstaged, reversed: true, location: GIT_APPLY_LOCATION_WORKDIR) {
+    /// by their IDs in `file`, its unstaged diff as last read with `options`.
+    public func discard(
+        lines: Set<Int>, of file: FileDiff, options: DiffOptions = .standard, untracked: UntrackedRemoval = .trash
+    ) throws {
+        try apply(lines, of: file, side: .unstaged, options: options, reversed: true, location: GIT_APPLY_LOCATION_WORKDIR) {
             try discardChanges(in: [file.path], untracked: untracked)
         }
     }
@@ -69,11 +71,15 @@ extension Repository {
     ///   - wholeFile: What to do instead when every change is selected, which
     ///     also takes care of whatever a patch cannot carry, such as a new
     ///     file's existence or a change of mode.
+    ///   - options: How `file` was read. Any number of context lines will do,
+    ///     but a diff that leaves out whitespace changes is refused: its
+    ///     unchanged lines need not match the text the patch applies to.
     private func apply(
-        _ ids: Set<Int>, of file: FileDiff, side: WorkingCopySide, reversed: Bool,
+        _ ids: Set<Int>, of file: FileDiff, side: WorkingCopySide, options: DiffOptions, reversed: Bool,
         location: git_apply_location_t, wholeFile: () throws -> Void
     ) throws {
-        let source = try patchSource(of: file, side: side)
+        guard options.isExact else { throw WorkingCopyError.inexactDiff }
+        let source = try patchSource(of: file, side: side, options: options)
         let changed = source.changedLineIDs
         let selected = ids.intersection(changed)
         guard !selected.isEmpty else { throw WorkingCopyError.nothingSelected }
@@ -99,8 +105,8 @@ extension Repository {
 
     /// Reads a file's diff again with every line's exact bytes, which the
     /// shown diff does not keep, and checks it is still the diff that was shown.
-    private func patchSource(of shown: FileDiff, side: WorkingCopySide) throws -> PatchSource {
-        try withWorkingCopyDiff(of: shown.path, side: side) { diff in
+    private func patchSource(of shown: FileDiff, side: WorkingCopySide, options: DiffOptions) throws -> PatchSource {
+        try withWorkingCopyDiff(of: shown.path, side: side, options: options) { diff in
             guard git_diff_num_deltas(diff) == 1, try DiffBuilder.files(in: diff).first == shown else {
                 throw WorkingCopyError.diffChanged(path: shown.path)
             }
@@ -114,14 +120,17 @@ extension Repository {
         }
     }
 
-    /// Calls `body` with one file's staged or unstaged diff, read with the
-    /// same options as `stagedDiff(of:)` and `unstagedDiff(of:)`.
+    /// Calls `body` with one file's staged or unstaged diff, named literally.
+    /// `stagedDiff(of:)` and `unstagedDiff(of:)` read it this way too, so a
+    /// patch made here numbers its lines as the shown diff does.
     func withWorkingCopyDiff<Result>(
-        of path: String, side: WorkingCopySide, _ body: (OpaquePointer?) throws -> Result
+        of path: String, side: WorkingCopySide, options diffOptions: DiffOptions,
+        _ body: (OpaquePointer?) throws -> Result
     ) throws -> Result {
         var options = git_diff_options()
         try check(git_diff_options_init(&options, UInt32(GIT_DIFF_OPTIONS_VERSION)))
         options.flags = GIT_DIFF_DISABLE_PATHSPEC_MATCH.rawValue
+        diffOptions.apply(to: &options)
         if side == .unstaged {
             options.flags |= GIT_DIFF_INCLUDE_UNTRACKED.rawValue
                 | GIT_DIFF_RECURSE_UNTRACKED_DIRS.rawValue

@@ -49,6 +49,9 @@ struct FileActions {
 
     var items: [Item]
     var open: OpenCommitRouteAction
+    /// Actions that do something rather than open a screen, such as the
+    /// working copy's restoring a file to this version.
+    var commands: [Command] = []
 
     /// The actions for a file a commit changed. A deleted file has no
     /// contents to view or blame there, only a history.
@@ -79,6 +82,7 @@ extension View {
                 ForEach(actions.items, id: \.self) { item in
                     Button(item.title, systemImage: item.systemImage) { actions.open(item.route) }
                 }
+                FileCommandButtons(commands: actions.commands)
             }
         }
     }

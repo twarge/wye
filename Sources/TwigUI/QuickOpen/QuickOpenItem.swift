@@ -3,8 +3,8 @@ import GitKit
 
 /// What quick open is choosing for.
 enum QuickOpenPurpose: Identifiable, Hashable {
-    /// Go to a branch, remote branch or tag in the sidebar, or open another
-    /// repository in this window.
+    /// Open a repository, go to a branch, remote branch or tag in the
+    /// sidebar, or run a command.
     case jump
     /// Choose what to merge into the current branch, then confirm in the merge sheet.
     case merge
@@ -15,7 +15,7 @@ enum QuickOpenPurpose: Identifiable, Hashable {
 
     var prompt: String {
         switch self {
-        case .jump: "Branch, tag or repository"
+        case .jump: "Repository, branch, tag or command"
         case .merge: "Branch or tag to merge"
         case .rebase: "Branch to rebase onto"
         }
@@ -39,6 +39,30 @@ struct QuickOpenItem: Identifiable, Hashable {
         case remoteBranch(String)
         case tag(String)
         case repository(RepositoryBookmark)
+        case command(QuickOpenCommand)
+    }
+
+    /// The heading an item is listed under while nothing is typed.
+    enum Section: Hashable {
+        case repositories
+        case references
+        case commands
+
+        var title: String {
+            switch self {
+            case .repositories: "Recent Repositories"
+            case .references: "Branches and Tags"
+            case .commands: "Commands"
+            }
+        }
+    }
+
+    var section: Section {
+        switch target {
+        case .repository: .repositories
+        case .branch, .remoteBranch, .tag: .references
+        case .command: .commands
+        }
     }
 
     var target: Target
@@ -50,6 +74,7 @@ struct QuickOpenItem: Identifiable, Hashable {
         switch target {
         case .branch(let name), .remoteBranch(let name), .tag(let name): name
         case .repository(let bookmark): "repository:\(bookmark.id.uuidString)"
+        case .command(let command): "command:\(command.rawValue)"
         }
     }
 
@@ -59,11 +84,12 @@ struct QuickOpenItem: Identifiable, Hashable {
         case .remoteBranch: "cloud"
         case .tag: "tag"
         case .repository: "folder"
+        case .command(let command): command.systemImage
         }
     }
 
-    /// The references in a snapshot, and the repositories in the library,
-    /// that suit a purpose. Repositories come most recently opened first.
+    /// What suits a purpose: the repositories in the library, most recently
+    /// opened first, then the references in a snapshot, then commands.
     static func items(
         for purpose: QuickOpenPurpose,
         snapshot: RepositorySnapshot?,
@@ -71,6 +97,12 @@ struct QuickOpenItem: Identifiable, Hashable {
         currentRepository: UUID? = nil
     ) -> [QuickOpenItem] {
         var items: [QuickOpenItem] = []
+        if purpose == .jump {
+            let recent = repositories.sorted { ($0.lastOpened ?? .distantPast) > ($1.lastOpened ?? .distantPast) }
+            for bookmark in recent where bookmark.id != currentRepository {
+                items.append(QuickOpenItem(target: .repository(bookmark), title: bookmark.name, detail: "Repository"))
+            }
+        }
         if let snapshot {
             let head = snapshot.head.branchName
             for branch in snapshot.branches where purpose == .jump || branch.id != head {
@@ -87,10 +119,8 @@ struct QuickOpenItem: Identifiable, Hashable {
             }
         }
         if purpose == .jump {
-            let recent = repositories.sorted { ($0.lastOpened ?? .distantPast) > ($1.lastOpened ?? .distantPast) }
-            for bookmark in recent {
-                let detail = bookmark.id == currentRepository ? "This repository" : "Repository"
-                items.append(QuickOpenItem(target: .repository(bookmark), title: bookmark.name, detail: detail))
+            for command in QuickOpenCommand.allCases where snapshot != nil || !command.needsRepository {
+                items.append(QuickOpenItem(target: .command(command), title: command.title, detail: "Command"))
             }
         }
         return items

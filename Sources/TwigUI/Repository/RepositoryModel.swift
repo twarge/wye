@@ -85,6 +85,10 @@ final class RepositoryModel: Identifiable {
     let diskChanges = DiskChanges()
     /// Sheets, confirmations and focus the menu bar asks views for.
     let viewRequests = ViewRequests()
+    /// File actions waiting on a confirmation or a new name.
+    let fileRequests = FileRequests()
+    /// What Undo and Redo apply next.
+    let undoStack: UndoStack
 
     private let access: RepositoryAccess
 
@@ -96,6 +100,7 @@ final class RepositoryModel: Identifiable {
         self.access = access
         repository = try Repository(at: access.url)
         history = HistoryModel(repository: repository)
+        undoStack = UndoStack(repositoryID: bookmark.id)
     }
 
     /// Reads the repository again and updates whatever changed.
@@ -137,7 +142,7 @@ final class RepositoryModel: Identifiable {
 
     /// Stages a file's changes, or unstages them if all of them are staged.
     func toggleStaging(of entry: StatusEntry) async {
-        await perform { repository in
+        await perform(entry.unstaged == nil ? .unstage : .stage) { repository in
             if entry.unstaged == nil {
                 try await repository.unstage([entry.path])
             } else {
@@ -148,12 +153,12 @@ final class RepositoryModel: Identifiable {
 
     func stageAll() async {
         let paths = workingCopy.entries.filter { $0.unstaged != nil }.map(\.path)
-        await perform { try await $0.stage(paths) }
+        await perform(.stage) { try await $0.stage(paths) }
     }
 
     func unstageAll() async {
         let paths = workingCopy.entries.filter { $0.staged != nil }.map(\.path)
-        await perform { try await $0.unstage(paths) }
+        await perform(.unstage) { try await $0.unstage(paths) }
     }
 
     func commit() async {
@@ -162,7 +167,9 @@ final class RepositoryModel: Identifiable {
             .filter { !$0.isEmpty }
             .joined(separator: "\n\n")
         do {
+            let start = await repository.beginUndoable(.commit)
             try await repository.commit(message: message)
+            undoStack.take(await repository.finishUndoable(start), for: .commit)
             workingCopy.subject = ""
             workingCopy.details = ""
         } catch {

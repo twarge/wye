@@ -132,6 +132,12 @@ public enum RemoteError: Error, Hashable, Sendable, LocalizedError {
     /// The remote turned the push down.
     case pushRejected(reference: String, reason: String)
     case invalidRemoteName(String)
+    /// A fast-forward-only pull found commits on both sides.
+    case cannotFastForward(branch: String, onto: String)
+    /// The remote branch was deleted on the remote; the fetch removed it here.
+    case remoteBranchGone(String)
+    /// The remote has a tag of that name on another commit.
+    case tagExistsOnRemote(String)
 
     public var errorDescription: String? {
         switch self {
@@ -157,6 +163,12 @@ public enum RemoteError: Error, Hashable, Sendable, LocalizedError {
             "The remote rejected \(reference): \(reason)"
         case .invalidRemoteName(let name):
             "“\(name)” is not a valid remote name."
+        case .cannotFastForward(let branch, let onto):
+            "“\(branch)” and “\(onto)” both have commits of their own, so “\(branch)” can’t simply move forward. Pull by merging or rebasing instead."
+        case .remoteBranchGone(let name):
+            "“\(name)” no longer exists on the remote."
+        case .tagExistsOnRemote(let name):
+            "The remote already has a tag “\(name)” on another commit. Delete it on the remote first to move it."
         }
     }
 
@@ -182,6 +194,75 @@ public enum PullResult: Hashable, Sendable {
     /// The merge stopped on conflicts. The repository is left merging, with
     /// the conflicts in the working copy, for the user to resolve and commit.
     case conflicts(paths: [String])
+    /// The branch's own commits were replayed on top of this commit, the
+    /// one pulled.
+    case rebased(onto: OID)
+    /// The rebase stopped on conflicts while replaying `commit`. The
+    /// repository is left rebasing, to continue, skip or abort.
+    case rebaseStopped(at: OID, conflicts: [String])
+
+    /// Whether the pull stopped part way, leaving conflicts to resolve.
+    public var stoppedOnConflicts: Bool {
+        switch self {
+        case .conflicts, .rebaseStopped: true
+        case .upToDate, .fastForwarded, .merged, .rebased: false
+        }
+    }
+}
+
+/// How a pull brings the current branch up to the one it pulls.
+public enum PullMode: String, Hashable, Sendable, CaseIterable {
+    /// Fast-forward when possible, otherwise make a merge commit.
+    case merge
+    /// Fast-forward when possible, otherwise replay the branch's own commits
+    /// on top of the pulled ones.
+    case rebase
+    /// Only fast-forward; refuse when both sides have commits.
+    case fastForwardOnly
+}
+
+/// Which tags a fetch brings.
+public enum FetchTags: Hashable, Sendable, CaseIterable {
+    /// As the remote's `tagOpt` configuration says, as git does. Without
+    /// one, libgit2 brings the remote's tags: unlike git, also those on
+    /// commits that no fetched branch holds.
+    case automatic
+    /// Every tag on the remote, as `git fetch --tags`.
+    case all
+    /// No tags, as `git fetch --no-tags`.
+    case none
+}
+
+/// How to pull.
+public struct PullOptions: Hashable, Sendable {
+    /// `nil` follows the repository's `pull.rebase` and `pull.ff`, merging
+    /// when they say nothing.
+    public var mode: PullMode?
+    /// Set local changes aside in a stash first and restore them after.
+    public var autostash: Bool
+
+    public init(mode: PullMode? = nil, autostash: Bool = false) {
+        self.mode = mode
+        self.autostash = autostash
+    }
+}
+
+/// What a pull did, and what became of the local changes it set aside.
+public struct PullOutcome: Hashable, Sendable {
+    public var result: PullResult
+    public var autostash: AutostashResult
+
+    public init(result: PullResult, autostash: AutostashResult) {
+        self.result = result
+        self.autostash = autostash
+    }
+}
+
+/// What a sync did: the pull, then the push, which is left out when the
+/// pull stopped on conflicts.
+public struct SyncResult: Hashable, Sendable {
+    public var pull: PullOutcome
+    public var push: PushResult?
 }
 
 /// What a push did.
