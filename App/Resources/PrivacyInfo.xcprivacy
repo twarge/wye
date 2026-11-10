@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!-- Twig's privacy manifest, which covers the app and the libgit2 compiled
+     into it (libgit2 is built from source as part of the app, not shipped as
+     a separate SDK, so its API use is declared here).
+
+     Twig has no accounts of its own, no analytics and no advertising. It talks
+     only to the git remotes the user configures, and nothing it reads leaves
+     the device except what the user pushes. -->
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<!-- File timestamps. libgit2 stat()s the files of a working tree and
+		     compares their modification and change times with the index to tell
+		     which files changed, and stats its own files under .git; GitKit
+		     lstat()s a path before staging it. Those files are in folders the
+		     user chose (3B52.1) or, on iOS, repositories cloned into the app's
+		     own Documents folder (C617.1). No timestamp is shown or sent. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>3B52.1</string>
+				<string>C617.1</string>
+			</array>
+		</dict>
+		<!-- System boot time. libgit2's monotonic clock is mach_absolute_time(),
+		     used to time progress updates during fetch and push and to mix into
+		     its random seed: elapsed time within the app only (35F9.1). -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>35F9.1</string>
+			</array>
+		</dict>
+		<!-- User defaults. The interface keeps per-window state (the open
+		     repository) with SwiftUI's scene storage, and may keep preferences
+		     in the app's own defaults; read and written by the app only
+		     (CA92.1). -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

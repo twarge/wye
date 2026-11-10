@@ -1,0 +1,143 @@
+# App Store submission
+
+How Twig gets from a commit to App Store review, for iOS (iPhone and iPad)
+and macOS, and the answers App Store Connect asks for. The setup is the same
+as Twarge's other apps: `.github/workflows/ci.yml` builds and tests every
+push, and `.github/workflows/appstore.yml` archives, signs and uploads.
+
+## Once: repository secrets
+
+Settings ▸ Secrets and variables ▸ Actions, on the repository (or inherited
+from the organization, where the other Twarge apps already have them):
+
+| Secret | What it is |
+| --- | --- |
+| `ASC_KEY_ID` | App Store Connect API key ID (10 characters). |
+| `ASC_ISSUER_ID` | App Store Connect issuer ID (a UUID). |
+| `ASC_KEY_P8` | The contents of `AuthKey_<KEYID>.p8`, pasted as text, not base64. |
+| `BUILD_CERTIFICATE_BASE64` | An Apple Development `.p12` for team 257KW9ZJFP, base64-encoded. |
+| `P12_PASSWORD` | The password the `.p12` was exported with. |
+
+The API key is made at App Store Connect ▸ Users and Access ▸ Integrations ▸
+App Store Connect API, with the Admin role, which cloud signing needs. The
+workflow checks the shape of each secret before using it and never prints
+one.
+
+Both workflows run on the `xcode-27` runner with Xcode 27.1 selected through
+`DEVELOPER_DIR`; the repository must have access to that runner group.
+
+## Once: the App Store Connect record
+
+One app record serves both platforms (Universal Purchase), keyed on the
+bundle ID both builds share.
+
+1. Certificates, Identifiers & Profiles ▸ Identifiers: register the explicit
+   App ID `com.twarge.app.twig`. No capabilities beyond the defaults are
+   needed (the Keychain and the sandbox need none); cloud signing makes the
+   profiles.
+2. App Store Connect ▸ Apps ▸ New App: platforms **iOS** and **macOS**, name
+   **Twig** (have a fallback such as "Twig Git" if the name is taken),
+   primary language English (U.S.), bundle ID `com.twarge.app.twig`, a SKU
+   such as `twig`, full access.
+3. Pricing and Availability: free, all territories.
+4. App Information: category **Developer Tools**, secondary
+   **Productivity**. Content rights: the app shows no third-party content.
+5. Fill in the answers below, the URLs, the description and the screenshots
+   for each platform's version page.
+
+## Each release
+
+1. Bump `MARKETING_VERSION` in `Twig.xcodeproj/project.pbxproj` (both target
+   configurations), or leave it and give the version when running.
+2. Either push a tag, `git tag v0.2.0 && git push origin v0.2.0`, or run
+   **App Store** from the Actions tab (Run workflow), optionally with a
+   version.
+3. The workflow runs CI first (tests, and Release builds for macOS and the
+   iOS Simulator), then for iOS and then macOS: checks the version is higher
+   than the last approved one (`scripts/check-appstore-version.swift`),
+   archives with build number `<run>.<attempt>`, and exports with
+   `destination: upload`, which sends the build to App Store Connect. The
+   archive, with its dSYMs, is kept as a workflow artifact for 90 days.
+4. When the builds finish processing, choose them on each platform's version
+   page (or in TestFlight), and submit for review.
+
+A release can be reproduced locally with the same flags, given the API key:
+
+```bash
+make archive upload PLATFORM=iOS \
+  XCODE_FLAGS='-authenticationKeyPath /path/AuthKey.p8 -authenticationKeyID ABC123 -authenticationKeyIssuerID 1234-...'
+```
+
+## Review notes
+
+Paste into App Review Information ▸ Notes (no sign-in is needed, so leave
+the demo account empty):
+
+> Twig is a git client: it shows and edits git repositories, the folders
+> developers keep source code in under version control. It has no account
+> of its own and needs no sign-in.
+>
+> The app reads and writes only folders the user chooses. On the Mac that
+> is through the Open panel (the app is sandboxed, with the user-selected
+> read-write entitlement and security-scoped bookmarks so the repository
+> list survives a relaunch). On iPhone and iPad it is folders picked in the
+> Files picker, and repositories cloned into the app's own Documents folder,
+> which the Files app shows.
+>
+> To try it: choose Clone, enter a public HTTPS repository URL such as
+> REPLACE-WITH-A-SMALL-PUBLIC-REPOSITORY, and open it. The history, a
+> commit's changes and the working copy can all be explored without any
+> credentials. Pushing to a remote needs the user's own access token for
+> that host, which is stored in the Keychain and sent only to that host.
+>
+> The app connects only to the git remotes the user configures, over HTTPS.
+> It collects no data and contains no analytics or advertising. It is free
+> and open source under the Apache License 2.0.
+
+## Export compliance
+
+`ITSAppUsesNonExemptEncryption` is `false` in both Info.plists, so App Store
+Connect does not ask. If it ever does: the app uses encryption, but only
+that provided by the operating system (HTTPS through the system TLS stack,
+the Keychain). libgit2 is built against Secure Transport with no crypto
+library of its own; its SHA-1 and SHA-256 hashing is not encryption. No
+export documentation or French declaration is needed.
+
+Revisit this before shipping SSH (the roadmap's libssh2 and a bundled crypto
+library) or anything else that brings encryption of its own.
+
+## App Privacy
+
+App Store Connect ▸ App Privacy: **Data Not Collected**. Twig has no server;
+what it reads stays on the device except what the user pushes to their own
+remotes, which is the app's function and not collection. No tracking.
+
+`App/Resources/PrivacyInfo.xcprivacy`, in both bundles, says the same and
+declares the required-reason APIs the app and its compiled-in libgit2 use:
+
+| Category | Reason | Why |
+| --- | --- | --- |
+| File timestamp | 3B52.1, C617.1 | libgit2 compares working-tree files' times with the index; files are in user-chosen folders or the app container. |
+| System boot time | 35F9.1 | libgit2's monotonic clock (`mach_absolute_time`) times progress and seeds its random numbers. |
+| User defaults | CA92.1 | SwiftUI scene storage and the app's own preferences. |
+
+A privacy policy URL is still required: a short page saying the above.
+
+## Age rating
+
+Answer **None** or **No** to every question: no violence, mature themes,
+gambling, contests, unrestricted web access, user-generated content shared
+between users, or messaging. The result is 4+ (and the equivalent on every
+platform).
+
+## Still needed
+
+- **Screenshots**, made from the app:
+  - iPhone 6.9" display: 1320 × 2868 (or 1290 × 2796), portrait, 1–10.
+  - iPad 13" display: 2064 × 2752 (or 2048 × 2732), 1–10.
+    `docs/images/ipad-history.png` is a start.
+  - Mac: 16:10, 2880 × 1800 (or 2560 × 1600, 1440 × 900, 1280 × 800), 1–10.
+- **Description, keywords, promotional text** for each platform.
+- **Support URL** and **privacy policy URL**; a marketing URL is optional.
+- **Copyright** line: "2026 Twarge LLC".
+- A small public repository to name in the review notes.

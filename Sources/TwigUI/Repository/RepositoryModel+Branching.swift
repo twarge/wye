@@ -1,0 +1,154 @@
+import Foundation
+import GitKit
+
+extension RepositoryModel {
+    // MARK: Names
+
+    /// The checked-out branch's short name, or `nil` when `HEAD` is detached.
+    var headBranchName: String? {
+        snapshot?.head.branchName.map(Self.displayName(ofReference:))
+    }
+
+    /// What `HEAD` is, as a sentence names it: a branch, or a detached commit.
+    var headDescription: String {
+        switch snapshot?.head {
+        case .branch(let name, _), .unborn(let name): "“\(Self.displayName(ofReference: name))”"
+        case .detached(let id): "the detached HEAD (\(id.abbreviated()))"
+        case nil: "HEAD"
+        }
+    }
+
+    /// A reference's name without its `refs/heads/`, `refs/remotes/` or
+    /// `refs/tags/`.
+    static func displayName(ofReference name: String) -> String {
+        for prefix in ["refs/heads/", "refs/remotes/", "refs/tags/"] where name.hasPrefix(prefix) {
+            return String(name.dropFirst(prefix.count))
+        }
+        return name
+    }
+
+    func present(_ sheet: BranchingSheet) {
+        branchingSheet = sheet
+    }
+
+    // MARK: Checking out
+
+    func checkOutBranch(_ id: String) async {
+        await perform { try await $0.checkOut(branch: id) }
+    }
+
+    func checkOutTag(_ id: String) async {
+        await perform { try await $0.checkOut(tag: id) }
+    }
+
+    func checkOutCommit(_ id: OID) async {
+        await perform { try await $0.checkOut(commit: id) }
+    }
+
+    /// Checks out a remote branch as a local branch that tracks it, creating
+    /// that branch unless one already tracks it.
+    func trackRemoteBranch(_ id: String) async {
+        await perform { repository in
+            let local = try await repository.createTrackingBranch(for: id)
+            try await repository.checkOut(branch: local)
+            self.selection = .branch(local)
+        }
+    }
+
+    // MARK: Branches and tags
+
+    func renameBranch(_ id: String, to name: String) async {
+        await perform { repository in
+            let renamed = try await repository.renameBranch(id, to: name)
+            if self.selection == .branch(id) {
+                self.selection = .branch(renamed)
+            }
+        }
+    }
+
+    func deleteBranch(_ id: String, force: Bool) async {
+        await perform { repository in
+            try await repository.deleteBranch(id, force: force)
+            if self.selection == .branch(id) {
+                self.selection = .history
+            }
+        }
+    }
+
+    func setUpstream(of id: String, to upstream: String?) async {
+        await perform { try await $0.setUpstream(of: id, to: upstream) }
+    }
+
+    func createTag(named name: String, at commit: OID, message: String?) async {
+        await perform { _ = try await $0.createTag(named: name, at: commit, message: message) }
+    }
+
+    func deleteTag(_ id: String) async {
+        await perform { repository in
+            try await repository.deleteTag(id)
+            if self.selection == .tag(id) {
+                self.selection = .history
+            }
+        }
+    }
+
+    func resetCurrentBranch(to commit: OID, mode: ResetMode) async {
+        await perform { try await $0.reset(to: commit, mode: mode) }
+    }
+
+    // MARK: Merging and rewriting
+
+    func mergeIntoCurrent(_ reference: String, mode: MergeMode, message: String?) async {
+        await perform { repository in
+            let outcome = try await repository.merge(reference, mode: mode, message: message)
+            if case .conflicts = outcome {
+                self.showConflicts()
+            }
+        }
+    }
+
+    func rebaseCurrent(onto reference: String) async {
+        await runSequence { try await $0.rebase(onto: reference) }
+    }
+
+    /// Applies commits on top of `HEAD`. They come newest first, as the
+    /// history lists them, and are applied oldest first, as they were made.
+    func cherryPick(_ ids: [OID]) async {
+        await runSequence { try await $0.cherryPick(ids.reversed()) }
+    }
+
+    /// Undoes commits, given newest first as the history lists them, in that
+    /// order, so each undo applies to what came after it.
+    func revert(_ ids: [OID]) async {
+        await runSequence { try await $0.revert(ids) }
+    }
+
+    // MARK: An operation in progress
+
+    func continueOperation() async {
+        await runSequence { try await $0.continueOperation() }
+    }
+
+    func skipOperation() async {
+        await runSequence { try await $0.skipOperation() }
+    }
+
+    func abortOperation() async {
+        await perform { try await $0.abortOperation() }
+    }
+
+    /// Runs something that can stop on a conflict, and shows the conflicts if
+    /// it does.
+    private func runSequence(_ operation: @escaping (Repository) async throws -> OperationOutcome) async {
+        await perform { repository in
+            if case .stopped = try await operation(repository) {
+                self.showConflicts()
+            }
+        }
+    }
+
+    /// The working copy is where conflicts are resolved.
+    private func showConflicts() {
+        selection = .workingCopy
+    }
+}

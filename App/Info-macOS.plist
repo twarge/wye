@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Export compliance. Twig's only encryption is HTTPS to git remotes,
+	     done by the operating system's TLS stack: libgit2 is built against
+	     Secure Transport and carries no crypto library of its own (its SHA-1
+	     and SHA-256 object hashing is not encryption), and tokens are kept in
+	     the system Keychain. Encryption provided by the OS is exempt, so this
+	     is false and App Store Connect asks no encryption questions. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- Folders, so a repository can be dropped on the Dock icon or opened
+	     with `open -a Twig <folder>`. -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Git Repository</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.folder</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

@@ -1,0 +1,13 @@
+.build/
+.swiftpm/
+build/
+DerivedData/
+*.xcuserdata/
+*.xcuserstate
+*.DS_Store
+*.xcresult
+*.dSYM/
+dist/
+xcuserdata/
+Twig.xcodeproj/xcuserdata/
+Twig.xcodeproj/project.xcworkspace/xcuserdata/

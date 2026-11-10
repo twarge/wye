@@ -1,0 +1,157 @@
+import GitKit
+import SwiftUI
+
+/// The repository's remotes, to add, change and remove.
+struct RemoteListSheet: View {
+    @Bindable var model: RepositoryModel
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var editing: RemoteEditor.Subject?
+    @State private var removing: Remote?
+
+    private var remotes: [Remote] { model.snapshot?.remotes ?? [] }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(remotes) { remote in
+                    Button {
+                        editing = .existing(remote)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(remote.name)
+                                .font(.headline)
+                            Text(remote.url ?? "No URL")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button("Edit…", systemImage: "pencil") { editing = .existing(remote) }
+                        Button("Remove…", systemImage: "trash", role: .destructive) { removing = remote }
+                    }
+                    .swipeActions {
+                        Button("Remove", systemImage: "trash", role: .destructive) { removing = remote }
+                    }
+                }
+            }
+            .overlay {
+                if remotes.isEmpty {
+                    ContentUnavailableView(
+                        "No Remotes", systemImage: "server.rack",
+                        description: Text("Add a remote to fetch from and push to.")
+                    )
+                }
+            }
+            .navigationTitle("Remotes")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Add Remote", systemImage: "plus") { editing = .new }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .sheet(item: $editing) { subject in
+                RemoteEditor(model: model, subject: subject)
+            }
+            .confirmationDialog(
+                "Remove “\(removing?.name ?? "")”?",
+                isPresented: Binding { removing != nil } set: { if !$0 { removing = nil } },
+                titleVisibility: .visible,
+                presenting: removing
+            ) { remote in
+                Button("Remove Remote", role: .destructive) {
+                    Task { await model.removeRemote(remote) }
+                }
+            } message: { remote in
+                Text("Its \(remote.branches.count) remote \(remote.branches.count == 1 ? "branch goes" : "branches go") too. "
+                     + "Nothing on the remote itself is changed, and local branches are kept.")
+            }
+        }
+        .frame(minWidth: 420, minHeight: 300)
+        // The repository window's alert cannot show while this sheet is up.
+        .alert(for: $model.error)
+    }
+}
+
+/// Adds a remote, or renames one and changes its URL.
+private struct RemoteEditor: View {
+    enum Subject: Identifiable {
+        case new
+        case existing(Remote)
+
+        var id: String {
+            switch self {
+            case .new: ""
+            case .existing(let remote): remote.name
+            }
+        }
+    }
+
+    var model: RepositoryModel
+    var subject: Subject
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var url = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Name", text: $name)
+                    .autocorrectionDisabled()
+                    .noAutocapitalization()
+                TextField("URL", text: $url, prompt: Text("https://example.com/owner/project.git"))
+                    .textContentType(.URL)
+                    .autocorrectionDisabled()
+                    .noAutocapitalization()
+            }
+            .formStyle(.grouped)
+            .navigationTitle(isNew ? "New Remote" : "Edit Remote")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", role: .cancel) { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isNew ? "Add" : "Save") { save() }
+                        .disabled(trimmed(name).isEmpty || trimmed(url).isEmpty)
+                }
+            }
+        }
+        .frame(minWidth: 380)
+        .onAppear {
+            if case .existing(let remote) = subject {
+                name = remote.name
+                url = remote.url ?? ""
+            } else if model.snapshot?.remotes.isEmpty != false {
+                name = "origin"
+            }
+        }
+    }
+
+    private var isNew: Bool {
+        if case .new = subject { true } else { false }
+    }
+
+    private func trimmed(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func save() {
+        let name = trimmed(name), url = trimmed(url)
+        let subject = subject
+        dismiss()
+        Task {
+            switch subject {
+            case .new: await model.addRemote(named: name, url: url)
+            case .existing(let remote): await model.editRemote(remote, name: name, url: url)
+            }
+        }
+    }
+}

@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# The xcode-27 image defaults to Xcode 27.0. Build with 27.1, the Xcode the
+# app is developed on, so CI compiles against the same SDKs.
+env:
+  DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+
+jobs:
+  # GitKit's tests run the engine against the command line git on the runner,
+  # through SwiftPM's test runner over the same package the app links.
+  test:
+    name: Test (GitKit)
+    runs-on: xcode-27
+    steps:
+      # libgit2 is compiled from source out of the Vendor/libgit2 submodule;
+      # it is the only dependency there is.
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+          git --version
+
+      - name: Cache SwiftPM build directory
+        uses: actions/cache@v6
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.swift') }}-${{ github.sha }}
+          restore-keys: |
+            spm-${{ runner.os }}-${{ hashFiles('Package.swift') }}-
+
+      # The summary line goes on the run's page, where a drop in the count
+      # shows.
+      - name: Test
+        shell: bash
+        run: |
+          make test 2>&1 | tee test.log
+          grep -E 'Test run with [0-9]+ tests?' test.log | tail -1 >> "$GITHUB_STEP_SUMMARY" || true
+
+  # Build through the Makefile so CI verifies the same xcodebuild product that
+  # ships, for both platforms: the iOS app shares every source file with the
+  # Mac's, behind platform conditionals the macOS build never compiles.
+  # Release, as the App Store build is. Signing is off: the runner has no
+  # identity, and this is a compile/link check.
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: xcode-27
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Generic, so the Mac build is universal as the shipped one is.
+          - name: macOS
+            make: build DESTINATION=generic/platform=macOS
+          - name: iOS Simulator
+            make: ios
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build
+        run: make ${{ matrix.make }} CONFIG=Release XCODE_FLAGS=CODE_SIGNING_ALLOWED=NO
