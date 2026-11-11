@@ -75,6 +75,11 @@ extension RepositoryLibrary {
         sortAndSave()
     }
 
+    /// Where a watched folder is, when it can be reached.
+    func url(of folder: WatchedFolder) -> URL? {
+        openFolders[folder.id]?.url
+    }
+
     /// Where a watched folder is, for display.
     func path(of folder: WatchedFolder) -> String? {
         openFolders[folder.id].map { open in

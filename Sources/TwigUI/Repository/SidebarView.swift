@@ -59,15 +59,6 @@ struct SidebarView: View {
                     }
                 }
 
-                if !snapshot.tags.isEmpty {
-                    Section("Tags", isExpanded: $tagsExpanded) {
-                        ForEach(snapshot.tags) { tag in
-                            Label(tag.name, systemImage: "tag")
-                                .tag(SidebarItem.tag(tag.id))
-                        }
-                    }
-                }
-
                 if !snapshot.remotes.isEmpty {
                     Section("Remotes", isExpanded: $remotesExpanded) {
                         ForEach(snapshot.remotes) { remote in
@@ -87,6 +78,15 @@ struct SidebarView: View {
                                 Label(remote.name, systemImage: "cloud")
                                     .contextMenu { RemoteMenu(model: model, remote: remote) }
                             }
+                        }
+                    }
+                }
+
+                if !snapshot.tags.isEmpty {
+                    Section("Tags", isExpanded: $tagsExpanded) {
+                        ForEach(snapshot.tags) { tag in
+                            Label(tag.name, systemImage: "tag")
+                                .tag(SidebarItem.tag(tag.id))
                         }
                     }
                 }

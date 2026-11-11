@@ -16,11 +16,33 @@ struct RepositoryList: View {
     @Environment(WindowActions.self) private var actions
     @Environment(\.scenePhase) private var scenePhase
     @State private var heads = RepositoryHeads()
+    /// The watched folders folded shut, as their identifiers in one string.
+    @AppStorage("repositoryList.collapsedFolders") private var collapsedFolders = ""
 
     var body: some View {
         let sections = self.sections
+        let folders = self.folderEntries
         List {
             ForEach(sections) { section in
+                if section.group == nil, !folders.isEmpty {
+                    // Watched folders come after the groups, each a folder
+                    // row that folds its repositories away.
+                    Section {
+                        ForEach(folders) { entry in
+                            DisclosureGroup(isExpanded: isExpanded(entry.folder)) {
+                                ForEach(entry.bookmarks) { bookmark in
+                                    row(bookmark)
+                                }
+                            } label: {
+                                WatchedFolderRow(
+                                    name: entry.folder.name, path: library.path(of: entry.folder),
+                                    count: entry.bookmarks.count
+                                )
+                                .contextMenu { folderMenu(entry.folder) }
+                            }
+                        }
+                    }
+                }
                 Section {
                     ForEach(section.bookmarks) { bookmark in
                         row(bookmark)
@@ -33,7 +55,8 @@ struct RepositoryList: View {
                                 Button("Rename Group…", systemImage: "pencil") { nameGroup(.rename(group)) }
                                 Button("Delete Group", systemImage: "trash") { library.deleteGroup(group) }
                             }
-                    } else if !library.groups.isEmpty, !section.bookmarks.isEmpty || query.isEmpty {
+                    } else if !library.groups.isEmpty || !folders.isEmpty,
+                              !section.bookmarks.isEmpty || (query.isEmpty && !library.groups.isEmpty) {
                         GroupHeader(name: "Other Repositories")
                             .dropDestination(for: URL.self) { urls, _ in drop(urls, into: nil) }
                     }
@@ -42,7 +65,7 @@ struct RepositoryList: View {
         }
         .dropDestination(for: URL.self) { urls, _ in drop(urls, into: nil) }
         .overlay {
-            if !query.isEmpty, sections.allSatisfy(\.bookmarks.isEmpty) {
+            if !query.isEmpty, sections.allSatisfy(\.bookmarks.isEmpty), folders.isEmpty {
                 ContentUnavailableView.search(text: query)
             }
         }
@@ -76,10 +99,58 @@ struct RepositoryList: View {
         if !query.isEmpty {
             sections.removeAll { $0.bookmarks.isEmpty }
         }
-        let grouped = Set(library.groups.map(\.id))
-        let others = matching.filter { $0.groupID.map { !grouped.contains($0) } ?? true }
+        let others = matching.filter { !isGrouped($0) && !isInWatchedFolder($0) }
         sections.append(ListSection(group: nil, bookmarks: order.sorted(others)))
         return sections
+    }
+
+    private struct FolderEntry: Identifiable {
+        var folder: WatchedFolder
+        var bookmarks: [RepositoryBookmark]
+        var id: UUID { folder.id }
+    }
+
+    /// Each watched folder with the repositories listed through it. One
+    /// moved into a group shows in the group instead. While searching,
+    /// folders with no match are left out.
+    private var folderEntries: [FolderEntry] {
+        let matching = library.listedBookmarks.filter { matches($0) && !isGrouped($0) }
+        let entries = library.folders.map { folder in
+            FolderEntry(folder: folder, bookmarks: order.sorted(matching.filter { $0.watchedFolder == folder.id }))
+        }
+        return query.isEmpty ? entries : entries.filter { !$0.bookmarks.isEmpty }
+    }
+
+    private func isGrouped(_ bookmark: RepositoryBookmark) -> Bool {
+        library.group(of: bookmark) != nil
+    }
+
+    private func isInWatchedFolder(_ bookmark: RepositoryBookmark) -> Bool {
+        bookmark.watchedFolder.map { id in library.folders.contains { $0.id == id } } ?? false
+    }
+
+    /// Open unless folded shut; always open while searching, so matches show.
+    private func isExpanded(_ folder: WatchedFolder) -> Binding<Bool> {
+        let id = folder.id.uuidString
+        return Binding {
+            !query.isEmpty || !collapsedFolders.contains(id)
+        } set: { isExpanded in
+            var collapsed = Set(collapsedFolders.split(separator: ",").map(String.init))
+            if isExpanded { collapsed.remove(id) } else { collapsed.insert(id) }
+            collapsedFolders = collapsed.sorted().joined(separator: ",")
+        }
+    }
+
+    @ViewBuilder
+    private func folderMenu(_ folder: WatchedFolder) -> some View {
+        if Platform.canRevealFiles, let url = library.url(of: folder) {
+            Button(Platform.revealInFileBrowserTitle, systemImage: "folder") {
+                Platform.revealInFileBrowser(url)
+            }
+        }
+        Button("Stop Watching", systemImage: "eye.slash", role: .destructive) {
+            library.stopWatching(folder)
+        }
     }
 
     private func matches(_ bookmark: RepositoryBookmark) -> Bool {
@@ -194,6 +265,42 @@ private struct GroupHeader: View {
         Text(name)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(.rect)
+    }
+}
+
+/// A watched folder, as the Finder would show one: its repositories fold
+/// away beneath it.
+private struct WatchedFolderRow: View {
+    var name: String
+    var path: String?
+    var count: Int
+
+    var body: some View {
+        Label {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name)
+                        .font(.headline)
+                    Text(path ?? "Folder not found")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                Spacer(minLength: 8)
+                Text(count, format: .number)
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("^[\(count) repository](inflect: true)")
+            }
+        } icon: {
+            Image(systemName: path == nil ? "questionmark.folder" : "folder.fill")
+                .foregroundStyle(path == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
+        }
+        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(.rect)
+        .help("Twig lists every repository in this folder")
     }
 }
 
