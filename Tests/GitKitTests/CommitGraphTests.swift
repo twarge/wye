@@ -37,14 +37,20 @@ import Testing
         let topic = graph.append(id(3), parents: [id(2)])
         #expect(topic.lane == 1)
         #expect(topic.color == merge.outgoing[1].color)
-        // Its parent is already awaited in lane 0, so it joins that lane.
-        #expect(topic.outgoing.map(\.lane) == [0])
+        // It keeps its own lane and color down to where it branched off.
+        #expect(topic.outgoing == [CommitGraph.Line(lane: 1, color: topic.color)])
         #expect(topic.passing.map(\.lane) == [0])
 
+        // The base sits on the line it belongs to; the branch curves in,
+        // still in its own color.
         let base = graph.append(id(2), parents: [id(1)])
         #expect(base.lane == 0)
-        #expect(base.incoming.map(\.lane) == [0])
-        #expect(base.width == 1)
+        #expect(base.color == main.color)
+        #expect(base.incoming == [
+            CommitGraph.Line(lane: 0, color: main.color), CommitGraph.Line(lane: 1, color: topic.color)
+        ])
+        #expect(base.outgoing.map(\.lane) == [0])
+        #expect(graph.openLines.map(\.lane) == [0])
     }
 
     @Test func unrelatedBranchTipsGetTheirOwnLanes() {
@@ -53,7 +59,13 @@ import Testing
         let second = graph.append(id(8), parents: [id(1)])
         #expect(first.lane == 0)
         #expect(second.lane == 1)
-        #expect(second.outgoing.map(\.lane) == [0])
-        #expect(graph.openLines.map(\.lane) == [0])
+        #expect(second.outgoing.map(\.lane) == [1])
+        #expect(first.color != second.color)
+        #expect(graph.openLines.map(\.lane) == [0, 1])
+
+        let base = graph.append(id(1), parents: [])
+        #expect(base.lane == 0)
+        #expect(base.incoming.map(\.lane) == [0, 1])
+        #expect(graph.openLines.isEmpty)
     }
 }

@@ -26,6 +26,11 @@ public struct CommitGraph: Sendable {
     public struct Line: Hashable, Sendable {
         public var lane: Int
         public var color: Int
+
+        public init(lane: Int, color: Int) {
+            self.lane = lane
+            self.color = color
+        }
     }
 
     private struct Lane {
@@ -65,13 +70,17 @@ public struct CommitGraph: Sendable {
         }
 
         for (position, parent) in parents.enumerated() {
-            if let existing = lanes.firstIndex(where: { $0?.next == parent }) {
-                // Another child already leads to this parent: join its lane.
-                row.outgoing.append(Line(lane: existing, color: lanes[existing]!.color))
-            } else if position == 0 {
-                // The first parent continues the commit's own lane.
+            if position == 0 {
+                // The first parent continues the commit's own lane, in its
+                // own color, even when another line already leads to that
+                // parent: a branch keeps its lane and color all the way
+                // down to the commit it started from, and the line it left
+                // keeps its own.
                 place(Lane(next: parent, color: color), at: lane)
                 row.outgoing.append(Line(lane: lane, color: color))
+            } else if let existing = lanes.firstIndex(where: { $0?.next == parent }) {
+                // A merged line that is already drawn: join its lane.
+                row.outgoing.append(Line(lane: existing, color: lanes[existing]!.color))
             } else {
                 let target = freeLane()
                 let branchColor = takeColor()

@@ -229,13 +229,18 @@ extension RepositoryModel {
 
     // MARK: Branches on remotes
 
-    func deleteRemoteBranch(_ id: String) async {
+    /// Whether the branch was deleted on its remote.
+    @discardableResult
+    func deleteRemoteBranch(_ id: String) async -> Bool {
+        var isDeleted = false
         await runRemote("Deleting Branch") { repository, transfer, _ in
             try await repository.deleteRemoteBranch(id, credentials: CredentialStore.shared, transfer: transfer)
+            isDeleted = true
             if self.selection == .remoteBranch(id) {
                 self.selection = .history
             }
         }
+        return isDeleted
     }
 
     func renameRemoteBranch(_ id: String, to name: String) async {

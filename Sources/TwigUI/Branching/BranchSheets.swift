@@ -35,20 +35,23 @@ struct RenameBranchSheet: View {
     }
 }
 
-/// Confirms deleting a branch, saying how many commits only it has.
+/// Confirms deleting a branch, saying how many commits only it has, and
+/// offers to delete the remote branch it tracks along with it.
 struct DeleteBranchSheet: View {
     var model: RepositoryModel
     var branch: String
 
-    /// Commits that neither `HEAD` nor the branch's upstream contain.
+    /// Commits that nothing kept would still contain: `HEAD`, and the
+    /// branch's upstream unless that is being deleted too.
     @State private var unmerged: Int?
+    @State private var deletesRemoteBranch = false
 
     var body: some View {
         BranchingSheetForm(
             title: "Delete Branch",
             confirmTitle: unmerged ?? 0 > 0 ? "Delete Anyway" : "Delete",
             isDestructive: true,
-            canConfirm: unmerged != nil,
+            canConfirm: unmerged != nil && !(deletesRemoteBranch && model.isTransferring),
             confirm: delete
         ) {
             Section {
@@ -56,31 +59,67 @@ struct DeleteBranchSheet: View {
             } footer: {
                 Text(explanation)
             }
+            if let tracked {
+                Section {
+                    Toggle("Also Delete “\(tracked.name)”", isOn: $deletesRemoteBranch)
+                    if deletesRemoteBranch {
+                        Label {
+                            Text("Deletes “\(remoteParts.branch)” on “\(remoteParts.remote)” for everyone who uses it. "
+                                 + "This can’t be undone from Twig.")
+                                .fixedSize(horizontal: false, vertical: true)
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+            }
         }
-        .task {
-            unmerged = (try? await model.repository.unmergedCommitCount(of: branch)) ?? 0
+        .task(id: deletesRemoteBranch) {
+            unmerged = nil
+            unmerged = (try? await model.repository.unmergedCommitCount(
+                of: branch, countingUpstream: !deletesRemoteBranch
+            )) ?? 0
         }
     }
 
     private var name: String { RepositoryModel.displayName(ofReference: branch) }
 
+    /// The remote branch this one tracks, when there is one to delete.
+    private var tracked: Branch? {
+        guard let upstream = model.snapshot?.branches.first(where: { $0.id == branch })?.upstream else { return nil }
+        return model.snapshot?.remotes.lazy.flatMap(\.branches).first { $0.name == upstream.name }
+    }
+
+    private var remoteParts: (remote: String, branch: String) {
+        tracked.map { model.remoteParts(of: $0.id) } ?? ("", "")
+    }
+
     private var explanation: String {
+        let kept = deletesRemoteBranch ? "the current branch" : "the current branch or its upstream"
         switch unmerged {
         case nil:
-            "Checking what the branch holds…"
+            return "Checking what the branch holds…"
         case 0:
-            "Everything on “\(name)” is merged into the current branch or its upstream, so no commits are lost."
+            return "Everything on “\(name)” is merged into \(kept), so no commits are lost."
         case let count?:
-            "“\(name)” has \(count) \(count == 1 ? "commit" : "commits") that \(count == 1 ? "is" : "are") not merged "
-                + "into the current branch or its upstream. Deleting it loses \(count == 1 ? "that commit" : "them") "
-                + "unless another branch or tag holds them."
+            return "“\(name)” has \(count) \(count == 1 ? "commit" : "commits") that \(count == 1 ? "is" : "are") not merged "
+                + "into \(kept). Deleting it loses \(count == 1 ? "that commit" : "them") "
+                + "unless another branch or tag holds \(count == 1 ? "it" : "them")."
         }
     }
 
     private func delete() {
         let branch = branch
         let force = unmerged ?? 0 > 0
-        Task { await model.deleteBranch(branch, force: force) }
+        let remoteBranch = deletesRemoteBranch ? tracked?.id : nil
+        Task {
+            if let remoteBranch {
+                await model.deleteBranch(branch, force: force, alsoDeleting: remoteBranch)
+            } else {
+                await model.deleteBranch(branch, force: force)
+            }
+        }
     }
 }
 

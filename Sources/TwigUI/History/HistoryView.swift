@@ -40,7 +40,9 @@ struct HistoryView: View {
                         case .commit(let row):
                             CommitRow(row: row, labels: model.refLabels[row.id] ?? [], graphWidth: graphWidth,
                                       showsGraph: preferences.showsGraph, size: rowSize,
-                                      isHead: row.id == headID, hasNote: history.notes.hasNote(row.id))
+                                      isHead: row.id == headID, hasNote: history.notes.hasNote(row.id)) {
+                                Task { await history.toggleFold(of: row.id) }
+                            }
                                 .tag(row.id)
                                 // Onto a branch in the sidebar, to cherry-pick.
                                 .draggable(dragText(for: row.id))
@@ -269,6 +271,8 @@ private struct CommitRow: View {
     /// `HEAD`'s commit is bold, in place of a badge.
     var isHead = false
     var hasNote = false
+    /// Folds or unfolds the branch a merge brought in.
+    var toggleFold: () -> Void = {}
 
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -302,7 +306,7 @@ private struct CommitRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(alignment: .leading) {
             if showsGraph {
-                GraphCell(row: row.graph, width: graphWidth)
+                GraphCell(row: row.graph, width: graphWidth, fold: row.fold, toggleFold: toggleFold)
             }
         }
         .accessibilityElement(children: .combine)

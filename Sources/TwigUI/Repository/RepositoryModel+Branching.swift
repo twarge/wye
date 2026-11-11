@@ -67,6 +67,13 @@ extension RepositoryModel {
         }
     }
 
+    /// Deletes a local branch and the remote branch it tracks. The remote
+    /// branch goes first: if that fails, nothing has changed.
+    func deleteBranch(_ id: String, force: Bool, alsoDeleting remoteBranch: String) async {
+        guard await deleteRemoteBranch(remoteBranch) else { return }
+        await deleteBranch(id, force: force)
+    }
+
     func deleteBranch(_ id: String, force: Bool) async {
         await perform(.deleteBranch) { repository in
             try await repository.deleteBranch(id, force: force)

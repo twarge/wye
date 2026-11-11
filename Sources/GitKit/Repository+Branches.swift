@@ -119,7 +119,7 @@ extension Repository {
 
     /// How many commits on a local branch neither `HEAD` nor the branch's
     /// upstream contain: what deleting it would lose.
-    public func unmergedCommitCount(of name: String) throws -> Int {
+    public func unmergedCommitCount(of name: String, countingUpstream: Bool = true) throws -> Int {
         let branch = try localBranch(name)
         defer { git_reference_free(branch) }
 
@@ -132,7 +132,9 @@ extension Repository {
             try check(git_revwalk_hide_head(walk))
         }
         var upstream: OpaquePointer?
-        if git_branch_upstream(&upstream, branch) == 0 {
+        // When the upstream is being deleted too, what it holds is no
+        // longer kept anywhere by it.
+        if countingUpstream, git_branch_upstream(&upstream, branch) == 0 {
             defer { git_reference_free(upstream) }
             // An upstream that points nowhere (its remote branch was pruned)
             // simply contains nothing.

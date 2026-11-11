@@ -139,15 +139,14 @@ struct UpstreamMenu: View {
         let candidates = (model.snapshot?.remotes.flatMap(\.branches) ?? []).filter { $0.nameWithoutRemote != "HEAD" }
         Menu("Upstream Branch", systemImage: "arrow.up.arrow.down") {
             ForEach(candidates) { candidate in
-                Button {
+                // A toggle, so the menu draws the system's own checkmark
+                // beside the branch that is tracked.
+                Toggle(candidate.name, isOn: Binding {
+                    candidate.name == upstream
+                } set: { isTracked in
+                    guard isTracked else { return }
                     Task { await model.setUpstream(of: branch.id, to: candidate.id) }
-                } label: {
-                    if candidate.name == upstream {
-                        Label(candidate.name, systemImage: "checkmark")
-                    } else {
-                        Text(candidate.name)
-                    }
-                }
+                })
             }
             if !candidates.isEmpty {
                 Divider()

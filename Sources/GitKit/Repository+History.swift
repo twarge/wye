@@ -105,6 +105,34 @@ extension Repository {
         return commits
     }
 
+    /// The commits a merge brought in: those its other parents lead to and
+    /// its first parent does not, as `git rev-list <merge>^2 ^<merge>^1`.
+    /// At most `limit`; empty for a commit that is not a merge.
+    public func commitsMerged(by id: OID, limit: Int = 50_000) throws -> [OID] {
+        var commit: OpaquePointer?
+        var raw = id.raw
+        try check(git_commit_lookup(&commit, pointer, &raw))
+        defer { git_commit_free(commit) }
+        let count = git_commit_parentcount(commit)
+        guard count > 1, let first = git_commit_parent_id(commit, 0) else { return [] }
+
+        var walk: OpaquePointer?
+        try check(git_revwalk_new(&walk, pointer))
+        defer { git_revwalk_free(walk) }
+        for position in 1..<count {
+            guard let parent = git_commit_parent_id(commit, position) else { continue }
+            try check(git_revwalk_push(walk, parent))
+        }
+        try check(git_revwalk_hide(walk, first))
+
+        var merged: [OID] = []
+        var oid = git_oid()
+        while merged.count < limit, git_revwalk_next(&oid, walk) == 0 {
+            merged.append(OID(oid))
+        }
+        return merged
+    }
+
     public func closeHistory(_ cursor: HistoryCursor) {
         walks[cursor] = nil
     }

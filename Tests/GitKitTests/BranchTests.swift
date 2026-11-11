@@ -73,6 +73,8 @@ import Testing
         // Not in HEAD (main), but in its upstream.
         let repository = try fixture.open()
         #expect(try await repository.unmergedCommitCount(of: "refs/heads/topic") == 0)
+        // Deleting the upstream as well would lose the commit only it keeps.
+        #expect(try await repository.unmergedCommitCount(of: "refs/heads/topic", countingUpstream: false) == 1)
         try await repository.deleteBranch("refs/heads/topic")
         #expect(try fixture.git("branch", "--format=%(refname:short)") == "base\nmain")
     }

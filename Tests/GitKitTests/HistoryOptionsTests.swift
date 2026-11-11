@@ -58,6 +58,20 @@ private func interleaved(_ fixture: Fixture) throws {
         try Fixture.run(["log", "--format=%H"] + arguments, in: fixture.url).split(separator: "\n").map(String.init)
     }
 
+    @Test func theCommitsAMergeBroughtInMatchGit() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        try interleaved(fixture)
+        let repository = try fixture.open()
+        let merge = try fixture.git("rev-parse", "main~1")
+        let merged = try await repository.commitsMerged(by: OID(hex: merge)!).map(\.hex)
+        #expect(Set(merged) == Set(try gitLog(fixture, "\(merge)^2", "^\(merge)^1")))
+        #expect(merged.count == 2)
+        // Not a merge: nothing to fold.
+        let plain = try fixture.git("rev-parse", "main")
+        #expect(try await repository.commitsMerged(by: OID(hex: plain)!).isEmpty)
+    }
+
     @Test func dateOrderMatchesGit() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }

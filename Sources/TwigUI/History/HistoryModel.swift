@@ -9,6 +9,8 @@ final class HistoryModel {
     struct Row: Identifiable {
         let commit: Commit
         let graph: CommitGraph.Row
+        /// For a merge whose branch can fold away: whether it is folded.
+        var fold: GraphCell.Fold?
 
         var id: OID { commit.id }
     }
@@ -95,6 +97,13 @@ final class HistoryModel {
     private var cursor: HistoryCursor?
     private var graph = CommitGraph()
     private var lastPeriod: DateComponents?
+    /// Every commit read so far, hidden or not, to lay out again when a
+    /// merge folds or unfolds.
+    private var commitsRead: [Commit] = []
+    /// The merges folded shut, each with the commits it brought in, which
+    /// the list leaves out.
+    private var folded: [OID: Set<OID>] = [:]
+    private var hidden: Set<OID> = []
     private var isLoadingMore = false
     /// Counts reloads, so a page read for an earlier one is dropped, and a
     /// search knows to run again.
@@ -151,10 +160,8 @@ final class HistoryModel {
         }
         guard generation == self.generation else { return }
 
-        items = []
-        graph = CommitGraph()
-        lastPeriod = nil
-        graphWidth = 1
+        commitsRead = []
+        resetLayout()
         append(page)
         if let selection, !contains(selection) {
             self.selection = nil
@@ -175,9 +182,43 @@ final class HistoryModel {
         isLoadingMore = true
         defer { isLoadingMore = false }
         let generation = generation
-        guard let page = try? await repository.nextCommits(from: cursor, limit: pageSize),
-              generation == self.generation else { return }
-        append(page)
+        // A page may be all commits of folded merges: read on until rows arrive.
+        let count = items.count
+        while items.count == count, !isComplete {
+            guard let page = try? await repository.nextCommits(from: cursor, limit: pageSize),
+                  generation == self.generation else { return }
+            append(page)
+        }
+    }
+
+    /// Folds a merge shut, hiding the commits it brought in, or opens it.
+    func toggleFold(of merge: OID) async {
+        if folded[merge] != nil {
+            folded[merge] = nil
+        } else {
+            guard let merged = try? await repository.commitsMerged(by: merge), !merged.isEmpty else { return }
+            folded[merge] = Set(merged)
+        }
+        layOutAgain()
+        // A selected commit that folded away gives its place to the merge.
+        if let selection, hidden.contains(selection) {
+            self.selection = merge
+        }
+        multipleSelection.subtract(hidden)
+        if multipleSelection.count < 2 { multipleSelection = [] }
+    }
+
+    private func layOutAgain() {
+        hidden = folded.values.reduce(into: []) { $0.formUnion($1) }
+        resetLayout()
+        layOut(commitsRead)
+    }
+
+    private func resetLayout() {
+        items = []
+        graph = CommitGraph()
+        lastPeriod = nil
+        graphWidth = 1
     }
 
     /// Selects a commit and scrolls to it, reading on until it is reached.
@@ -187,6 +228,12 @@ final class HistoryModel {
         await search.cancelAndClear()
         // Without the branch filters, which may have hidden it.
         await apply(layout)
+        // Out of any folded merge too.
+        let holding = folded.filter { $0.value.contains(id) }.keys
+        if !holding.isEmpty {
+            for merge in holding { folded[merge] = nil }
+            layOutAgain()
+        }
         while !contains(id), !isComplete, rowCount < limit {
             let count = items.count
             await loadMore()
@@ -230,6 +277,11 @@ final class HistoryModel {
 
     private func append(_ commits: [Commit]) {
         isComplete = commits.count < pageSize
+        commitsRead += commits
+        layOut(commits)
+    }
+
+    private func layOut(_ commits: [Commit]) {
         let calendar = Calendar.current
         let components: Set<Calendar.Component>? = switch layout.grouping {
         case .day: [.year, .month, .day]
@@ -238,7 +290,7 @@ final class HistoryModel {
         case .none: nil
         }
         let firstParentOnly = options.firstParentOnly
-        for commit in commits {
+        for commit in commits where !hidden.contains(commit.id) {
             if let components {
                 let period = calendar.dateComponents(components, from: commit.author.date)
                 if period != lastPeriod {
@@ -248,10 +300,16 @@ final class HistoryModel {
             }
             // Following first parents only, the other parents are not listed
             // and get no lane.
-            let parents = firstParentOnly ? Array(commit.parentIDs.prefix(1)) : commit.parentIDs
+            // A folded merge draws only the line it sits on, and no line
+            // leads to a commit that is folded away.
+            let isFolded = folded[commit.id] != nil
+            var parents = firstParentOnly || isFolded ? Array(commit.parentIDs.prefix(1)) : commit.parentIDs
+            parents.removeAll(where: hidden.contains)
             let row = graph.append(commit.id, parents: parents)
             graphWidth = max(graphWidth, row.width)
-            items.append(.commit(Row(commit: commit, graph: row)))
+            let canFold = commit.parentIDs.count > 1 && !firstParentOnly
+            let fold: GraphCell.Fold? = canFold ? (isFolded ? .folded : .open) : nil
+            items.append(.commit(Row(commit: commit, graph: row, fold: fold)))
         }
     }
 }
