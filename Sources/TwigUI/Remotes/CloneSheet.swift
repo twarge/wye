@@ -3,6 +3,8 @@ import SwiftUI
 
 /// Clones a repository from a URL, then adds it to the library and opens it.
 struct CloneSheet: View {
+    /// An address to start with, from a link or the share sheet.
+    var initialAddress = ""
     var open: (RepositoryBookmark) -> Void
 
     @Environment(RepositoryLibrary.self) private var library
@@ -18,6 +20,7 @@ struct CloneSheet: View {
     @State private var activity: RemoteOperations.Activity?
     @State private var credentials = CredentialBroker()
     @State private var error: PresentedError?
+    @State private var isBrowsingAccounts = false
 
     var body: some View {
         NavigationStack {
@@ -36,6 +39,7 @@ struct CloneSheet: View {
                     })
                     .autocorrectionDisabled()
                     .noAutocapitalization()
+                    Button("Clone from Account…", systemImage: "person.crop.circle") { isBrowsingAccounts = true }
                 } footer: {
                     Text("An HTTPS or SSH address. Twig asks for an access token or an SSH key if the host wants one.")
                 }
@@ -88,8 +92,14 @@ struct CloneSheet: View {
             }
         }
         .credentialPrompts(credentials)
+        .sheet(isPresented: $isBrowsingAccounts) {
+            CloneFromAccountSheet { url = $0 }
+        }
         .alert(for: $error)
         .interactiveDismissDisabled(activity != nil)
+        .onAppear {
+            if url.isEmpty { url = initialAddress }
+        }
     }
 
     private var trimmedURL: String {
@@ -124,6 +134,7 @@ struct CloneSheet: View {
             defer {
                 if isScoped { parent?.stopAccessingSecurityScopedResource() }
             }
+            let logged = ActivityLog.shared.begin("Clone", repository: destination.lastPathComponent)
             do {
                 try await credentials.run {
                     let transfer = Transfer()
@@ -138,12 +149,15 @@ struct CloneSheet: View {
                     )
                 }
                 let bookmark = try library.add(destination)
+                ActivityLog.shared.finish(logged, error: nil, transfer: activity?.progress)
                 activity = nil
                 dismiss()
                 open(bookmark)
             } catch is CancellationError {
+                ActivityLog.shared.finish(logged, .cancelled)
                 activity = nil
             } catch {
+                ActivityLog.shared.finish(logged, error: error, transfer: activity?.progress)
                 activity = nil
                 self.error = PresentedError(error)
             }

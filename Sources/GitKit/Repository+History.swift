@@ -20,10 +20,36 @@ public struct HistoryOptions: Hashable, Sendable, Codable {
     public var order: Order
     /// Follows only the first parent of each merge: `git log --first-parent`.
     public var firstParentOnly: Bool
+    /// When not empty, the whole history lists only what these references,
+    /// by full name, lead to: `git log <branch>…`. A history of one
+    /// reference keeps to that reference.
+    public var includedReferences: [String]
+    /// References, by full name, whose commits are left out, as with
+    /// `git log ^<branch>`. Commits another listed reference also leads to
+    /// are left out too: that is what hiding a branch means in git.
+    public var hiddenReferences: [String]
 
-    public init(order: Order = .date, firstParentOnly: Bool = false) {
+    public init(
+        order: Order = .date, firstParentOnly: Bool = false,
+        includedReferences: [String] = [], hiddenReferences: [String] = []
+    ) {
         self.order = order
         self.firstParentOnly = firstParentOnly
+        self.includedReferences = includedReferences
+        self.hiddenReferences = hiddenReferences
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case order, firstParentOnly, includedReferences, hiddenReferences
+    }
+
+    /// Options saved before the reference filters existed still read.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        order = try container.decodeIfPresent(Order.self, forKey: .order) ?? .date
+        firstParentOnly = try container.decodeIfPresent(Bool.self, forKey: .firstParentOnly) ?? false
+        includedReferences = try container.decodeIfPresent([String].self, forKey: .includedReferences) ?? []
+        hiddenReferences = try container.decodeIfPresent([String].self, forKey: .hiddenReferences) ?? []
     }
 
     var sorting: UInt32 {
@@ -52,7 +78,7 @@ extension Repository {
     /// children, in the order `options` asks for. Close the cursor when done
     /// with it.
     public func openHistory(_ scope: HistoryScope, options: HistoryOptions = HistoryOptions()) throws -> HistoryCursor {
-        let walk = try makeWalk(scope, sorting: options.sorting)
+        let walk = try makeWalk(scope, sorting: options.sorting, options: options)
         if options.firstParentOnly {
             try check(git_revwalk_simplify_first_parent(walk.pointer))
         }
@@ -85,7 +111,7 @@ extension Repository {
 
     /// How many commits a history holds.
     public func commitCount(in scope: HistoryScope, options: HistoryOptions = HistoryOptions()) throws -> Int {
-        let walk = try makeWalk(scope, sorting: GIT_SORT_NONE.rawValue)
+        let walk = try makeWalk(scope, sorting: GIT_SORT_NONE.rawValue, options: options)
         if options.firstParentOnly {
             try check(git_revwalk_simplify_first_parent(walk.pointer))
         }
@@ -103,12 +129,20 @@ extension Repository {
         return Commit(commit)
     }
 
-    private func makeWalk(_ scope: HistoryScope, sorting: UInt32) throws -> Walk {
+    private func makeWalk(_ scope: HistoryScope, sorting: UInt32, options: HistoryOptions) throws -> Walk {
         var pointer: OpaquePointer?
         try check(git_revwalk_new(&pointer, self.pointer))
         let walk = Walk(pointer: pointer!)
         try check(git_revwalk_sorting(walk.pointer, sorting))
+        // A filter naming a branch that has since gone hides or shows nothing.
+        for name in options.hiddenReferences {
+            _ = git_revwalk_hide_ref(walk.pointer, name)
+        }
         switch scope {
+        case .allReferences where !options.includedReferences.isEmpty:
+            for name in options.includedReferences {
+                _ = git_revwalk_push_ref(walk.pointer, name)
+            }
         case .allReferences:
             for glob in ["refs/heads", "refs/remotes", "refs/tags"] {
                 try check(git_revwalk_push_glob(walk.pointer, glob))

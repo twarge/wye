@@ -105,9 +105,9 @@ extension Repository {
 
     /// Reads a file's diff again with every line's exact bytes, which the
     /// shown diff does not keep, and checks it is still the diff that was shown.
-    private func patchSource(of shown: FileDiff, side: WorkingCopySide, options: DiffOptions) throws -> PatchSource {
+    func patchSource(of shown: FileDiff, side: WorkingCopySide, options: DiffOptions) throws -> PatchSource {
         try withWorkingCopyDiff(of: shown.path, side: side, options: options) { diff in
-            guard git_diff_num_deltas(diff) == 1, try DiffBuilder.files(in: diff).first == shown else {
+            guard git_diff_num_deltas(diff) == 1, try DiffBuilder.files(in: diff, newSideIsWorkingTree: side == .unstaged).first == shown else {
                 throw WorkingCopyError.diffChanged(path: shown.path)
             }
             var patch: OpaquePointer?

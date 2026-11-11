@@ -36,8 +36,11 @@ final class ViewRequests {
 /// | --- | --- |
 /// | ⌘N, ⌘T | New Window (the system's), New Tab |
 /// | ⌘O, ⌥⌘O | Add Repository…, Clone Repository… |
+/// | ⌃⌘N | New Repository… |
+/// | ⌘[, ⌘] | Back, Forward |
 /// | ⇧⌘O | Quick Open… |
-/// | ⌘F | Find in History |
+/// | ⌘F | Find in the diff or file that has focus, otherwise Find in History |
+/// | ⌘G, ⇧⌘G | Find Next, Find Previous |
 /// | ⌘Z, ⇧⌘Z | Undo, Redo (the text's while a field has focus) |
 /// | ⌘1 to ⌘4 | Working Copy, History, Stashes, Reflog |
 /// | ⌘0 | Show HEAD |
@@ -50,8 +53,11 @@ final class ViewRequests {
 ///
 /// Destructive commands have none and keep their confirmations.
 struct TwigCommands: Commands {
+    var library: RepositoryLibrary
+
     @FocusedValue(RepositoryModel.self) private var model
     @FocusedValue(WindowActions.self) private var window
+    @FocusedValue(\.findModel) private var find
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
@@ -69,6 +75,10 @@ struct TwigCommands: Commands {
                 Button("Clone Repository…") { window?.isCloning = true }
                     .keyboardShortcut("o", modifiers: [.command, .option])
                     .disabled(window == nil)
+                Button("New Repository…") { window?.isCreatingRepository = true }
+                    .keyboardShortcut("n", modifiers: [.command, .control])
+                    .disabled(window == nil)
+                OpenRecentMenu(library: library, window: window)
             }
             Section {
                 Button("Quick Open…") { window?.quickOpen = .jump }
@@ -85,8 +95,9 @@ struct TwigCommands: Commands {
         HistoryCommands(model: model)
 
         CommandGroup(before: .textEditing) {
+            FindMenuItems(find: find)
             Button("Find in History") { model?.showHistorySearch() }
-                .keyboardShortcut("f")
+                .keyboardShortcut(find == nil ? KeyboardShortcut("f") : nil)
                 .disabled(model == nil)
             Divider()
         }
@@ -99,11 +110,36 @@ struct TwigCommands: Commands {
                 show("Reflog", .reflog, key: "4")
             }
             Section {
+                Button("Back") {
+                    if let model { Task { await model.windowState.navigation.goBack(in: model) } }
+                }
+                .keyboardShortcut("[")
+                .disabled(model?.windowState.navigation.canGoBack != true)
+                Button("Forward") {
+                    if let model { Task { await model.windowState.navigation.goForward(in: model) } }
+                }
+                .keyboardShortcut("]")
+                .disabled(model?.windowState.navigation.canGoForward != true)
+            }
+            Section {
                 Button("Refresh") {
                     Task { await model?.refresh() }
                 }
                 .keyboardShortcut("r")
                 .disabled(model == nil)
+            }
+        }
+
+        CommandGroup(after: .windowArrangement) {
+            Section {
+                Button("Activity") {
+                    if Platform.hasAuxiliaryWindows {
+                        openWindow(id: TwigScene.activityWindowID)
+                    } else {
+                        window?.isShowingActivity = true
+                    }
+                }
+                .disabled(!Platform.hasAuxiliaryWindows && window == nil)
             }
         }
 
@@ -154,6 +190,8 @@ private struct RepositoryMenu: View {
                 .disabled(isTransferring || upstream == nil)
             Button("Remotes…") { model?.remotes.isManagingRemotes = true }
                 .disabled(model == nil)
+            Button("Repository Settings…") { model?.windowState.isShowingSettings = true }
+                .disabled(model == nil)
         }
         Section {
             Button("New Branch…") {
@@ -166,6 +204,7 @@ private struct RepositoryMenu: View {
                 .disabled(model?.canStartMerge != true)
             Button("Rebase…") { window?.quickOpen = .rebase }
                 .disabled(model?.canStartMerge != true || model?.headBranchName == nil)
+            RebaseMenuItems(model: model)
         }
         Section {
             Button("Check Out Revision…") { model?.present(.pickRevision(.checkOut)) }

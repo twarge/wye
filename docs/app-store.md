@@ -32,9 +32,8 @@ One app record serves both platforms (Universal Purchase), keyed on the
 bundle ID both builds share.
 
 1. Certificates, Identifiers & Profiles ▸ Identifiers: register the explicit
-   App ID `com.twarge.app.twig`. No capabilities beyond the defaults are
-   needed (the Keychain and the sandbox need none); cloud signing makes the
-   profiles.
+   App ID `com.twarge.app.twig`, and the identifiers its extensions need
+   (next section). Cloud signing makes the profiles.
 2. App Store Connect ▸ Apps ▸ New App: platforms **iOS** and **macOS**, name
    **Twig** (have a fallback such as "Twig Git" if the name is taken),
    primary language English (U.S.), bundle ID `com.twarge.app.twig`, a SKU
@@ -45,10 +44,64 @@ bundle ID both builds share.
 5. Fill in the answers below, the URLs, the description and the screenshots
    for each platform's version page.
 
+## Once: extensions and the app group
+
+The app carries two extensions, each with its own bundle ID under the app's:
+
+| Target | Bundle ID | Platforms | What it is |
+| --- | --- | --- | --- |
+| TwigWidgets | `com.twarge.app.twig.widgets` | iOS, macOS | The Unpushed Changes widget. |
+| TwigShare | `com.twarge.app.twig.share` | iOS | Share sheet ▸ Clone in Twig. |
+
+The app writes the repositories' status where the widget reads it, and the
+share extension leaves an address for the app, through an app group:
+
+- iOS: `group.com.twarge.app.twig`, in `App/Twig-iOS.entitlements`,
+  `Extensions/Widgets/Widgets-iOS.entitlements` and
+  `Extensions/Share/Share.entitlements`.
+- macOS: `257KW9ZJFP.com.twarge.app.twig`, the team-prefixed form, in
+  `App/Twig.entitlements` and `Extensions/Widgets/Widgets-macOS.entitlements`.
+  A sandboxed Mac app may use a group named after its team without a
+  provisioning profile, which is what keeps `make build` working with no
+  profile installed. (The `group.` form on the Mac needs a profile for every
+  build, local ones included.) Both names are in
+  `Sources/TwigShared/SharedContainer.swift`.
+
+What the owner has to do once, in Certificates, Identifiers & Profiles:
+
+1. Identifiers ▸ App Groups ▸ +: register `group.com.twarge.app.twig`
+   (description "Twig").
+2. Identifiers ▸ App IDs: register `com.twarge.app.twig.widgets` and
+   `com.twarge.app.twig.share` as explicit App IDs (platform iOS, macOS
+   checked too for the widgets one; for the share one iOS is enough).
+3. On each of the three App IDs (`com.twarge.app.twig`, `.widgets`,
+   `.share`), enable **App Groups** and choose `group.com.twarge.app.twig`.
+   The Mac's team-prefixed group needs no registration.
+4. Nothing else changes: the extensions are embedded in the app, ship in
+   the same archive and upload, and need no App Store Connect record of
+   their own. Cloud signing (`-allowProvisioningUpdates` with the API key)
+   makes their profiles once the identifiers exist; if it reports that a
+   profile does not include the App Groups entitlement, the step above was
+   missed for that identifier.
+
+Local builds need none of this: `make build` signs the Mac app and its
+widget with the development certificate and the team-prefixed group, the
+Simulator needs no profile, and CI builds with `CODE_SIGNING_ALLOWED=NO`.
+Building for a real iPhone or iPad from Xcode does need the identifiers
+above (Xcode's automatic signing can register them itself when signed in
+to the team).
+
+Siri, Shortcuts and Spotlight need no setup: the App Intents (Pull, Fetch,
+Push, Open, Get Status of a repository, and Fetch All) are in TwigUI and
+reach the app's `Metadata.appintents` through `AppIntentsPackage`, with the
+App Shortcuts phrases ("Pull Horizontal in Twig").
+
 ## Each release
 
-1. Bump `MARKETING_VERSION` in `Twig.xcodeproj/project.pbxproj` (both target
-   configurations), or leave it and give the version when running.
+1. Bump `MARKETING_VERSION` in `Twig.xcodeproj/project.pbxproj` (the
+   project's two configurations, which every target inherits so the app and
+   its extensions always carry the same version), or leave it and give the
+   version when running.
 2. Either push a tag, `git tag v0.2.0 && git push origin v0.2.0`, or run
    **App Store** from the Actions tab (Run workflow), optionally with a
    version.

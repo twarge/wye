@@ -16,7 +16,7 @@ struct FileContentView: View {
             if let content {
                 switch content.contents {
                 case .text(let text):
-                    TextFileView(text: text)
+                    TextFileView(text: text, path: path)
                 case .binary(let data):
                     if let image = CGImage.decoded(from: data) {
                         ScrollView([.horizontal, .vertical]) {
@@ -64,16 +64,20 @@ struct FileContentView: View {
 
 /// Text with line numbers, made a line at a time as it scrolls into view.
 private struct TextFileView: View {
-    let lines: [Substring]
+    let lines: [String]
+    /// For the syntax colours, chosen by the file's name.
+    let path: String
+    @State private var syntax = TextSyntaxLoader()
 
-    init(text: String) {
-        var lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+    init(text: String, path: String) {
+        var lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         if text.hasSuffix("\n") { lines.removeLast() }
         self.lines = lines
+        self.path = path
     }
 
     var body: some View {
-        let gutter = CGFloat(String(max(lines.count, 10)).count) * 8 + 6
+        let gutter = CGFloat(String(max(lines.count, 10)).count) * AppearancePreferences.shared.digitWidth + 6
         ScrollView([.vertical, .horizontal]) {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(lines.indices, id: \.self) { index in
@@ -82,16 +86,19 @@ private struct TextFileView: View {
                             .foregroundStyle(.tertiary)
                             .frame(width: gutter, alignment: .trailing)
                             .padding(.trailing, 10)
-                        Text(lines[index].isEmpty ? " " : String(lines[index]))
+                        CodeLineText(text: lines[index], tokens: syntax.tokens(forLine: index), findRow: FindRow(group: "", line: index))
                             .fixedSize()
                     }
-                    .font(.code)
+                    .font(AppearancePreferences.shared.codeFont)
                     .padding(.vertical, 1)
+                    .id(FindRow(group: "", line: index))
                 }
             }
             .padding(.vertical, 8)
             .textSelection(.enabled)
         }
+        .findInLines(lines)
+        .task(id: lines) { syntax.load(lines, path: path) }
     }
 }
 

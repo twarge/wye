@@ -7,7 +7,12 @@ struct WorkingCopyView: View {
 
     @State private var pendingDiscard: DiscardRequest?
     @State private var pendingResolution: ResolutionRequest?
+    @State private var resolving: ConflictTarget?
     @State private var isStashing = false
+    /// Files to stash on their own, waiting for the stash sheet.
+    @State private var stashingFiles: StashFiles?
+    /// A rule to edit in the ignore rules before adding it.
+    @State private var customIgnore: CustomIgnoreRequest?
     @State private var isEditingIgnoreRules = false
     @State private var filter = ""
     /// Folders of the tree the user folded, by their IDs.
@@ -37,7 +42,7 @@ struct WorkingCopyView: View {
         let changes = FileList.filtered(model.workingCopy.entries.filter { !$0.isConflicted }, by: filter)
         let ignored = showsIgnored ? filteredPaths(hidden.ignored) : []
         let assumed = showsAssumeUnchanged ? filteredPaths(hidden.assumeUnchanged) : []
-        List(selection: $model.workingCopy.selection) {
+        List(selection: $model.workingCopy.selectedSet) {
             if conflicted.isEmpty && ignored.isEmpty && assumed.isEmpty {
                 changeRows(changes)
             } else {
@@ -48,6 +53,8 @@ struct WorkingCopyView: View {
                                 pendingResolution = ResolutionRequest(path: entry.path, side: side)
                             } markResolved: {
                                 Task { await model.markResolved(entry.path) }
+                            } openResolver: {
+                                resolving = ConflictTarget(path: entry.path)
                             }
                             .tag(entry.path)
                         }
@@ -113,6 +120,10 @@ struct WorkingCopyView: View {
         .sheet(isPresented: $isEditingIgnoreRules) {
             IgnoreRulesSheet(model: model)
         }
+        .sheet(item: $customIgnore) { request in
+            IgnoreRulesSheet(model: model, initial: request)
+        }
+        .environment(\.requestCustomIgnore, RequestCustomIgnoreAction { customIgnore = $0 })
         .navigationTitle(model.name)
         .navigationSubtitle(subtitle)
         // A large title would sit behind the commit fields pinned at the top.
@@ -132,6 +143,20 @@ struct WorkingCopyView: View {
                 Menu("Changes", systemImage: "ellipsis.circle") {
                     Button("Stash Changes…", systemImage: "archivebox") {
                         isStashing = true
+                    }
+                    .disabled(model.workingCopy.entries.isEmpty)
+                    Button("Stash Selected Files…", systemImage: "archivebox") {
+                        stashingFiles = StashFiles(paths: model.workingCopy.selectedChangedPaths)
+                    }
+                    .disabled(model.workingCopy.selectedChangedPaths.isEmpty)
+                    Menu("Save as Patch", systemImage: "doc.badge.arrow.up") {
+                        Button("All Changes…") { Task { await model.savePatch(.all) } }
+                        Button("Staged Changes…") { Task { await model.savePatch(.staged) } }
+                            .disabled(!model.workingCopy.hasStagedChanges)
+                        Button("Selected Files…") {
+                            Task { await model.savePatch(.files(model.workingCopy.selectedChangedPaths)) }
+                        }
+                        .disabled(model.workingCopy.selectedChangedPaths.isEmpty)
                     }
                     .disabled(model.workingCopy.entries.isEmpty)
                     Button("Discard All Changes…", systemImage: "trash", role: .destructive) {
@@ -187,6 +212,10 @@ struct WorkingCopyView: View {
         .sheet(isPresented: $isStashing) {
             StashSheet(model: model)
         }
+        .sheet(item: $stashingFiles) { files in
+            StashSheet(model: model, paths: files.paths)
+        }
+        .conflictResolver(for: $resolving, model: model)
         .task(id: model.viewRequests.pending) {
             // Asked for from the menu bar.
             if model.viewRequests.take(.stashChanges) { isStashing = true }
@@ -224,6 +253,16 @@ struct WorkingCopyView: View {
                                systemImage: state == .staged ? "minus.square" : "plus.square") {
                             Task { await model.toggleStaging(of: entries) }
                         }
+                        Section {
+                            let paths = entries.filter { !$0.isConflicted }.map(\.path)
+                            Button("Stash Folder…", systemImage: "archivebox") {
+                                stashingFiles = StashFiles(paths: paths)
+                            }
+                            Button("Save Folder as Patch…", systemImage: "doc.badge.arrow.up") {
+                                Task { await model.savePatch(.files(paths)) }
+                            }
+                        }
+                        .disabled(entries.allSatisfy(\.isConflicted))
                         WorkingCopyFolderMenu(model: model, node: row.node)
                     }
                 case .file(let entry):
@@ -273,6 +312,16 @@ struct WorkingCopyView: View {
                     pendingDiscard = .file(entry.path, isUntracked: entry.unstaged == .untracked)
                 }
             }
+            Section {
+                let paths = menuTargets(for: entry)
+                Button(paths.count == 1 ? "Stash…" : "Stash \(paths.count.formatted()) Files…", systemImage: "archivebox") {
+                    stashingFiles = StashFiles(paths: paths)
+                }
+                Button(paths.count == 1 ? "Save as Patch…" : "Save \(paths.count.formatted()) Files as Patch…",
+                       systemImage: "doc.badge.arrow.up") {
+                    Task { await model.savePatch(.files(paths)) }
+                }
+            }
             Divider()
             WorkingCopyFileMenu(model: model, entry: entry)
         }
@@ -294,10 +343,23 @@ struct WorkingCopyView: View {
         }
     }
 
+    /// What a row's menu acts on: every selected file when the row is one
+    /// of several selected, otherwise the row's file.
+    private func menuTargets(for entry: StatusEntry) -> [String] {
+        let selected = model.workingCopy.selectedChangedPaths
+        return selected.count > 1 && selected.contains(entry.path) ? selected : [entry.path]
+    }
+
     private var subtitle: String {
         let count = model.workingCopy.entries.count
         return "Working Copy (\(count.formatted()) \(count == 1 ? "Change" : "Changes"))"
     }
+}
+
+/// Files to stash on their own.
+private struct StashFiles: Identifiable {
+    let id = UUID()
+    var paths: [String]
 }
 
 /// Unstaged changes the user asked to throw away, waiting for confirmation.
@@ -544,6 +606,7 @@ private struct ConflictRow: View {
     var entry: StatusEntry
     var resolve: (ConflictSide) -> Void
     var markResolved: () -> Void
+    var openResolver: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
@@ -569,6 +632,8 @@ private struct ConflictRow: View {
 
     @ViewBuilder
     private var actions: some View {
+        Button("Resolve…", systemImage: "arrow.triangle.merge", action: openResolver)
+        Divider()
         Button("Use Ours", systemImage: "arrow.left.circle") { resolve(.ours) }
         Button("Use Theirs", systemImage: "arrow.right.circle") { resolve(.theirs) }
         Divider()
@@ -611,27 +676,28 @@ private struct FileLabel: View {
 private struct CommitComposer: View {
     @Bindable var model: RepositoryModel
 
+    /// What recent history offers the fields' completions.
+    @State private var sources = CommitCompletionSources()
+
     var body: some View {
+        let context = CompletionContext(paths: model.workingCopy.entries.map(\.path), sources: sources)
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                TextField(model.workingCopy.isAmending ? "Amended Subject" : "Commit Subject", text: $model.workingCopy.subject)
+            CompletingField(text: $model.workingCopy.subject, isSubject: true, context: context) { selection in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    TextField(
+                        model.workingCopy.isAmending ? "Amended Subject" : "Commit Subject",
+                        text: $model.workingCopy.subject, selection: selection
+                    )
                     .font(.headline)
-                SubjectLengthMarker(subject: model.workingCopy.subject)
-                MessageMenu(model: model)
-            }
-            DescriptionEditor(text: $model.workingCopy.details)
-            HStack {
-                if let identity = model.workingCopy.identity {
-                    Text("As \(identity.name)")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                } else {
-                    SettingsButton {
-                        Label("Set your name and email to commit", systemImage: "person.crop.circle.badge.exclamationmark")
-                            .font(.callout)
-                    }
+                    SubjectLengthMarker(subject: model.workingCopy.subject)
+                    MessageMenu(model: model)
                 }
+            }
+            CompletingField(text: $model.workingCopy.details, isSubject: false, context: context) { selection in
+                DescriptionEditor(text: $model.workingCopy.details, selection: selection)
+            }
+            HStack {
+                AuthorMenu(model: model)
                 Spacer()
                 Toggle("Amend", isOn: Binding {
                     model.workingCopy.isAmending
@@ -642,7 +708,7 @@ private struct CommitComposer: View {
                 .disabled(!model.workingCopy.isAmending && !model.canAmend)
                 .help("Replace the last commit with the staged changes and this message")
                 Button(model.workingCopy.isAmending ? "Amend" : "Commit") {
-                    Task { await model.commitOrAmend() }
+                    Task { await model.commitFromComposer() }
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.return, modifiers: .command)
@@ -655,6 +721,9 @@ private struct CommitComposer: View {
         .overlay(alignment: .bottom) {
             Divider()
         }
+        .task(id: model.snapshot?.head) {
+            sources = (try? await model.repository.commitCompletionSources()) ?? CommitCompletionSources()
+        }
     }
 }
 
@@ -662,9 +731,10 @@ private struct CommitComposer: View {
 /// starts a new line, dressed as the system's bordered text field.
 private struct DescriptionEditor: View {
     @Binding var text: String
+    var selection: Binding<TextSelection?>
 
     var body: some View {
-        TextEditor(text: $text)
+        TextEditor(text: $text, selection: selection)
             .font(.body)
             .scrollContentBackground(.hidden)
             .frame(minHeight: 64, idealHeight: 64, maxHeight: 160)
@@ -696,6 +766,14 @@ struct WorkingCopyDetailView: View {
     @State private var stagedSelection: Set<Int> = []
     @State private var unstagedSelection: Set<Int> = []
     @State private var pendingDiscard: LineDiscard?
+    /// Lines of the unstaged diff to stash, waiting for a message.
+    @State private var pendingStash: LineStash?
+    @State private var stashMessage = ""
+
+    private struct LineStash {
+        var file: FileDiff
+        var lines: Set<Int>
+    }
 
     private struct Loaded {
         var path: String
@@ -749,6 +827,10 @@ struct WorkingCopyDetailView: View {
                     }
                     .padding(.bottom, 20)
                 }
+                .findInDiffs([
+                    loaded.staged.map { FindableDiff($0, caption: "Staged") },
+                    loaded.unstaged.map { FindableDiff($0, caption: "Unstaged") }
+                ].compactMap(\.self))
             } else {
                 ContentUnavailableView("No File Selected", systemImage: "doc.text")
             }
@@ -767,7 +849,26 @@ struct WorkingCopyDetailView: View {
             }
         } message: { request in
             let count = request.file.hunks.flatMap(\.lines).count { request.lines.contains($0.id) }
-            Text("\(count == 1 ? "1 changed line" : "\(count.formatted()) changed lines") in “\(request.file.path)” go back to the staged version. The unstaged changes to them are lost and cannot be recovered.")
+            let lines = count == 1 ? "1 changed line" : "\(count.formatted()) changed lines"
+            if request.file.change == .untracked {
+                Text("\(lines) in “\(request.file.path)” are taken out of it. The file is not tracked, so git has no copy of them.")
+            } else {
+                Text("\(lines) in “\(request.file.path)” go back to the staged version. The unstaged changes to them are lost.")
+            }
+        }
+        .alert(
+            "Stash the Selected Lines?",
+            isPresented: Binding { pendingStash != nil } set: { if !$0 { pendingStash = nil } },
+            presenting: pendingStash
+        ) { request in
+            TextField("Message", text: $stashMessage, prompt: Text("Optional"))
+            Button("Cancel", role: .cancel) {}
+            Button("Stash") {
+                let message = stashMessage
+                Task { await model.saveStash(lines: request.lines, of: request.file, message: message) }
+            }
+        } message: { request in
+            Text("The lines are set aside in a new stash and taken out of “\(request.file.path)”. The rest of its changes stay.")
         }
     }
 
@@ -787,6 +888,9 @@ struct WorkingCopyDetailView: View {
             } discard: { lines in
                 let isWholeHunk = file.hunks.contains { $0.changedLineIDs == lines }
                 pendingDiscard = LineDiscard(file: file, lines: lines, isWholeHunk: isWholeHunk)
+            } stash: { lines in
+                stashMessage = ""
+                pendingStash = LineStash(file: file, lines: lines)
             }
         }
     }

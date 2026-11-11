@@ -20,6 +20,13 @@ final class RepositoryInterfaceState {
         var archived: [String] = []
         var skipsAutoArchiving: [String] = []
         var hidesMergedMark: [String] = []
+        /// Optional, so state saved before they existed still reads.
+        var issueTrackers: [IssueTracker]?
+        var sidebarLists: SidebarListOptions?
+        /// The author profile this repository commits as, and whether it
+        /// signs commits, when it differs from the app's (`AuthorProfiles`).
+        var authorProfile: UUID?
+        var signsCommits: Bool?
     }
 
     private(set) var stored = Stored()
@@ -77,6 +84,29 @@ final class RepositoryInterfaceState {
 
     func setHidesMergedMark(_ branch: String, _ hides: Bool) {
         update { $0.hidesMergedMark.set(branch, hides) }
+    }
+
+    /// The issue trackers that commit messages link to, beyond the hosting
+    /// service's own issues. For a settings screen to list and change.
+    var issueTrackers: [IssueTracker] { stored.issueTrackers ?? [] }
+
+    func setIssueTrackers(_ trackers: [IssueTracker]) {
+        update { $0.issueTrackers = trackers.isEmpty ? nil : trackers }
+    }
+
+    /// How the sidebar sorts and shortens its long lists.
+    var sidebarLists: SidebarListOptions { stored.sidebarLists ?? SidebarListOptions() }
+
+    func setSidebarLists(_ options: SidebarListOptions) {
+        update { $0.sidebarLists = options }
+    }
+
+    func setAuthorProfile(_ id: UUID?) {
+        update { $0.authorProfile = id }
+    }
+
+    func setSignsCommits(_ signs: Bool?) {
+        update { $0.signsCommits = signs }
     }
 
     /// A renamed branch keeps its pin and flags.

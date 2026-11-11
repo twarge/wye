@@ -32,5 +32,57 @@
 			</array>
 		</dict>
 	</array>
+	<!-- twig:// links: the widget opens a repository with one, and the share
+	     extension, Services and Shortcuts ask for the clone sheet with one.
+	     Sources/TwigShared/TwigLink.swift reads them. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.twarge.app.twig</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>twig</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Services ▸ Clone in Twig, for a selected address in another app.
+	     App/Sources/ServicesDelegate.swift answers it. -->
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Clone in Twig</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>cloneRepository</string>
+			<key>NSPortName</key>
+			<string>Twig</string>
+			<key>NSRequiredContext</key>
+			<dict/>
+			<key>NSSendTypes</key>
+			<array>
+				<string>public.utf8-plain-text</string>
+				<string>public.url</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Signing in to hosting services with the OAuth device flow, by host.
+	     Each value is the client id of an OAuth application the app's
+	     publisher registers with that service, with the device flow
+	     enabled and no client secret (GitHub: an OAuth app with "Enable
+	     Device Flow"; GitLab: a non-confidential application with the
+	     "api" and "write_repository" scopes). Empty means Twig offers only
+	     personal access tokens for that host. A key per GitHub Enterprise
+	     or self-managed GitLab host offers it there too. -->
+	<key>TwigOAuthClientIDs</key>
+	<dict>
+		<key>github.com</key>
+		<string></string>
+		<key>gitlab.com</key>
+		<string></string>
+	</dict>
 </dict>
 </plist>

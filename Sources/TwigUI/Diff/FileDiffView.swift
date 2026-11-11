@@ -14,6 +14,8 @@ struct DiffLineActions {
     /// Throws lines away, given by their IDs; `nil` where that is not offered.
     /// The caller confirms first.
     var discard: ((Set<Int>) -> Void)?
+    /// Stashes lines, given by their IDs; `nil` where that is not offered.
+    var stash: ((Set<Int>) -> Void)? = nil
 }
 
 /// One file's diff: a header that folds it, then its lines.
@@ -34,6 +36,9 @@ struct FileDiffView: View {
 
     /// Where a range selection starts: the line selected last.
     @State private var anchor: Int?
+    /// Syntax colours and changes within lines, worked out off the main actor.
+    @State private var decorations = DiffDecorationLoader()
+    @Environment(FindModel.self) private var find: FindModel?
 
     var body: some View {
         header
@@ -41,24 +46,38 @@ struct FileDiffView: View {
             if let submodule = file.submodule {
                 SubmoduleDiffRows(change: submodule)
             } else if file.isBinary {
-                note("Binary file")
+                if ImageDiffView.canShow(file) {
+                    ImageDiffView(file: file)
+                } else {
+                    note("Binary file")
+                }
             } else if file.hunks.isEmpty {
                 note(file.change == .renamed ? "Renamed without changes" : "No changes to show")
             } else {
-                let gutter = file.gutterWidth
+                let gutter = file.gutterWidth(digit: AppearancePreferences.shared.digitWidth)
                 let style = DiffTextStyle(
                     tabWidth: DiffPreferences.shared.tabWidth, showsInvisibles: DiffPreferences.shared.showsInvisibles
                 )
+                let decorated = decorations.decorations
+                let findGroup = FindRow.group(for: file, caption: caption)
                 ForEach(file.hunks) { hunk in
                     hunkHeader(hunk)
+                        .diffLineMenu(actions, lines: menuLines(for: hunk), isHunk: menuLines(for: hunk) == hunk.changedLineIDs)
                     ForEach(hunk.lines) { line in
                         DiffLineView(
                             line: line,
                             gutter: gutter,
                             style: style,
                             isSelected: isSelected(line),
-                            toggle: actions != nil && line.isChange ? { toggle(line) } : nil
+                            toggle: actions != nil && line.isChange ? { toggle(line) } : nil,
+                            tokens: decorated?.tokens[line.id] ?? [],
+                            changes: decorated?.changes[line.id] ?? [],
+                            findRow: FindRow(group: findGroup, line: line.id)
                         )
+                        .onAppear { decorations.load(file) }
+                        .diffLineMenu(actions, lines: menuLines(for: line))
+                        // Outermost, so find can scroll to rows not yet made.
+                        .id(FindRow(group: findGroup, line: line.id))
                     }
                 }
                 if file.isTruncated {
@@ -105,12 +124,20 @@ struct FileDiffView: View {
         .fileActionsMenu(fileActions)
         .background(.fill.tertiary)
         .padding(.top, 10)
+        .onAppear { decorations.load(file) }
+        .onChange(of: file) { decorations.load(file) }
+        // Find unfolds a folded file to show a match in it.
+        .onChange(of: find?.currentMatch) {
+            if isCollapsed, find?.currentMatch?.row.group == FindRow.group(for: file, caption: caption) {
+                isCollapsed = false
+            }
+        }
     }
 
     private func hunkHeader(_ hunk: FileDiff.Hunk) -> some View {
         HStack(spacing: 12) {
             Text(hunk.header)
-                .font(.smallCode)
+                .font(AppearancePreferences.shared.smallCodeFont)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             Spacer(minLength: 0)
@@ -200,6 +227,14 @@ private struct DiffLineView: View {
     var isSelected: Bool
     /// Selects or deselects the line, for a line that can be staged on its own.
     var toggle: (() -> Void)?
+    var tokens: [SyntaxToken] = []
+    /// The part of the line that differs from the line it replaced or was replaced by.
+    var changes: [LineMark] = []
+    /// The line's ID for find, which is also its scroll ID.
+    var findRow: FindRow
+
+    @Environment(FindModel.self) private var find: FindModel?
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         if let toggle {
@@ -232,26 +267,25 @@ private struct DiffLineView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .foregroundStyle(line.kind == .noNewline ? .secondary : .primary)
         }
-        .font(.code)
+        .font(AppearancePreferences.shared.codeFont)
         .padding(.vertical, 1)
         .background(background)
     }
 
-    /// The line's text, with tabs laid out and, when asked for, spaces and
-    /// tabs drawn faintly as dots and arrows.
+    /// The line's text in its syntax colours, with tabs laid out and, when
+    /// asked for, spaces and tabs drawn faintly as dots and arrows; the
+    /// changed part of the line and any find matches marked behind it.
     private var content: Text {
         guard line.kind != .noNewline, !line.text.isEmpty else { return Text(line.text.isEmpty ? " " : line.text) }
-        let runs = style.runs(line.text)
-        guard runs.count > 1 || runs.first?.isInvisible == true else { return Text(runs.first?.text ?? line.text) }
-        var text = AttributedString()
-        for run in runs {
-            var piece = AttributedString(run.text)
-            if run.isInvisible {
-                piece.foregroundColor = .secondary.opacity(0.6)
-            }
-            text += piece
-        }
-        return Text(text)
+        let renderer = CodeLineRenderer(
+            tabWidth: style.tabWidth,
+            showsInvisibles: style.showsInvisibles,
+            theme: AppearancePreferences.shared.theme,
+            scheme: colorScheme,
+            changeColor: line.kind == .addition ? DiffColors.addedChange : DiffColors.removedChange
+        )
+        let matches = find?.marks(for: findRow) ?? []
+        return Text(renderer.render(line.text, tokens: tokens, marks: changes + matches))
     }
 
     private func number(_ value: Int?) -> some View {
@@ -274,20 +308,30 @@ private struct DiffLineView: View {
             return .accentColor.opacity(0.3)
         }
         return switch line.kind {
-        case .addition: .green.opacity(0.16)
-        case .deletion: .red.opacity(0.16)
+        case .addition: DiffColors.added
+        case .deletion: DiffColors.removed
         case .context, .noNewline: .clear
         }
     }
 }
 
 private extension FileDiff {
-    /// Room for the longest line number in the file.
-    var gutterWidth: CGFloat {
+    /// Room for the longest line number in the file, `digit` wide a digit.
+    func gutterWidth(digit: CGFloat) -> CGFloat {
         // Numbers only grow, so the largest are in the last hunk.
         let largest = hunks.last?.lines.reduce(0) { max($0, $1.oldNumber ?? 0, $1.newNumber ?? 0) } ?? 0
-        return CGFloat(String(max(largest, 10)).count) * 8 + 6
+        return CGFloat(String(max(largest, 10)).count) * digit + 6
     }
+}
+
+/// The backgrounds of added and removed lines, and the stronger ones for
+/// the part of a line that changed, chosen to keep every syntax theme's
+/// text readable in light and dark.
+enum DiffColors {
+    static let added = Color.green.opacity(0.16)
+    static let removed = Color.red.opacity(0.16)
+    static let addedChange = Color.green.opacity(0.34)
+    static let removedChange = Color.red.opacity(0.34)
 }
 
 /// A submodule's change: the commits it records on each side and, when the

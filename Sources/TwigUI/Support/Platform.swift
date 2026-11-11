@@ -328,6 +328,16 @@ extension Platform {
         #endif
     }
 
+    /// Whether the app has windows besides its repository windows, such as
+    /// the activity log; iOS shows those as sheets.
+    static var hasAuxiliaryWindows: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
+    }
+
     /// Opens a new window with `open` and attaches it to the front window as
     /// a tab. SwiftUI can open a window but has no way to say "as a tab".
     @MainActor
@@ -520,6 +530,30 @@ private struct SettingsOpener: ViewModifier {
                     }
             }
         }
+        #endif
+    }
+}
+
+// MARK: Code text
+
+extension Platform {
+    /// The point size code is drawn at until the reader picks another: the
+    /// size of `Font.code` on each platform.
+    static var defaultCodeFontSize: Double {
+        #if os(macOS)
+        12
+        #else
+        13
+        #endif
+    }
+
+    /// Whether a diff or file shows a Find button. On macOS Find is in the
+    /// Edit menu with its shortcut; on iOS a button is the way to reach it.
+    static var showsFindButton: Bool {
+        #if os(macOS)
+        false
+        #else
+        true
         #endif
     }
 }

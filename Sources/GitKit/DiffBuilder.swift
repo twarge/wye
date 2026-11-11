@@ -7,7 +7,9 @@ enum DiffBuilder {
     /// further, and laying it out would stall the interface.
     static let lineLimit = 5_000
 
-    static func files(in diff: OpaquePointer?) throws -> [FileDiff] {
+    /// - Parameter newSideIsWorkingTree: whether the diff's new side is the
+    ///   working tree, so its files are read from disk rather than as blobs.
+    static func files(in diff: OpaquePointer?, newSideIsWorkingTree: Bool = false) throws -> [FileDiff] {
         let count = git_diff_num_deltas(diff)
         var files: [FileDiff] = []
         files.reserveCapacity(count)
@@ -20,6 +22,7 @@ enum DiffBuilder {
             // the file is binary.
             guard let delta = patch.map(git_patch_get_delta) ?? git_diff_get_delta(diff, index) else { continue }
             var file = FileDiff(delta.pointee)
+            file.newSideIsWorkingTree = newSideIsWorkingTree
             if let change = submoduleChange(delta.pointee) {
                 // Its patch is only "Subproject commit" lines.
                 file.submodule = change
@@ -111,6 +114,17 @@ extension FileDiff {
             hunks: [],
             isTruncated: false
         )
+        oldBlobID = Self.blobID(delta.old_file)
+        newBlobID = Self.blobID(delta.new_file)
+    }
+
+    /// A side's blob, when libgit2 knows it and the side holds a file.
+    private static func blobID(_ file: git_diff_file) -> OID? {
+        guard file.flags & GIT_DIFF_FLAG_VALID_ID.rawValue != 0,
+              file.flags & GIT_DIFF_FLAG_EXISTS.rawValue != 0,
+              file.mode != UInt16(GIT_FILEMODE_COMMIT.rawValue) else { return nil }
+        let id = OID(file.id)
+        return id == RemoteSession.noObject ? nil : id
     }
 }
 

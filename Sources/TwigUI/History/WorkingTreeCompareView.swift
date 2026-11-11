@@ -83,6 +83,7 @@ struct WorkingTreeCompareView: View {
                 }
                 .padding(.bottom, 20)
             }
+            .findInDiffs((files ?? []).map { FindableDiff($0) })
             .navigationTitle(comparison.title)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

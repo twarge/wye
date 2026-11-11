@@ -31,11 +31,17 @@ struct RepositoryView: View {
             detail
         }
         .focusedSceneValue(model)
+        // For diffs that read more than their lines, such as images.
+        .environment(\.diffRepository, model.repository)
+        .repositoryWindowServices(model)
         .alert(for: $model.error)
         .branchingSheets(model)
         .remoteDialogs(for: model)
         .fileRequestDialogs(model)
         .nestedDialogs(model)
+        .hostingDialogs(model)
+        .commitNotePresenters(model)
+        .rebasePresenters(model)
         .background {
             // The sidebar's menus ask for them too, so they do not wait
             // for the history to be on screen; on a view of their own,
@@ -71,6 +77,8 @@ struct RepositoryView: View {
             SubmoduleView(model: model, name: name)
         case .worktree(let name):
             WorktreeView(model: model, name: name)
+        case .pullRequests:
+            PullRequestListView(model: model)
         case nil:
             ContentUnavailableView("Nothing Selected", systemImage: "sidebar.left")
         }
@@ -87,6 +95,8 @@ struct RepositoryView: View {
             CommitDetailView(model: model, commitID: model.selectedStash, emptyTitle: "No Stash Selected")
         case .reflog:
             CommitDetailView(model: model, commitID: model.history.reflog.selectedCommit, emptyTitle: "No Entry Selected")
+        case .pullRequests:
+            PullRequestDetailView(model: model)
         case .submodule, .worktree, nil:
             Color.clear
         }

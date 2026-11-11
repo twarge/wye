@@ -27,14 +27,42 @@ public struct FileDiff: Identifiable, Hashable, Sendable {
     /// For a submodule, the commits it records on each side in place of
     /// lines, which a submodule has none of.
     public var submodule: SubmoduleChange? = nil
+    /// The blob on each side, where git knows it: `nil` on the side where the
+    /// file does not exist, and for a working tree file git has not hashed.
+    public var oldBlobID: OID? = nil
+    public var newBlobID: OID? = nil
+    /// Whether the new side is the file in the working tree rather than a
+    /// blob, as in an unstaged diff.
+    public var newSideIsWorkingTree = false
 
     public var id: String { path }
+
+    public init(
+        change: FileChange, oldPath: String, path: String, isBinary: Bool, additions: Int, deletions: Int,
+        hunks: [Hunk], isTruncated: Bool, submodule: SubmoduleChange? = nil
+    ) {
+        self.change = change
+        self.oldPath = oldPath
+        self.path = path
+        self.isBinary = isBinary
+        self.additions = additions
+        self.deletions = deletions
+        self.hunks = hunks
+        self.isTruncated = isTruncated
+        self.submodule = submodule
+    }
 
     public struct Hunk: Identifiable, Hashable, Sendable {
         public var id: Int
         /// The `@@ -1,5 +1,7 @@` line.
         public var header: String
         public var lines: [Line]
+
+        public init(id: Int, header: String, lines: [Line]) {
+            self.id = id
+            self.header = header
+            self.lines = lines
+        }
     }
 
     public struct Line: Identifiable, Hashable, Sendable {
@@ -43,6 +71,14 @@ public struct FileDiff: Identifiable, Hashable, Sendable {
         public var oldNumber: Int?
         public var newNumber: Int?
         public var text: String
+
+        public init(id: Int, kind: Kind, oldNumber: Int?, newNumber: Int?, text: String) {
+            self.id = id
+            self.kind = kind
+            self.oldNumber = oldNumber
+            self.newNumber = newNumber
+            self.text = text
+        }
 
         public enum Kind: Hashable, Sendable {
             case context

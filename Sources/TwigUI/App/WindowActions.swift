@@ -10,6 +10,11 @@ import SwiftUI
 final class WindowActions {
     var isAddingRepository = false
     var isCloning = false
+    var isCreatingRepository = false
+    /// The activity log, as a sheet where there are no other windows.
+    var isShowingActivity = false
+    /// The address the clone sheet starts with, from a `twig://clone` link.
+    var cloneAddress = ""
     /// Quick open on screen, and what it is choosing for.
     var quickOpen: QuickOpenPurpose?
     var error: PresentedError?
@@ -62,8 +67,19 @@ private struct WindowActionsPresenter: ViewModifier {
         content
             .focusedSceneValue(actions)
             .environment(actions)
-            .sheet(isPresented: $actions.isCloning) {
-                CloneSheet { actions.open($0) }
+            .sheet(isPresented: $actions.isCloning, onDismiss: { actions.cloneAddress = "" }) {
+                CloneSheet(initialAddress: actions.cloneAddress) { actions.open($0) }
+            }
+            .background {
+                // On views of their own: one view takes one sheet of each kind.
+                Color.clear
+                    .sheet(isPresented: $actions.isCreatingRepository) {
+                        NewRepositorySheet { actions.open($0) }
+                    }
+                Color.clear
+                    .sheet(isPresented: $actions.isShowingActivity) {
+                        ActivityView(showsDone: true)
+                    }
             }
             .fileImporter(isPresented: $actions.isAddingRepository, allowedContentTypes: [.folder]) { result in
                 switch result {

@@ -1,5 +1,6 @@
 import Foundation
 import GitKit
+import Synchronization
 
 /// A repository's pages on its hosting service, worked out from a remote
 /// URL: `https://host/owner/project(.git)`, `ssh://git@host/owner/project`,
@@ -21,7 +22,15 @@ struct HostedRepository: Hashable {
     let url: URL
     let kind: Kind
 
+    /// Reads a remote URL. A host an account was added for is of that
+    /// account's service, which is how self-hosted services are known.
     init?(remoteURL: String) {
+        self.init(remoteURL: remoteURL, knownHosts: KnownHostKinds.shared.kinds)
+    }
+
+    /// Reads a remote URL, with `knownHosts` saying which service a host
+    /// runs where its name does not tell: host (with port) to kind.
+    init?(remoteURL: String, knownHosts: [String: Kind]) {
         guard let parts = Self.parts(of: remoteURL.trimmingCharacters(in: .whitespaces)) else { return nil }
         let (scheme, host) = (parts.scheme, parts.host)
         var path = parts.path
@@ -31,7 +40,7 @@ struct HostedRepository: Hashable {
         guard !host.isEmpty, !path.isEmpty,
               let url = URL(string: "\(scheme)://\(host)/\(Self.encode(path))") else { return nil }
         self.url = url
-        kind = Self.kind(of: host)
+        kind = knownHosts[host.lowercased()] ?? Self.kind(of: host)
     }
 
     /// A branch's page, or `nil` where the host's addresses are unknown.
@@ -113,13 +122,16 @@ struct HostedRepository: Hashable {
         return ("https", host, String(remoteURL[remoteURL.index(after: colon)...]))
     }
 
-    private static func kind(of host: String) -> Kind {
-        let host = host.lowercased()
-        if host == "github.com" || host.hasPrefix("github.") { return .github }
+    static func kind(of host: String) -> Kind {
+        var host = host.lowercased()
+        // The port does not change which service it is.
+        if let colon = host.lastIndex(of: ":") { host = String(host[..<colon]) }
+        if host == "github.com" || host.hasPrefix("github.") || host.hasSuffix(".ghe.com") { return .github }
         if host == "gitlab.com" || host.hasPrefix("gitlab.") { return .gitlab }
         if host == "bitbucket.org" || host.hasPrefix("bitbucket.") { return .bitbucket }
         if host.hasSuffix("sr.ht") { return .sourcehut }
-        if ["codeberg.org", "gitea.com"].contains(host) || host.hasPrefix("gitea.") || host.hasPrefix("forgejo.") {
+        if ["codeberg.org", "gitea.com", "code.forgejo.org"].contains(host) || host.hasPrefix("gitea.")
+            || host.hasPrefix("forgejo.") {
             return .gitea
         }
         return .other
@@ -199,5 +211,23 @@ extension RepositoryModel {
             if let url = hostedRepository(remote: name)?.url(forCommit: id) { return url }
         }
         return nil
+    }
+}
+
+/// The services of hosts that accounts were added for, so that a
+/// self-hosted GitLab or Gitea at `git.example.com` gets its links and
+/// pull requests. The account store keeps it up to date.
+final class KnownHostKinds: Sendable {
+    static let shared = KnownHostKinds()
+
+    private let storage = Mutex<[String: HostedRepository.Kind]>([:])
+
+    /// Host, with port, to service.
+    var kinds: [String: HostedRepository.Kind] {
+        storage.withLock { $0 }
+    }
+
+    func replace(with kinds: [String: HostedRepository.Kind]) {
+        storage.withLock { $0 = kinds }
     }
 }

@@ -1,5 +1,6 @@
 import GitKit
 import SwiftUI
+import TwigShared
 
 /// The repositories in their groups, filtered by a search and sorted.
 /// Rows drag onto a group's header or onto another row to move into that
@@ -165,7 +166,10 @@ struct RepositoryList: View {
         Button {
             open(bookmark)
         } label: {
-            RepositoryRow(name: bookmark.name, path: library.path(of: bookmark), status: heads.statuses[bookmark.id])
+            RepositoryRow(
+                name: bookmark.name, path: library.path(of: bookmark), status: heads.statuses[bookmark.id],
+                summary: RepositoryStatusBoard.shared.summaries[bookmark.id]
+            )
         }
         .buttonStyle(.plain)
         .draggable(RepositoryDragReference.url(for: bookmark.id)) {
@@ -308,6 +312,7 @@ private struct RepositoryRow: View {
     var name: String
     var path: String?
     var status: RepositoryHeads.Status?
+    var summary: RepositoryStatusSummary?
 
     var body: some View {
         Label {
@@ -322,6 +327,9 @@ private struct RepositoryRow: View {
                         .truncationMode(.middle)
                 }
                 Spacer(minLength: 8)
+                if let summary, !isMissing, summary.ahead > 0 || summary.behind > 0 {
+                    AheadBehindBadge(ahead: summary.ahead, behind: summary.behind)
+                }
                 if let branch = status?.branch {
                     Label(branch, systemImage: status?.isDetached == true ? "smallcircle.filled.circle" : "arrow.triangle.branch")
                         .font(.callout.monospacedDigit())
@@ -342,6 +350,29 @@ private struct RepositoryRow: View {
 
     private var isMissing: Bool {
         path == nil || status == .missing
+    }
+}
+
+/// Commits to push and to pull, as the toolbar's buttons count them.
+private struct AheadBehindBadge: View {
+    var ahead: Int
+    var behind: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if behind > 0 {
+                Label("\(behind)", systemImage: "arrow.down")
+            }
+            if ahead > 0 {
+                Label("\(ahead)", systemImage: "arrow.up")
+            }
+        }
+        .labelStyle(.titleAndIcon)
+        .font(.callout.monospacedDigit())
+        .foregroundStyle(.secondary)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("^[\(behind) commit](inflect: true) to pull, ^[\(ahead) commit](inflect: true) to push")
+        .help("Commits to pull and to push, as of the last fetch")
     }
 }
 
@@ -368,16 +399,23 @@ final class RepositoryHeads {
 
     private(set) var statuses: [UUID: Status] = [:]
 
-    /// Reads each repository's `HEAD`, one at a time, off the main thread.
+    /// Reads each repository's `HEAD`, and how it stands against its
+    /// upstream, one at a time, off the main thread. What it learns goes on
+    /// the status board too, for the rows' counts and the widgets.
     func load(_ bookmarks: [RepositoryBookmark], from library: RepositoryLibrary) async {
+        RepositoryStatusBoard.shared.retain(Set(library.listedBookmarks.map(\.id)))
         for bookmark in bookmarks {
             guard !Task.isCancelled else { return }
             let status: Status
             do {
                 let access = try library.access(to: bookmark)
-                status = await Self.status(at: access.url)
+                let read = await Self.status(at: access.url, id: bookmark.id, name: bookmark.name)
                 // Held until the read is done: the folder is only open while it is.
                 withExtendedLifetime(access) {}
+                status = read.status
+                if let summary = read.summary {
+                    RepositoryStatusBoard.shared.record(summary)
+                }
             } catch {
                 status = .missing
             }
@@ -385,15 +423,19 @@ final class RepositoryHeads {
         }
     }
 
-    private nonisolated static func status(at url: URL) async -> Status {
-        await Task.detached(priority: .utility) { () -> Status in
+    private nonisolated static func status(
+        at url: URL, id: UUID, name: String
+    ) async -> (status: Status, summary: RepositoryStatusSummary?) {
+        await Task.detached(priority: .utility) { () -> (Status, RepositoryStatusSummary?) in
             guard Repository.exists(at: url), let repository = try? Repository(at: url),
-                  let head = try? await repository.head() else { return .missing }
-            return switch head {
+                  let head = try? await repository.head() else { return (.missing, nil) }
+            let status: Status = switch head {
             case .branch(let name, _), .unborn(let name):
                 .branch(name.hasPrefix("refs/heads/") ? String(name.dropFirst("refs/heads/".count)) : name)
             case .detached(let id): .detached(id.abbreviated())
             }
+            let summary = try? await RepositoryStatusSummary.read(from: repository, id: id, name: name)
+            return (status, summary)
         }.value
     }
 }

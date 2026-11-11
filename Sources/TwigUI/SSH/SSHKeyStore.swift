@@ -70,6 +70,11 @@ final class SSHKeyStore: Sendable {
         ((try? keys()) ?? []).compactMap { try? privateKey(id: $0.id) }
     }
 
+    /// One key's private half, to sign commits with; `nil` when it is gone.
+    func signingKey(id: String) throws -> SSHPrivateKey? {
+        try privateKey(id: id)
+    }
+
     @discardableResult
     func add(_ key: SSHPrivateKey) throws -> StoredSSHKey {
         let id = UUID().uuidString

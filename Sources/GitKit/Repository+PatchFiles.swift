@@ -100,6 +100,59 @@ extension Repository {
         return (name.isEmpty ? String(prefix.dropLast()) : prefix + name) + ".patch"
     }
 
+    /// The uncommitted changes as a patch in `git diff --binary` form, which
+    /// `git apply` and `applyPatch` read back.
+    ///
+    /// - Parameters:
+    ///   - stagedOnly: Only what is staged, as `git diff --cached`; otherwise
+    ///     everything since `HEAD`, staged or not, as `git diff HEAD`.
+    ///   - paths: Only these files, literally; `nil` for all of them.
+    ///   - includingUntracked: Whether untracked files go in as new files,
+    ///     which `git diff` leaves out. Not with `stagedOnly`.
+    public func workingCopyPatch(
+        stagedOnly: Bool = false, paths: [String]? = nil, includingUntracked: Bool = true
+    ) throws -> String {
+        var options = git_diff_options()
+        try check(git_diff_options_init(&options, UInt32(GIT_DIFF_OPTIONS_VERSION)))
+        options.flags = GIT_DIFF_SHOW_BINARY.rawValue
+        if paths != nil { options.flags |= GIT_DIFF_DISABLE_PATHSPEC_MATCH.rawValue }
+        if !stagedOnly, includingUntracked {
+            options.flags |= GIT_DIFF_INCLUDE_UNTRACKED.rawValue | GIT_DIFF_RECURSE_UNTRACKED_DIRS.rawValue
+                | GIT_DIFF_SHOW_UNTRACKED_CONTENT.rawValue
+        }
+        let head = try headCommit()
+        defer { git_commit_free(head) }
+        let headTree = try tree(of: head)
+        defer { git_tree_free(headTree) }
+        let index = try branchingIndex()
+        defer { git_index_free(index) }
+
+        func write(_ options: inout git_diff_options) throws -> String {
+            var diff: OpaquePointer?
+            if stagedOnly {
+                try check(git_diff_tree_to_index(&diff, pointer, headTree, index, &options))
+            } else {
+                try check(git_diff_tree_to_workdir_with_index(&diff, pointer, headTree, &options))
+            }
+            defer { git_diff_free(diff) }
+            // git diff finds renames by default (`diff.renames`), so the
+            // patch does too and reads the same.
+            var find = git_diff_find_options()
+            try check(git_diff_find_options_init(&find, UInt32(GIT_DIFF_FIND_OPTIONS_VERSION)))
+            find.flags = GIT_DIFF_FIND_RENAMES.rawValue
+            try check(git_diff_find_similar(diff, &find))
+            var buffer = git_buf()
+            defer { git_buf_dispose(&buffer) }
+            try check(git_diff_to_buf(&buffer, diff, GIT_DIFF_FORMAT_PATCH))
+            return buffer.ptr.map { String(cString: $0) } ?? ""
+        }
+        guard let paths else { return try write(&options) }
+        return try withStringArray(paths) { array in
+            options.pathspec = array
+            return try write(&options)
+        }
+    }
+
     /// Applies a patch, as `git format-patch` or `git diff` writes one, to
     /// the working tree, the index or both. Nothing changes unless every
     /// file applies.
@@ -157,9 +210,7 @@ extension Repository {
         guard !text.isEmpty else { throw RewordError.emptyMessage }
         let committer = try branchingSignature()
         defer { git_signature_free(committer) }
-        var id = git_oid()
-        try check(git_commit_amend(&id, head, "HEAD", nil, committer, nil, text + "\n", nil))
-        return OID(id)
+        return try amendHead(head, committer: committer, message: text + "\n", tree: nil)
     }
 
     /// The remote branch that already has a commit, if one does: rewriting

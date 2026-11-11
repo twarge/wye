@@ -106,7 +106,7 @@ extension RepositoryModel {
         let message = composedMessage
         do {
             let start = await repository.beginUndoable(.amend)
-            try await repository.amend(message: message)
+            try await repository.amend(message: message, as: commitIdentity)
             undoStack.take(await repository.finishUndoable(start), for: .amend)
             workingCopy.amend = nil
             workingCopy.subject = draft.subject

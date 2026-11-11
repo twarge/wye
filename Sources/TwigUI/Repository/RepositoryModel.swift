@@ -15,13 +15,15 @@ enum SidebarItem: Hashable {
     case tag(String)
     case submodule(String)
     case worktree(String)
+    /// The pull requests (merge requests on GitLab) of the repository's hosting service.
+    case pullRequests
 
     /// The history this item lists, for the items that list one.
     var historyScope: HistoryScope? {
         switch self {
         case .history: .allReferences
         case .branch(let name), .remoteBranch(let name), .tag(let name): .reference(name)
-        case .workingCopy, .stashes, .reflog, .submodule, .worktree: nil
+        case .workingCopy, .stashes, .reflog, .submodule, .worktree, .pullRequests: nil
         }
     }
 }
@@ -37,6 +39,9 @@ struct RefLabel: Identifiable, Hashable {
 
     var name: String
     var kind: Kind
+    /// Remote branches at the same commit that this local branch's badge
+    /// stands for too, by name (`origin/main`). See `RefLabel.labels(in:)`.
+    var remotes: [String] = []
 
     var id: Self { self }
 }
@@ -50,6 +55,10 @@ struct WorkingCopyState {
     var identity: GitIdentity?
     /// Set while the composer amends the last commit.
     var amend: AmendDraft?
+    /// Every selected file, when several are (`selection` is the one shown).
+    var selectedPaths: Set<String> = []
+    /// The author profile picked for the next commit only.
+    var commitProfile: UUID?
 
     var hasStagedChanges: Bool {
         entries.contains { $0.staged != nil }
@@ -85,6 +94,8 @@ final class RepositoryModel: Identifiable {
     let diskChanges = DiskChanges()
     /// Sheets, confirmations and focus the menu bar asks views for.
     let viewRequests = ViewRequests()
+    /// Interactive rebase, rebase onto and editing earlier commits.
+    let rebasing = RebaseRequests()
     /// File actions waiting on a confirmation or a new name.
     let fileRequests = FileRequests()
     /// What Undo and Redo apply next.
@@ -94,6 +105,10 @@ final class RepositoryModel: Identifiable {
     /// Pinned and archived branches, and how branches stand against the
     /// main branch.
     let interface: RepositoryInterfaceState
+    /// Back and Forward, and the repository settings sheet.
+    let windowState = RepositoryWindowState()
+    /// Publishing, pull requests and the account a remote uses.
+    let hosting = HostingState()
 
     private let access: RepositoryAccess
 
@@ -117,12 +132,13 @@ final class RepositoryModel: Identifiable {
             let snapshot = try await repository.snapshot()
             workingCopy.entries = try await repository.status()
             workingCopy.identity = await repository.identity()
+            updateCommitSigning()
             if let selected = workingCopy.selection, !workingCopy.entries.contains(where: { $0.path == selected }) {
                 workingCopy.selection = nil
             }
             if snapshot != self.snapshot {
                 self.snapshot = snapshot
-                refLabels = Self.labels(in: snapshot)
+                refLabels = RefLabel.labels(in: snapshot)
                 await history.reload()
             }
             revision += 1
@@ -135,11 +151,15 @@ final class RepositoryModel: Identifiable {
     /// refreshes either way.
     func perform(_ operation: (Repository) async throws -> Void) async {
         diskChanges.operationBegan()
+        let logged = ActivityLog.shared.begin(ActivityContext.operationTitle ?? "Operation", repository: name)
+        var failure: (any Error)?
         do {
             try await operation(repository)
         } catch {
+            failure = error
             self.error = PresentedError(error)
         }
+        ActivityLog.shared.finish(logged, error: failure)
         diskChanges.operationEnded()
         await refresh()
     }
@@ -172,34 +192,18 @@ final class RepositoryModel: Identifiable {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .joined(separator: "\n\n")
+        let logged = ActivityLog.shared.begin("Commit", repository: name)
         do {
             let start = await repository.beginUndoable(.commit)
-            try await repository.commit(message: message)
+            try await repository.commit(message: message, as: commitIdentity)
             undoStack.take(await repository.finishUndoable(start), for: .commit)
             workingCopy.subject = ""
             workingCopy.details = ""
+            ActivityLog.shared.finish(logged, error: nil)
         } catch {
+            ActivityLog.shared.finish(logged, error: error)
             self.error = PresentedError(error)
         }
         await refresh()
-    }
-
-    // MARK: Reference labels
-
-    private static func labels(in snapshot: RepositorySnapshot) -> [OID: [RefLabel]] {
-        var labels: [OID: [RefLabel]] = [:]
-        if let target = snapshot.head.target {
-            labels[target, default: []].append(RefLabel(name: "HEAD", kind: .head))
-        }
-        for branch in snapshot.branches {
-            labels[branch.target, default: []].append(RefLabel(name: branch.name, kind: .branch))
-        }
-        for tag in snapshot.tags {
-            labels[tag.target, default: []].append(RefLabel(name: tag.name, kind: .tag))
-        }
-        for branch in snapshot.remotes.flatMap(\.branches) {
-            labels[branch.target, default: []].append(RefLabel(name: branch.name, kind: .remote))
-        }
-        return labels
     }
 }

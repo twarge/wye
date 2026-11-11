@@ -3,15 +3,20 @@ import SwiftUI
 
 /// The app's scenes. The app target is only an entry point that shows this.
 public struct TwigScene: Scene {
-    @State private var library = RepositoryLibrary()
+    @State private var library = RepositoryLibrary.shared
 
     /// Names the repository window, so a command can open another one.
     static let windowID = "repository"
+    /// Names the activity log's window, on macOS.
+    static let activityWindowID = "activity"
 
     public init() {
         // Twig keeps its own git configuration: inside the sandbox it cannot
         // read the one in the user's home folder.
         try? GitEnvironment.useGlobalConfiguration(in: .applicationSupportDirectory.appending(path: "Twig/git"))
+        // Before launch finishes, as the system wants both.
+        FetchNotifications.install()
+        BackgroundRefresh.register(library: RepositoryLibrary.shared)
     }
 
     public var body: some Scene {
@@ -21,10 +26,15 @@ public struct TwigScene: Scene {
         }
         .defaultSize(width: 1240, height: 780)
         .commands {
-            TwigCommands()
+            TwigCommands(library: library)
         }
 
         #if os(macOS)
+        Window("Activity", id: Self.activityWindowID) {
+            ActivityView()
+        }
+        .defaultSize(width: 560, height: 480)
+
         Settings {
             SettingsView()
                 // A fixed width; as tall as the user drags it.
@@ -56,6 +66,7 @@ struct RootView: View {
         }
         .alert(for: $error)
         .windowActions(actions, model: model)
+        .handlesTwigLinks(actions)
         .settingsOpener()
         .onAppear {
             actions.open = { open($0) }
@@ -73,13 +84,23 @@ struct RootView: View {
             }
         }
         .onOpenURL { url in
+            if let link = TwigLink(url) {
+                LinkRouter.shared.request(link)
+                return
+            }
             do {
                 open(try library.add(url))
             } catch {
                 self.error = PresentedError(error)
             }
         }
+        .task {
+            BackgroundFetcher.shared.start(library: library)
+        }
         .onChange(of: scenePhase) {
+            if scenePhase == .background {
+                BackgroundRefresh.schedule()
+            }
             // Catch up with whatever changed while the app was in the background.
             guard scenePhase == .active else { return }
             library.syncWatchedFolders()
@@ -91,6 +112,7 @@ struct RootView: View {
     private func open(_ bookmark: RepositoryBookmark) {
         do {
             model = try RepositoryModel(bookmark: bookmark, access: library.access(to: bookmark))
+            if let model { OpenRepositories.add(model) }
             openRepositoryID = bookmark.id.uuidString
             library.recordOpened(bookmark)
         } catch {

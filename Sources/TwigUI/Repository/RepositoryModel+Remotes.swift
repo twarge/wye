@@ -90,6 +90,9 @@ extension RepositoryModel {
            let remote = names.filter({ upstream.hasPrefix($0 + "/") }).max(by: { $0.count < $1.count }) {
             return remote
         }
+        if let chosen = chosenDefaultRemote {
+            return chosen
+        }
         return names.contains("origin") ? "origin" : names.count == 1 ? names.first : nil
     }
 
@@ -99,9 +102,10 @@ extension RepositoryModel {
 
     // MARK: Fetch
 
-    /// Fetches every remote, pruning remote branches that are gone.
+    /// Fetches every remote, pruning remote branches that are gone unless
+    /// the setting says not to.
     func fetch() async {
-        await fetch(remote: nil, prune: true, tags: .automatic)
+        await fetch(remote: nil, prune: FetchPreferences.prune, tags: .automatic)
     }
 
     /// Fetches one remote, or all of them, as the Fetch options say.
@@ -294,8 +298,10 @@ extension RepositoryModel {
         guard remotes.activity == nil else { return }
         let recordedSubmodules = recordedSubmoduleCommits()
         // A choice made for this operation stands; there is nothing to ask.
-        let policy = autostash == nil ? RemotePreferences.autostash : .never
+        let policy = autostash == nil ? autostashPolicy : .never
         var stashing = autostashes && (autostash ?? (policy == .always))
+        let logged = ActivityLog.shared.begin(ActivityLog.title(forProgress: title), repository: name)
+        var failure: (any Error)?
         do {
             while true {
                 do {
@@ -315,9 +321,12 @@ extension RepositoryModel {
             }
         } catch is CancellationError {
             // Cancelled by the user, who knows.
+            failure = CancellationError()
         } catch {
+            failure = error
             self.error = PresentedError(error)
         }
+        ActivityLog.shared.finish(logged, error: failure, transfer: remotes.activity?.progress)
         remotes.end()
         await refresh()
         await followRecordedSubmodules(from: recordedSubmodules)

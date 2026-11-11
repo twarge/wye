@@ -18,8 +18,10 @@ struct HistoryView: View {
                     // Matches are rarely next to each other, so the graph would
                     // only mislead: results are plain rows in the history's order.
                     ForEach(search.results) { commit in
-                        SearchResultRow(commit: commit, labels: model.refLabels[commit.id] ?? [])
+                        SearchResultRow(commit: commit, labels: model.refLabels[commit.id] ?? [],
+                                        isHead: commit.id == headID, hasNote: history.notes.hasNote(commit.id))
                             .tag(commit.id)
+                            .draggable(dragText(for: commit.id))
                     }
                     if !search.isComplete {
                         SearchProgressRow(examined: search.examined)
@@ -37,8 +39,11 @@ struct HistoryView: View {
                                 .selectionDisabled()
                         case .commit(let row):
                             CommitRow(row: row, labels: model.refLabels[row.id] ?? [], graphWidth: graphWidth,
-                                      showsGraph: preferences.showsGraph, size: rowSize)
+                                      showsGraph: preferences.showsGraph, size: rowSize,
+                                      isHead: row.id == headID, hasNote: history.notes.hasNote(row.id))
                                 .tag(row.id)
+                                // Onto a branch in the sidebar, to cherry-pick.
+                                .draggable(dragText(for: row.id))
                         }
                     }
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 14))
@@ -76,10 +81,20 @@ struct HistoryView: View {
                     ContentUnavailableView.search(text: search.text)
                 }
             } else if history.items.isEmpty, history.commitCount != nil {
-                ContentUnavailableView("No Commits Yet", systemImage: "clock")
+                if search.filters.isEmpty {
+                    ContentUnavailableView("No Commits Yet", systemImage: "clock")
+                } else {
+                    ContentUnavailableView("No Commits on These Branches", systemImage: "line.3.horizontal.decrease.circle")
+                }
             }
         }
-        .searchable(text: $search.text, prompt: search.field.prompt)
+        .searchable(text: $search.text, tokens: Binding {
+            search.filters.tokens
+        } set: { tokens in
+            search.filters = search.filters.keeping(tokens)
+        }, prompt: search.field.prompt) { token in
+            Label(token.title, systemImage: token.systemImage)
+        }
         .searchFocused($isSearchFocused)
         .task(id: model.viewRequests.pending) {
             // Find in History, from the menu bar.
@@ -90,17 +105,19 @@ struct HistoryView: View {
                 Text(field.title).tag(field)
             }
         }
-        .task(id: SearchKey(query: search.query, scope: history.scope, generation: history.generation)) {
+        .task(id: SearchKey(query: search.query, filter: search.filters.commitFilter, scope: history.scope,
+                            generation: history.generation)) {
             let query = search.query
             if !query.isEmpty {
                 // Wait for a pause in typing before walking the history.
                 try? await Task.sleep(for: .milliseconds(250))
                 guard !Task.isCancelled else { return }
             }
-            await search.search(query, in: history.scope, options: history.layout.options)
+            await search.search(query, filter: search.filters.commitFilter, in: history.scope, options: history.options)
         }
-        .task(id: preferences.layout) {
-            await history.apply(preferences.layout)
+        .task(id: LayoutKey(layout: preferences.layout, shown: search.filters.shownBranches,
+                            hidden: search.filters.hiddenBranches)) {
+            await history.apply(preferences.layout, filters: search.filters)
         }
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
@@ -118,7 +135,8 @@ struct HistoryView: View {
                     history.requests.compare = CompareRequest(from: history.selection?.hex ?? "HEAD", to: "HEAD")
                 }
                 .help("Compare the selected commit with another commit, branch or tag")
-                Menu("View Options", systemImage: "line.3.horizontal.decrease.circle") {
+                HistoryFilterMenu(model: model, search: search)
+                Menu("View Options", systemImage: "slider.horizontal.3") {
                     HistoryViewOptions()
                     Divider()
                     Button("Apply Patch…", systemImage: "doc.badge.plus") { history.requests.isImportingPatch = true }
@@ -164,8 +182,25 @@ struct HistoryView: View {
     /// What a search depends on: it runs again when any of these changes.
     private struct SearchKey: Hashable {
         var query: HistoryQuery
+        var filter: HistoryFilter
         var scope: HistoryScope
         var generation: Int
+    }
+
+    /// What the history's walk depends on beyond its scope.
+    private struct LayoutKey: Hashable {
+        var layout: HistoryLayout
+        var shown: [String]
+        var hidden: [String]
+    }
+
+    private var headID: OID? { model.snapshot?.head.target }
+
+    /// A dragged commit carries the whole selection when it is part of it.
+    private func dragText(for id: OID) -> String {
+        let selected = model.history.listSelection
+        guard selected.count > 1, selected.contains(id) else { return SidebarDragPayload.text(for: [id]) }
+        return SidebarDragPayload.text(for: model.history.commits(selected).map(\.id))
     }
 
     private var title: String {
@@ -231,6 +266,9 @@ private struct CommitRow: View {
     var graphWidth: Int
     var showsGraph: Bool
     var size: HistoryPreferences.RowSize
+    /// `HEAD`'s commit is bold, in place of a badge.
+    var isHead = false
+    var hasNote = false
 
     @Environment(\.horizontalSizeClass) private var sizeClass
 
@@ -268,6 +306,7 @@ private struct CommitRow: View {
             }
         }
         .accessibilityElement(children: .combine)
+        .accessibilityValue(isHead ? "HEAD" : "")
     }
 
     private var summary: some View {
@@ -277,7 +316,11 @@ private struct CommitRow: View {
                     .fixedSize()
             }
             Text(row.commit.summary)
+                .fontWeight(isHead ? .bold : nil)
                 .lineLimit(1)
+            if hasNote {
+                NoteMark()
+            }
         }
     }
 

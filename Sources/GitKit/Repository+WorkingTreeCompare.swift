@@ -45,6 +45,7 @@ extension Repository {
         }
         defer { git_diff_free(diff) }
         try check(git_diff_find_similar(diff, nil))
-        return withSubmoduleCommits(try DiffBuilder.files(in: diff), workingCopy: comparison != .indexToHead)
+        let isWorkingTree = comparison != .indexToHead
+        return withSubmoduleCommits(try DiffBuilder.files(in: diff, newSideIsWorkingTree: isWorkingTree), workingCopy: isWorkingTree)
     }
 }

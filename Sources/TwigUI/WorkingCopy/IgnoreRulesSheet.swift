@@ -5,6 +5,8 @@ import SwiftUI
 /// own exclude file.
 struct IgnoreRulesSheet: View {
     var model: RepositoryModel
+    /// A rule to start the new one from, and where it goes.
+    var initial: CustomIgnoreRequest?
 
     @Environment(\.dismiss) private var dismiss
     @State private var file = IgnoreFile.shared
@@ -81,6 +83,12 @@ struct IgnoreRulesSheet: View {
         .task(id: file) {
             await load()
         }
+        .onAppear {
+            if let initial {
+                file = initial.file
+                newPattern = initial.pattern
+            }
+        }
         .confirmationDialog(
             "Stop Tracking the \(nowIgnoredTracked.count.formatted()) Tracked Files the Rule Matches?",
             isPresented: Binding { !nowIgnoredTracked.isEmpty } set: { if !$0 { nowIgnoredTracked = [] } },
@@ -115,5 +123,29 @@ struct IgnoreRulesSheet: View {
         let file = file
         await model.perform { try await $0.removeIgnorePatterns(Set(removed), from: file) }
         await load()
+    }
+}
+
+/// A rule to write in an ignore file, for the rules sheet to start from.
+struct CustomIgnoreRequest: Identifiable, Hashable {
+    var pattern: String
+    var file: IgnoreFile
+
+    var id: Self { self }
+}
+
+extension EnvironmentValues {
+    /// Opens the ignore rules with a rule to edit before adding it, from a
+    /// file's context menu.
+    @Entry var requestCustomIgnore = RequestCustomIgnoreAction { _ in }
+}
+
+/// What `requestCustomIgnore` calls: a struct, so the environment does not
+/// hold a bare closure, which it cannot compare.
+struct RequestCustomIgnoreAction {
+    var handler: @MainActor (CustomIgnoreRequest) -> Void
+
+    @MainActor func callAsFunction(_ request: CustomIgnoreRequest) {
+        handler(request)
     }
 }

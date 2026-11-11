@@ -16,14 +16,32 @@ struct SidebarView: View {
     @AppStorage("sidebar.archivedExpanded") private var archivedExpanded = false
     @AppStorage(BranchPreferences.staleMonthsKey) private var staleMonths = 3
     @AppStorage(BranchPreferences.autoArchiveMonthsKey) private var autoArchiveMonths = 0
+    /// What the filter field narrows the lists to.
+    @State private var filterText = ""
+    /// Folders and remotes closed by hand while filtering, when everything
+    /// else opens to show its matches. Dropped with the filter, so the
+    /// expansion from before comes back.
+    @State private var closedWhileFiltering: Set<String> = []
+    /// Remotes opened to show their branches.
+    @State private var expandedRemotes: Set<String> = []
+    /// What a drop onto a branch or the working copy offers.
+    @State private var drop: SidebarDropProposal?
+    /// When the tags' and remote branches' commits were made, for sorting
+    /// by most recent.
+    @State private var commitDates: [OID: Date] = [:]
 
     var body: some View {
         let listing = model.branchListing(staleMonths: staleMonths, autoArchiveMonths: autoArchiveMonths)
+        let lists = model.interface.sidebarLists
         List(selection: $model.selection) {
             Section("Workspace", isExpanded: $workspaceExpanded) {
                 Label("Working Copy", systemImage: "folder")
                     .badge(model.workingCopy.entries.count)
                     .tag(SidebarItem.workingCopy)
+                    // A branch or tag dropped here checks it out, once asked.
+                    .dropDestination(for: String.self) { items, _ in
+                        propose(items, onto: .workingCopy)
+                    }
                 Label("History", systemImage: "clock.arrow.circlepath")
                     .tag(SidebarItem.history)
                 Label("Stashes", systemImage: "tray.full")
@@ -31,69 +49,136 @@ struct SidebarView: View {
                     .tag(SidebarItem.stashes)
                 Label("Reflog", systemImage: "list.bullet.rectangle")
                     .tag(SidebarItem.reflog)
+                if let kind = model.pullRequestTarget?.kind {
+                    Label(kind.pullRequestTerm + "s", systemImage: "arrow.triangle.pull")
+                        .tag(SidebarItem.pullRequests)
+                }
             }
 
             if let snapshot = model.snapshot {
-                Section("Branches", isExpanded: $branchesExpanded) {
-                    // Pinned branches first, by their full names, outside the folders.
-                    ForEach(listing.pinned) { branch in
-                        BranchLabel(branch: branch, title: branch.name, marks: listing.marks[branch.id] ?? .init())
-                            .tag(SidebarItem.branch(branch.id))
-                    }
-                    BranchFolderRows(
-                        nodes: BranchFolderNode.tree(of: listing.listed, path: \.name, idPrefix: "local:"),
-                        toggled: $toggledFolders,
-                        headBranch: snapshot.head.branchName
-                    ) { branch, name in
-                        BranchLabel(branch: branch, title: name, marks: listing.marks[branch.id] ?? .init())
-                            .tag(SidebarItem.branch(branch.id))
-                    }
-                }
-
-                if !listing.archived.isEmpty {
-                    Section("Archived Branches", isExpanded: $archivedExpanded) {
-                        ForEach(listing.archived) { branch in
-                            BranchLabel(branch: branch, title: branch.name, marks: listing.marks[branch.id] ?? .init())
-                                .tag(SidebarItem.branch(branch.id))
+                let pinned = listing.pinned.filter { matches($0.name) }
+                let listed = listing.listed.filter { matches($0.name) }
+                let branchNodes = BranchFolderNode.tree(of: listed, path: \.name, idPrefix: "local:")
+                if !isFiltering || !pinned.isEmpty || !listed.isEmpty {
+                    Section("Branches", isExpanded: opened($branchesExpanded)) {
+                        // Pinned branches first, by their full names, outside the folders.
+                        ForEach(pinned) { branch in
+                            branchRow(branch, title: branch.name, listing: listing)
+                        }
+                        BranchFolderRows(
+                            nodes: branchNodes,
+                            toggled: folders(branchNodes, headBranch: snapshot.head.branchName),
+                            headBranch: snapshot.head.branchName
+                        ) { branch, name in
+                            branchRow(branch, title: name, listing: listing)
                         }
                     }
                 }
 
-                if !snapshot.remotes.isEmpty {
-                    Section("Remotes", isExpanded: $remotesExpanded) {
-                        ForEach(snapshot.remotes) { remote in
-                            DisclosureGroup {
+                let archived = listing.archived.filter { matches($0.name) }
+                if !archived.isEmpty {
+                    Section("Archived Branches", isExpanded: opened($archivedExpanded)) {
+                        ForEach(archived) { branch in
+                            branchRow(branch, title: branch.name, listing: listing)
+                        }
+                    }
+                }
+
+                let remotes = snapshot.remotes.compactMap { remote -> (Remote, [Branch])? in
+                    let branches = Self.listedBranches(of: remote).filter { matches($0.name) }
+                    return isFiltering && branches.isEmpty ? nil : (remote, branches)
+                }
+                if !remotes.isEmpty {
+                    Section(isExpanded: opened($remotesExpanded)) {
+                        ForEach(remotes, id: \.0.id) { remote, branches in
+                            let sorted = lists.remoteBranchSort.sorted(
+                                branches, name: \.nameWithoutRemote, date: { commitDates[$0.target] }
+                            )
+                            let shortened = Shortened(
+                                sorted, showsAll: isFiltering || lists.remotesShowingAll.contains(remote.name)
+                            )
+                            let nodes = BranchFolderNode.tree(
+                                of: shortened.shown, path: \.nameWithoutRemote, idPrefix: "remote:\(remote.name):"
+                            )
+                            DisclosureGroup(isExpanded: remoteExpanded(remote.name)) {
                                 BranchFolderRows(
-                                    nodes: BranchFolderNode.tree(
-                                        of: Self.listedBranches(of: remote), path: \.nameWithoutRemote,
-                                        idPrefix: "remote:\(remote.name):"
-                                    ),
-                                    toggled: $toggledFolders,
+                                    nodes: nodes,
+                                    toggled: folders(nodes, headBranch: nil),
                                     headBranch: nil
                                 ) { branch, name in
                                     Label(name, systemImage: "arrow.triangle.branch")
                                         .tag(SidebarItem.remoteBranch(branch.id))
+                                        .draggable(branch.id)
+                                }
+                                if shortened.hiddenCount > 0 {
+                                    ShowAllRow(count: sorted.count) {
+                                        var lists = lists
+                                        lists.remotesShowingAll.append(remote.name)
+                                        model.interface.setSidebarLists(lists)
+                                    }
                                 }
                             } label: {
                                 Label(remote.name, systemImage: "cloud")
                                     .contextMenu { RemoteMenu(model: model, remote: remote) }
                             }
                         }
-                    }
-                }
-
-                if !snapshot.tags.isEmpty {
-                    Section("Tags", isExpanded: $tagsExpanded) {
-                        ForEach(snapshot.tags) { tag in
-                            Label(tag.name, systemImage: "tag")
-                                .tag(SidebarItem.tag(tag.id))
+                    } header: {
+                        SidebarSectionHeader(title: "Remotes") {
+                            SidebarSortPicker(title: "Sort Remote Branches By", selection: lists.remoteBranchSort) {
+                                var lists = lists
+                                lists.remoteBranchSort = $0
+                                model.interface.setSidebarLists(lists)
+                            }
+                            if !lists.remotesShowingAll.isEmpty {
+                                Button("Show First \(SidebarListOptions.limit) Only") {
+                                    var lists = lists
+                                    lists.remotesShowingAll = []
+                                    model.interface.setSidebarLists(lists)
+                                }
+                            }
                         }
                     }
                 }
 
-                if !snapshot.submodules.isEmpty {
-                    Section(isExpanded: $submodulesExpanded) {
-                        ForEach(snapshot.submodules) { submodule in
+                let tags = snapshot.tags.filter { matches($0.name) }
+                if !tags.isEmpty {
+                    let sorted = lists.tagSort.sorted(tags, name: \.name, date: { commitDates[$0.target] })
+                    let shortened = Shortened(sorted, showsAll: isFiltering || lists.showsAllTags)
+                    Section(isExpanded: opened($tagsExpanded)) {
+                        ForEach(shortened.shown) { tag in
+                            Label(tag.name, systemImage: "tag")
+                                .tag(SidebarItem.tag(tag.id))
+                                .draggable(tag.id)
+                        }
+                        if shortened.hiddenCount > 0 {
+                            ShowAllRow(count: sorted.count) {
+                                var lists = lists
+                                lists.showsAllTags = true
+                                model.interface.setSidebarLists(lists)
+                            }
+                        }
+                    } header: {
+                        SidebarSectionHeader(title: "Tags") {
+                            SidebarSortPicker(title: "Sort Tags By", selection: lists.tagSort) {
+                                var lists = lists
+                                lists.tagSort = $0
+                                model.interface.setSidebarLists(lists)
+                            }
+                            if lists.showsAllTags {
+                                Button("Show First \(SidebarListOptions.limit) Only") {
+                                    var lists = lists
+                                    lists.showsAllTags = false
+                                    model.interface.setSidebarLists(lists)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let submodules = snapshot.submodules.filter { matches($0.name) || matches($0.path) }
+                if !submodules.isEmpty {
+                    Section(isExpanded: opened($submodulesExpanded)) {
+                        ForEach(submodules) { submodule in
                             SubmoduleLabel(submodule: submodule)
                                 .tag(SidebarItem.submodule(submodule.name))
                         }
@@ -103,9 +188,10 @@ struct SidebarView: View {
                 }
 
                 // The main worktree alone is just this repository.
-                if model.hasLinkedWorktrees {
-                    Section(isExpanded: $worktreesExpanded) {
-                        ForEach(snapshot.worktrees) { worktree in
+                let worktrees = snapshot.worktrees.filter { matches($0.displayName) || matches($0.path) }
+                if model.hasLinkedWorktrees, !worktrees.isEmpty {
+                    Section(isExpanded: opened($worktreesExpanded)) {
+                        ForEach(worktrees) { worktree in
                             WorktreeLabel(worktree: worktree)
                                 .tag(SidebarItem.worktree(worktree.name))
                         }
@@ -116,6 +202,10 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        .searchable(text: $filterText, placement: .sidebar, prompt: "Filter")
+        .onChange(of: isFiltering) {
+            closedWhileFiltering = []
+        }
         .navigationTitle(model.name)
         .safeAreaInset(edge: .bottom) {
             OperationBanner(model: model)
@@ -130,6 +220,110 @@ struct SidebarView: View {
             // Merged and stale marks, worked out off the main thread.
             await model.updateBranchReview()
         }
+        .task(id: DatesKey(snapshot: model.snapshot, lists: model.interface.sidebarLists)) {
+            await readCommitDates()
+        }
+        .confirmationDialog(drop?.title ?? "", isPresented: Binding {
+            drop != nil
+        } set: { if !$0 { drop = nil } }, titleVisibility: .visible, presenting: drop) { proposal in
+            ForEach(proposal.choices) { choice in
+                Button(choice.title) {
+                    Task { await model.performDrop(choice.action) }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    // MARK: Rows
+
+    /// A local branch: dragged onto another branch or the working copy, or
+    /// a drop target for commits and other branches.
+    private func branchRow(_ branch: Branch, title: String, listing: BranchListing) -> some View {
+        BranchLabel(branch: branch, title: title, marks: listing.marks[branch.id] ?? .init())
+            .tag(SidebarItem.branch(branch.id))
+            .draggable(branch.id)
+            .dropDestination(for: String.self) { items, _ in
+                propose(items, onto: .branch(branch.id))
+            }
+    }
+
+    /// Asks what to do with a drop, rather than doing anything yet.
+    @discardableResult
+    private func propose(_ items: [String], onto target: SidebarDropTarget) -> Bool {
+        guard let payload = SidebarDragPayload(items), let snapshot = model.snapshot,
+              let proposal = SidebarDropProposal.make(payload, onto: target, in: snapshot) else { return false }
+        drop = proposal
+        return true
+    }
+
+    // MARK: Filtering
+
+    private var isFiltering: Bool {
+        !filterText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private func matches(_ name: String) -> Bool {
+        SidebarFilter.matches(name, filterText)
+    }
+
+    /// A section opens while filtering, so its matches show, and keeps the
+    /// open or closed state it had for when the filter is cleared.
+    private func opened(_ isExpanded: Binding<Bool>) -> Binding<Bool> {
+        Binding {
+            isFiltering || isExpanded.wrappedValue
+        } set: { expanded in
+            if !isFiltering { isExpanded.wrappedValue = expanded }
+        }
+    }
+
+    /// The folders toggled against their default. While filtering, all of
+    /// them open, except any closed by hand meanwhile.
+    private func folders(_ nodes: [BranchFolderNode], headBranch: String?) -> Binding<Set<String>> {
+        guard isFiltering else { return $toggledFolders }
+        let closed = SidebarFilter.closedFolders(in: nodes, headBranch: headBranch)
+        // A folder is toggled against its default exactly when it is closed
+        // by default and not closed by hand, or the other way round; the
+        // same rule read backwards keeps what was closed by hand.
+        return Binding {
+            closed.symmetricDifference(closedWhileFiltering)
+        } set: { toggled in
+            closedWhileFiltering = closed.symmetricDifference(toggled)
+        }
+    }
+
+    private func remoteExpanded(_ name: String) -> Binding<Bool> {
+        Binding {
+            isFiltering ? !closedWhileFiltering.contains("remote:" + name) : expandedRemotes.contains(name)
+        } set: { expanded in
+            if isFiltering {
+                if expanded { closedWhileFiltering.remove("remote:" + name) } else { closedWhileFiltering.insert("remote:" + name) }
+            } else if expanded {
+                expandedRemotes.insert(name)
+            } else {
+                expandedRemotes.remove(name)
+            }
+        }
+    }
+
+    // MARK: Sorting
+
+    private struct DatesKey: Hashable {
+        var snapshot: RepositorySnapshot?
+        var lists: SidebarListOptions
+    }
+
+    /// Reads the commit dates that sorting by most recent needs, and only then.
+    private func readCommitDates() async {
+        guard let snapshot = model.snapshot else { return }
+        let lists = model.interface.sidebarLists
+        var ids: Set<OID> = []
+        if lists.tagSort == .recent { ids.formUnion(snapshot.tags.map(\.target)) }
+        if lists.remoteBranchSort == .recent { ids.formUnion(snapshot.remotes.flatMap(\.branches).map(\.target)) }
+        ids.subtract(commitDates.keys)
+        guard !ids.isEmpty else { return }
+        let dates = await model.repository.commitDates(of: ids)
+        commitDates.merge(dates) { _, new in new }
     }
 
     /// `origin/HEAD` only says which branch the remote has checked out; it
@@ -169,7 +363,7 @@ struct SidebarView: View {
             if let worktree = model.worktree(named: name) {
                 WorktreeActions(model: model, worktree: worktree)
             }
-        case .history, .stashes, .reflog:
+        case .history, .stashes, .reflog, .pullRequests:
             EmptyView()
         }
     }

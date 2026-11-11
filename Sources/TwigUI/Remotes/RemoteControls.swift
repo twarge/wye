@@ -165,7 +165,7 @@ private struct RemoteButtons: View {
         Button("Fetch…", systemImage: "slider.horizontal.3") { model.remotes.sheet = .fetchOptions }
         ForEach(model.remoteNames, id: \.self) { remote in
             Button("Fetch “\(remote)”") {
-                Task { await model.fetch(remote: remote, prune: true, tags: .automatic) }
+                Task { await model.fetch(remote: remote, prune: FetchPreferences.prune, tags: .automatic) }
             }
         }
     }

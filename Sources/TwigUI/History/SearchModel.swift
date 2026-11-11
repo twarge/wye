@@ -9,6 +9,8 @@ import Observation
 final class SearchModel {
     var text = ""
     var field: HistoryQuery.Field = .message
+    /// Dates, authors and branches, shown as tokens in the search field.
+    var filters = HistoryFilters()
 
     /// The matches so far, in the history's order.
     private(set) var results: [Commit] = []
@@ -18,13 +20,18 @@ final class SearchModel {
     private(set) var isComplete = true
 
     var query: HistoryQuery { HistoryQuery(field, text) }
-    /// Whether the list shows results rather than the history.
-    var isActive: Bool { !query.isEmpty }
+    /// Whether the list shows results rather than the history: there is
+    /// text to search for, or a filter that picks commits one by one.
+    /// Branch filters alone change the history itself, graph and all.
+    var isActive: Bool { !query.isEmpty || !filters.commitFilter.isEmpty }
+    /// Whether there is anything to clear: text or any filter.
+    var hasAnything: Bool { !query.isEmpty || !filters.isEmpty }
 
     private let repository: Repository
     private let pageSize = 100
     private var cursor: HistoryCursor?
     private var running: HistoryQuery?
+    private var runningFilter = HistoryFilter()
     private var isLoadingMore = false
     /// Counts searches, so a page read for an earlier one is dropped.
     private var generation = 0
@@ -35,7 +42,10 @@ final class SearchModel {
 
     /// Starts searching `scope` for `query`, dropping any earlier search.
     /// Stops after the first page of matches; `loadMore` reads on.
-    func search(_ query: HistoryQuery, in scope: HistoryScope, options: HistoryOptions = HistoryOptions()) async {
+    func search(
+        _ query: HistoryQuery, filter: HistoryFilter = HistoryFilter(), in scope: HistoryScope,
+        options: HistoryOptions = HistoryOptions()
+    ) async {
         generation += 1
         let generation = generation
         await closeCursor()
@@ -43,7 +53,8 @@ final class SearchModel {
         examined = 0
         isComplete = true
         running = query
-        guard !query.isEmpty else { return }
+        runningFilter = filter
+        guard !query.isEmpty || !filter.isEmpty else { return }
         isComplete = false
         do {
             let cursor = try await repository.openHistory(scope, options: options)
@@ -66,10 +77,11 @@ final class SearchModel {
         await read(until: results.count + pageSize, generation: generation)
     }
 
-    /// Abandons the search and empties the field, so the list shows the
-    /// whole history again.
+    /// Abandons the search and empties the field, filters and all, so the
+    /// list shows the whole history again.
     func cancelAndClear() async {
         text = ""
+        filters = HistoryFilters()
         results = []
         examined = 0
         await cancel()
@@ -94,7 +106,9 @@ final class SearchModel {
             guard !Task.isCancelled else { return }
             let page: SearchPage
             do {
-                page = try await repository.nextMatches(from: cursor, matching: query, limit: wanted - results.count)
+                page = try await repository.nextMatches(
+                    from: cursor, matching: query, filter: runningFilter, limit: wanted - results.count
+                )
             } catch {
                 isComplete = true
                 break

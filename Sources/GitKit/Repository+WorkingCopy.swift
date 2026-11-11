@@ -76,16 +76,16 @@ extension Repository {
     /// Refused during a rebase, cherry-pick or revert: those keep their place
     /// in files that committing here would clear, and are carried on with
     /// `continueOperation()` instead.
+    ///
+    /// - Parameter identity: Who the commit is by, as author and committer;
+    ///   `nil` for the configured identity. Signed when a signer is set.
     @discardableResult
-    public func commit(message: String) throws -> OID {
+    public func commit(message: String, as identity: GitIdentity? = nil) throws -> OID {
         let state = RepositoryState(git_repository_state(pointer))
         guard state == .clean || state == .merging else {
             throw RepositoryError.operationInProgress(state)
         }
-        var signature: UnsafeMutablePointer<git_signature>?
-        guard git_signature_default(&signature, pointer) == 0 else {
-            throw RepositoryError.identityNotConfigured
-        }
+        let signature = try signatureNow(as: identity)
         defer { git_signature_free(signature) }
 
         let index = try index()
@@ -106,12 +106,9 @@ extension Repository {
         }
 
         let text = message.trimmingCharacters(in: .whitespacesAndNewlines) + "\n"
-        var id = git_oid()
-        try check(git_commit_create(
-            &id, pointer, "HEAD", signature, signature, nil, text, tree, parents.count, &parents
-        ))
+        let id = try createCommit(author: signature, committer: signature, message: text, tree: tree, parents: parents)
         try check(git_repository_state_cleanup(pointer))
-        return OID(id)
+        return id
     }
 
     private func index() throws -> OpaquePointer? {

@@ -74,6 +74,9 @@ final class HistoryModel {
     private(set) var items: [Item] = []
     private(set) var scope: HistoryScope = .allReferences
     private(set) var layout = HistoryPreferences.shared.layout
+    /// How the engine reads this history: the layout's options with the
+    /// branch filters applied.
+    private(set) var options = HistoryPreferences.shared.layout.options
     /// How many commits the whole history holds, once counted.
     private(set) var commitCount: Int?
     /// Whether every commit has been read.
@@ -84,6 +87,8 @@ final class HistoryModel {
     let search: SearchModel
     /// The reflog the sidebar's Reflog item lists.
     let reflog: ReflogModel
+    /// Commit notes: which commits have one, and the note being edited.
+    let notes: CommitNotes
 
     private let repository: Repository
     private let pageSize = 300
@@ -99,6 +104,7 @@ final class HistoryModel {
         self.repository = repository
         search = SearchModel(repository: repository)
         reflog = ReflogModel(repository: repository)
+        notes = CommitNotes(repository: repository)
     }
 
     /// Switches to another history.
@@ -111,10 +117,12 @@ final class HistoryModel {
         await reload()
     }
 
-    /// Lays the history out again for changed view options.
-    func apply(_ layout: HistoryLayout) async {
-        guard layout != self.layout else { return }
+    /// Lays the history out again for changed view options or branch filters.
+    func apply(_ layout: HistoryLayout, filters: HistoryFilters = HistoryFilters()) async {
+        let options = filters.applied(to: layout.options)
+        guard layout != self.layout || options != self.options else { return }
         self.layout = layout
+        self.options = options
         await reload()
     }
 
@@ -130,7 +138,7 @@ final class HistoryModel {
         // The list keeps showing what it has until the first page arrives.
         let page: [Commit]
         do {
-            let cursor = try await repository.openHistory(scope, options: layout.options)
+            let cursor = try await repository.openHistory(scope, options: options)
             guard generation == self.generation else {
                 await repository.closeHistory(cursor)
                 return
@@ -154,7 +162,8 @@ final class HistoryModel {
         multipleSelection = multipleSelection.filter(contains)
         if multipleSelection.count < 2 { multipleSelection = [] }
 
-        let count = try? await repository.commitCount(in: scope, options: layout.options)
+        await notes.reload()
+        let count = try? await repository.commitCount(in: scope, options: options)
         if generation == self.generation {
             commitCount = count ?? 0
         }
@@ -176,6 +185,8 @@ final class HistoryModel {
     @discardableResult
     func reveal(_ id: OID, readingAtMost limit: Int = 50_000) async -> Bool {
         await search.cancelAndClear()
+        // Without the branch filters, which may have hidden it.
+        await apply(layout)
         while !contains(id), !isComplete, rowCount < limit {
             let count = items.count
             await loadMore()
@@ -205,6 +216,14 @@ final class HistoryModel {
 
     private var rowCount: Int { items.count }
 
+    /// The commits read so far, for the author filter's menu.
+    var loadedCommits: some Sequence<Commit> {
+        items.lazy.compactMap { item in
+            if case .commit(let row) = item { return row.commit }
+            return nil
+        }
+    }
+
     private func contains(_ id: OID) -> Bool {
         items.contains { $0.id == .commit(id) }
     }
@@ -218,7 +237,7 @@ final class HistoryModel {
         case .month: [.year, .month]
         case .none: nil
         }
-        let firstParentOnly = layout.options.firstParentOnly
+        let firstParentOnly = options.firstParentOnly
         for commit in commits {
             if let components {
                 let period = calendar.dateComponents(components, from: commit.author.date)

@@ -71,6 +71,9 @@ struct PullOptionsSheet: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+            if let pulled = source.isEmpty ? model.currentBranch?.upstream?.name : source {
+                MergePreviewSection(model: model, operation: mode.previewOperation(of: pulled), note: MergePreviewText.pullNote)
+            }
             Section {
                 Toggle("Stash Local Changes First", isOn: $autostash)
             } footer: {
@@ -80,6 +83,7 @@ struct PullOptionsSheet: View {
         }
         .task {
             mode = await model.defaultPullMode()
+            autostash = model.autostashPolicy == .always
         }
     }
 
@@ -113,7 +117,7 @@ struct FetchOptionsSheet: View {
 
     /// A remote's name; empty for every remote.
     @State private var remote = ""
-    @State private var prune = true
+    @State private var prune = FetchPreferences.prune
     @State private var tags = FetchTags.automatic
 
     var body: some View {

@@ -35,6 +35,266 @@ extension Repository {
         return OID(id)
     }
 
+    /// Stashes only the changes to `paths`, files or folders, staged and
+    /// unstaged, as `git stash push -- <paths>` does: they leave the index
+    /// and the working tree, and every other change stays where it is.
+    ///
+    /// As git's, the stash's index commit holds the whole index and its
+    /// working tree commit the index with these paths' files on top.
+    /// libgit2's own pathspec stash differs (it starts from `HEAD` and
+    /// unstages the other files), so the stash is put together here.
+    @discardableResult
+    public func saveStash(paths: [String], message: String? = nil, options: StashOptions = []) throws -> OID {
+        guard let workingDirectory = git_repository_workdir(pointer).map({ String(cString: $0) }) else {
+            throw RepositoryError.noWorkingDirectory
+        }
+        var signature: UnsafeMutablePointer<git_signature>?
+        guard git_signature_default(&signature, pointer) == 0 else {
+            throw RepositoryError.identityNotConfigured
+        }
+        defer { git_signature_free(signature) }
+        try reloadIndex()
+
+        func isChosen(_ path: String) -> Bool {
+            paths.contains { chosen in
+                let folder = chosen.hasSuffix("/") ? chosen : chosen + "/"
+                return path == chosen || path.hasPrefix(folder)
+            }
+        }
+        let entries = try status().filter { isChosen($0.path) && !$0.isConflicted }
+        let tracked = entries.filter { $0.staged != nil || ($0.unstaged != nil && $0.unstaged != .untracked) }
+        let untracked = options.contains(.includeUntracked) ? entries.filter { $0.unstaged == .untracked } : []
+        guard !tracked.isEmpty || !untracked.isEmpty else { throw WorkingCopyError.nothingToStash }
+        guard let head = try headCommit() else { throw PartialStashError.noCommit }
+        defer { git_commit_free(head) }
+
+        var index: OpaquePointer?
+        try check(git_repository_index(&index, pointer))
+        defer { git_index_free(index) }
+        var indexTreeID = git_oid()
+        try check(git_index_write_tree(&indexTreeID, index))
+
+        // The working tree: the index, with the chosen files as they are on disk.
+        let changedOnDisk = tracked.filter { $0.unstaged != nil }.map(\.path)
+        let workTreeID = try treeID(startingFrom: indexTreeID, withFilesFrom: workingDirectory, paths: changedOnDisk)
+        let untrackedTreeID = untracked.isEmpty
+            ? nil : try treeID(startingFrom: nil, withFilesFrom: workingDirectory, paths: untracked.map(\.path))
+
+        let base = try stashBase(of: head)
+        let message = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let workMessage = message.isEmpty ? "WIP on \(base.description)\n" : "On \(base.branch): \(message)\n"
+        let indexCommit = try stashCommit(tree: indexTreeID, parents: [head], message: "index on \(base.description)\n", signature)
+        defer { git_commit_free(indexCommit) }
+        var parents: [OpaquePointer?] = [head, indexCommit]
+        var untrackedCommit: OpaquePointer?
+        defer { git_commit_free(untrackedCommit) }
+        if let untrackedTreeID {
+            untrackedCommit = try stashCommit(
+                tree: untrackedTreeID, parents: [], message: "untracked files on \(base.description)\n", signature
+            )
+            parents.append(untrackedCommit)
+        }
+        let workCommit = try stashCommit(tree: workTreeID, parents: parents, message: workMessage, signature)
+        defer { git_commit_free(workCommit) }
+        var workID = git_commit_id(workCommit).pointee
+        try check(git_reference_ensure_log(pointer, "refs/stash"))
+        var reference: OpaquePointer?
+        try check(git_reference_create(&reference, pointer, "refs/stash", &workID, 1, workMessage))
+        git_reference_free(reference)
+
+        // Now the chosen changes leave: the files go back to HEAD, or with
+        // keepIndex to the index, which then stays as it is.
+        let trackedPaths = tracked.map(\.path)
+        if !trackedPaths.isEmpty {
+            if !options.contains(.keepIndex) {
+                try unstage(trackedPaths)
+            }
+            var checkout = git_checkout_options()
+            try check(git_checkout_options_init(&checkout, UInt32(GIT_CHECKOUT_OPTIONS_VERSION)))
+            checkout.checkout_strategy = GIT_CHECKOUT_FORCE.rawValue | GIT_CHECKOUT_DISABLE_PATHSPEC_MATCH.rawValue
+                | (options.contains(.keepIndex) ? 0 : GIT_CHECKOUT_REMOVE_UNTRACKED.rawValue)
+            try reloadIndex()
+            try withStringArray(trackedPaths) { array in
+                checkout.paths = array
+                if options.contains(.keepIndex) {
+                    _ = try check(git_checkout_index(pointer, nil, &checkout))
+                } else {
+                    _ = try check(git_checkout_head(pointer, &checkout))
+                }
+            }
+        }
+        let root = URL(filePath: workingDirectory, directoryHint: .isDirectory)
+        for entry in untracked {
+            try? FileManager.default.removeItem(at: root.appending(path: entry.path))
+        }
+        return OID(workID)
+    }
+
+    /// A tree: `base`'s (or an empty one), with each of `paths` as the file
+    /// on disk, or left out where the file is gone.
+    private func treeID(startingFrom base: git_oid?, withFilesFrom workingDirectory: String, paths: [String]) throws -> git_oid {
+        var index: OpaquePointer?
+        try check(git_index_new(&index))
+        defer { git_index_free(index) }
+        if var base {
+            var tree: OpaquePointer?
+            try check(git_tree_lookup(&tree, pointer, &base))
+            defer { git_tree_free(tree) }
+            try check(git_index_read_tree(index, tree))
+        }
+        for path in paths {
+            var information = stat()
+            guard lstat(workingDirectory + path, &information) == 0 else {
+                _ = git_index_remove(index, path, 0)
+                continue
+            }
+            var blob = git_oid()
+            try check(git_blob_create_from_workdir(&blob, pointer, path))
+            var entry = git_index_entry()
+            let mode = information.st_mode & S_IFMT
+            entry.mode = mode == S_IFLNK ? GIT_FILEMODE_LINK.rawValue
+                : information.st_mode & S_IXUSR != 0 ? GIT_FILEMODE_BLOB_EXECUTABLE.rawValue : GIT_FILEMODE_BLOB.rawValue
+            entry.id = blob
+            entry.file_size = UInt32(truncatingIfNeeded: information.st_size)
+            let copy = strdup(path)
+            defer { free(copy) }
+            entry.path = UnsafePointer(copy)
+            try check(git_index_add(index, &entry))
+        }
+        var id = git_oid()
+        try check(git_index_write_tree_to(&id, index, pointer))
+        return id
+    }
+
+    /// One of a stash's commits. The caller frees it.
+    private func stashCommit(
+        tree id: git_oid, parents: [OpaquePointer?], message: String, _ signature: UnsafeMutablePointer<git_signature>?
+    ) throws -> OpaquePointer? {
+        var treeID = id
+        var tree: OpaquePointer?
+        try check(git_tree_lookup(&tree, pointer, &treeID))
+        defer { git_tree_free(tree) }
+        var parents = parents
+        var commitID = git_oid()
+        try check(git_commit_create(
+            &commitID, pointer, nil, signature, signature, nil, message, tree, parents.count, &parents
+        ))
+        var commit: OpaquePointer?
+        try check(git_commit_lookup(&commit, pointer, &commitID))
+        return commit
+    }
+
+    /// Stashes some of a file's unstaged lines, given by their IDs in
+    /// `file`, its unstaged diff as last read with `options`, and takes them
+    /// out of the working tree. The stash holds what stashing would have
+    /// held had those lines been the only change: its working tree is
+    /// `HEAD` with them, and nothing is staged in it.
+    ///
+    /// A file with staged changes is refused, since its lines were read
+    /// against the index rather than `HEAD`.
+    @discardableResult
+    public func saveStash(
+        lines: Set<Int>, of file: FileDiff, message: String? = nil, options diffOptions: DiffOptions = .standard
+    ) throws -> OID {
+        guard diffOptions.isExact else { throw WorkingCopyError.inexactDiff }
+        var signature: UnsafeMutablePointer<git_signature>?
+        guard git_signature_default(&signature, pointer) == 0 else {
+            throw RepositoryError.identityNotConfigured
+        }
+        defer { git_signature_free(signature) }
+        try reloadIndex()
+
+        let source = try patchSource(of: file, side: .unstaged, options: diffOptions)
+        let selected = lines.intersection(source.changedLineIDs)
+        guard !selected.isEmpty,
+              let patch = PatchBuilder.patch(for: source, selecting: selected, reversed: false) else {
+            throw WorkingCopyError.nothingSelected
+        }
+        guard try !hasStagedChanges(to: file.path) else {
+            throw PartialStashError.stagedChanges(path: file.path)
+        }
+
+        guard let head = try headCommit() else { throw PartialStashError.noCommit }
+        defer { git_commit_free(head) }
+        let headTree = try tree(of: head)
+        defer { git_tree_free(headTree) }
+        let workTreeID = try tree(applying: patch, to: headTree)
+
+        // As git words them: "index on main: 1234567 Subject".
+        let base = try stashBase(of: head)
+        let message = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let workMessage = message.isEmpty ? "WIP on \(base.description)\n" : "On \(base.branch): \(message)\n"
+
+        var indexID = git_oid()
+        var parents: [OpaquePointer?] = [head]
+        try check(git_commit_create(
+            &indexID, pointer, nil, signature, signature, nil, "index on \(base.description)\n", headTree, 1, &parents
+        ))
+        var indexCommit: OpaquePointer?
+        try check(git_commit_lookup(&indexCommit, pointer, &indexID))
+        defer { git_commit_free(indexCommit) }
+        var workTree: OpaquePointer?
+        var workTreeOID = workTreeID.raw
+        try check(git_tree_lookup(&workTree, pointer, &workTreeOID))
+        defer { git_tree_free(workTree) }
+        parents = [head, indexCommit]
+        var workID = git_oid()
+        try check(git_commit_create(
+            &workID, pointer, nil, signature, signature, nil, workMessage, workTree, 2, &parents
+        ))
+
+        // The stash list is the reflog of refs/stash.
+        try check(git_reference_ensure_log(pointer, "refs/stash"))
+        var reference: OpaquePointer?
+        try check(git_reference_create(&reference, pointer, "refs/stash", &workID, 1, workMessage))
+        git_reference_free(reference)
+
+        // Now that the lines are safe in the stash, they leave the working tree.
+        try discard(lines: selected, of: file, options: diffOptions, untracked: .trash)
+        return OID(workID)
+    }
+
+    /// The tree `tree` becomes with `patch` applied to it.
+    private func tree(applying patch: [UInt8], to tree: OpaquePointer?) throws -> OID {
+        var diff: OpaquePointer?
+        try patch.withUnsafeBufferPointer { bytes in
+            try bytes.withMemoryRebound(to: CChar.self) { text in
+                _ = try check(git_diff_from_buffer(&diff, text.baseAddress, text.count))
+            }
+        }
+        defer { git_diff_free(diff) }
+        var index: OpaquePointer?
+        let code = git_apply_to_tree(&index, pointer, tree, diff, nil)
+        guard code == 0 else { throw PatchFileError.doesNotApply(GitError.last(code: code).message) }
+        defer { git_index_free(index) }
+        var id = git_oid()
+        try check(git_index_write_tree_to(&id, index, pointer))
+        return OID(id)
+    }
+
+    /// Whether the index holds a version of `path` other than `HEAD`'s.
+    private func hasStagedChanges(to path: String) throws -> Bool {
+        var flags: UInt32 = 0
+        let code = git_status_file(&flags, pointer, path)
+        if code == GIT_ENOTFOUND.rawValue { return false }
+        try check(code)
+        let staged = GIT_STATUS_INDEX_NEW.rawValue | GIT_STATUS_INDEX_MODIFIED.rawValue | GIT_STATUS_INDEX_DELETED.rawValue
+            | GIT_STATUS_INDEX_RENAMED.rawValue | GIT_STATUS_INDEX_TYPECHANGE.rawValue
+        return flags & staged != 0
+    }
+
+    /// "main: 1234567 Subject", what git's stash messages are made of.
+    private func stashBase(of head: OpaquePointer?) throws -> (branch: String, description: String) {
+        var reference: OpaquePointer?
+        try check(git_repository_head(&reference, pointer))
+        defer { git_reference_free(reference) }
+        let name = String(cString: git_reference_name(reference))
+        let branch = name == "HEAD" ? "(no branch)" : String(name.dropFirst("refs/heads/".count))
+        let short = String(OID(git_commit_id(head)).hex.prefix(7))
+        let summary = git_commit_summary(head).map { String(cString: $0) } ?? ""
+        return (branch, "\(branch): \(short) \(summary)")
+    }
+
     /// Applies a stash's changes to the working copy and keeps the stash.
     ///
     /// - Parameter restoringIndex: Whether changes that were staged when the
@@ -203,6 +463,23 @@ extension Stash {
             }
         }
         return message
+    }
+}
+
+/// Lines of a file that cannot be stashed on their own.
+public enum PartialStashError: Error, Hashable, Sendable, LocalizedError {
+    /// The file has staged changes, which its lines were read on top of.
+    case stagedChanges(path: String)
+    /// There is no commit to make a stash on yet.
+    case noCommit
+
+    public var errorDescription: String? {
+        switch self {
+        case .stagedChanges(let path):
+            "“\(path)” has staged changes. Unstage them to stash some of its lines, or stash the whole file."
+        case .noCommit:
+            "There is no commit yet to stash changes on."
+        }
     }
 }
 

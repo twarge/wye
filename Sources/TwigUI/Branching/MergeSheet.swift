@@ -16,6 +16,7 @@ struct MergeSheet: View {
                 LabeledContent("Merge", value: RepositoryModel.displayName(ofReference: reference))
                 LabeledContent("Into", value: model.headBranchName ?? "Detached HEAD")
             }
+            MergePreviewSection(model: model, operation: .merge(reference, mode: mode))
             Section {
                 Picker("Mode", selection: $mode) {
                     ForEach(MergeMode.allCases, id: \.self) { mode in
@@ -88,6 +89,7 @@ struct RebaseSheet: View {
             } footer: {
                 Text(explanation)
             }
+            MergePreviewSection(model: model, operation: .rebase(onto: onto))
         }
         .task {
             // A revision picked by its hash is no reference.

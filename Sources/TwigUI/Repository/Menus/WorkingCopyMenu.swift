@@ -56,6 +56,9 @@ struct WorkingCopyRowMenu: View {
                 model.remotes.sheet = .pullOptions
             }
             .disabled(isTransferring || model.headBranchName == nil || !model.hasRemotes)
+            if !model.hasRemotes {
+                PublishMenuItems(model: model)
+            }
         }
 
         Section {
@@ -97,6 +100,9 @@ struct WorkingCopyRowMenu: View {
                 Button(Platform.revealInFileBrowserTitle, systemImage: "folder") {
                     Platform.revealInFileBrowser(model.repository.url)
                 }
+            }
+            Button("Repository Settings…", systemImage: "gearshape") {
+                model.windowState.isShowingSettings = true
             }
         }
     }

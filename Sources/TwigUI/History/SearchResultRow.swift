@@ -6,6 +6,9 @@ import SwiftUI
 struct SearchResultRow: View {
     var commit: Commit
     var labels: [RefLabel]
+    /// `HEAD`'s commit is bold, in place of a badge.
+    var isHead = false
+    var hasNote = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -15,7 +18,11 @@ struct SearchResultRow: View {
                         .fixedSize()
                 }
                 Text(commit.summary)
+                    .fontWeight(isHead ? .bold : nil)
                     .lineLimit(1)
+                if hasNote {
+                    NoteMark()
+                }
             }
             HStack(spacing: 6) {
                 Text(commit.id.abbreviated())
@@ -32,6 +39,18 @@ struct SearchResultRow: View {
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+        .accessibilityValue(isHead ? "HEAD" : "")
+    }
+}
+
+/// The mark on a commit that has a note.
+struct NoteMark: View {
+    var body: some View {
+        Image(systemName: "note.text")
+            .imageScale(.small)
+            .foregroundStyle(.secondary)
+            .help("This commit has a note")
+            .accessibilityLabel("Has a note")
     }
 }
 

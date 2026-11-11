@@ -11,7 +11,10 @@ let package = Package(
     products: [
         // The app is built by Twig.xcodeproj, which links these products.
         .library(name: "GitKit", targets: ["GitKit"]),
-        .library(name: "TwigUI", targets: ["TwigUI"])
+        .library(name: "TwigUI", targets: ["TwigUI"]),
+        // What the app shares with its widget and share extensions, which
+        // link only this: no libgit2, no SwiftUI app.
+        .library(name: "TwigShared", targets: ["TwigShared"])
     ],
     dependencies: [
         // SSH remotes: the protocol in Swift, over Network.framework, with
@@ -89,8 +92,21 @@ let package = Package(
         ),
         .target(
             name: "TwigUI",
-            dependencies: ["GitKit"],
+            dependencies: ["GitKit", "TwigShared"],
             path: "Sources/TwigUI",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // The status file, links and URL reading the extensions need,
+        // with nothing heavier than Foundation.
+        .target(
+            name: "TwigShared",
+            path: "Sources/TwigShared",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .testTarget(
+            name: "TwigSharedTests",
+            dependencies: ["TwigShared"],
+            path: "Tests/TwigSharedTests",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // The interface's logic that needs no window: filtering file events,

@@ -11,11 +11,14 @@ extension RepositoryModel {
     /// ```
     func perform(_ undoable: UndoOperation, _ operation: (Repository) async throws -> Void) async {
         let recordedSubmodules = recordedSubmoduleCommits()
-        await perform { repository in
-            let start = await repository.beginUndoable(undoable)
-            try await operation(repository)
-            let finish = await repository.finishUndoable(start)
-            self.undoStack.take(finish, for: undoable)
+        // Named in the activity log by what it does.
+        await ActivityContext.$operationTitle.withValue(undoable.title) {
+            await perform { repository in
+                let start = await repository.beginUndoable(undoable)
+                try await operation(repository)
+                let finish = await repository.finishUndoable(start)
+                self.undoStack.take(finish, for: undoable)
+            }
         }
         await followRecordedSubmodules(from: recordedSubmodules)
     }

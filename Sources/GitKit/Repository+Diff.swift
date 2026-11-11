@@ -41,7 +41,7 @@ extension Repository {
     /// A file's changes between the index and the working tree.
     public func unstagedDiff(of path: String, options: DiffOptions = .standard) throws -> FileDiff? {
         try withWorkingCopyDiff(of: path, side: .unstaged, options: options) { diff in
-            withSubmoduleCommits(try DiffBuilder.files(in: diff), workingCopy: true).first
+            withSubmoduleCommits(try DiffBuilder.files(in: diff, newSideIsWorkingTree: true), workingCopy: true).first
         }
     }
 }

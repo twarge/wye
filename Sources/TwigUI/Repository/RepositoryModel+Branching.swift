@@ -128,11 +128,11 @@ extension RepositoryModel {
     // MARK: An operation in progress
 
     func continueOperation() async {
-        await runSequence { try await $0.continueOperation() }
+        await recordingResumedRebase { await runSequence { try await $0.continueOperation() } }
     }
 
     func skipOperation() async {
-        await runSequence { try await $0.skipOperation() }
+        await recordingResumedRebase { await runSequence { try await $0.skipOperation() } }
     }
 
     func abortOperation() async {

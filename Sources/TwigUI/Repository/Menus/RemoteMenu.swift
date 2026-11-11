@@ -14,7 +14,7 @@ struct RemoteMenu: View {
         let isTransferring = model.isTransferring
         Section {
             Button("Fetch \(name)", systemImage: "arrow.triangle.2.circlepath") {
-                Task { await model.fetch(remote: remote.name, prune: true, tags: .automatic) }
+                Task { await model.fetch(remote: remote.name, prune: FetchPreferences.prune, tags: .automatic) }
             }
             .disabled(isTransferring)
             .help("Fetch new commits, and remove remote branches that are gone from the remote")
@@ -37,6 +37,12 @@ struct RemoteMenu: View {
                 model.remotes.sheet = .editRemote(remote)
             }
             .help("Change its name, URL and push URL")
+            if model.hostedRepository(remote: remote.name) != nil {
+                Button("Account for \(name)…", systemImage: "person.crop.circle") {
+                    model.hosting.sheet = .account(remote: remote.name)
+                }
+                .help("Choose the account this remote signs in with")
+            }
         }
         Section {
             Button("Rename \(name)…", systemImage: "character.cursor.ibeam") {

@@ -84,6 +84,7 @@ struct FileHistoryView: View {
                 }
                 .padding(.bottom, 20)
             }
+            .findInDiffs(history.diff.map { [FindableDiff($0)] } ?? [])
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ContentUnavailableView("No Commit Selected", systemImage: "smallcircle.filled.circle")

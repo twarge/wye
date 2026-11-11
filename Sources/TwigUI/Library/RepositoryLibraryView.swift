@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct RepositoryLibraryView: View {
     @Environment(RepositoryLibrary.self) private var library
     @Environment(WindowActions.self) private var actions
+    @Environment(\.openWindow) private var openWindow
     var open: (RepositoryBookmark) -> Void
 
     @State private var query = ""
@@ -31,6 +32,7 @@ struct RepositoryLibraryView: View {
                             .buttonStyle(.borderedProminent)
                         Button("Watch a Folder of Repositories…") { isChoosingFolderToWatch = true }
                         Button("Clone Repository…") { actions.isCloning = true }
+                        Button("New Repository…") { actions.isCreatingRepository = true }
                     }
                 }
             }
@@ -44,6 +46,10 @@ struct RepositoryLibraryView: View {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Clone Repository", systemImage: "square.and.arrow.down") { actions.isCloning = true }
                         .help("Clone a repository from a URL")
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("New Repository", systemImage: "plus.rectangle.on.folder") { actions.isCreatingRepository = true }
+                        .help("Create a new, empty repository")
                 }
                 ToolbarItem(placement: .secondaryAction) {
                     Menu("Watched Folders", systemImage: "eye") {
@@ -71,6 +77,16 @@ struct RepositoryLibraryView: View {
                         }
                         .pickerStyle(.inline)
                     }
+                }
+                ToolbarItem(placement: .secondaryAction) {
+                    Button("Activity", systemImage: "list.bullet.clipboard") {
+                        if Platform.hasAuxiliaryWindows {
+                            openWindow(id: TwigScene.activityWindowID)
+                        } else {
+                            actions.isShowingActivity = true
+                        }
+                    }
+                    .help("Every operation Twig has run this session")
                 }
                 ToolbarItem(placement: .secondaryAction) {
                     SettingsButton { Label("Settings", systemImage: "gearshape") }

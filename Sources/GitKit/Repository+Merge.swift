@@ -466,6 +466,20 @@ extension Repository {
         }
         guard !paths.isEmpty else { return }
 
+        // A path `HEAD` does not have (it deleted the file, the other side
+        // changed it) leaves the index by hand: libgit2's reset refuses a
+        // conflict entry with nothing in `HEAD` to put in its place.
+        for path in paths {
+            var entry: OpaquePointer?
+            if git_tree_entry_bypath(&entry, headTree, path) == 0 {
+                git_tree_entry_free(entry)
+            } else {
+                git_index_conflict_remove(index, path)
+                git_index_remove_bypath(index, path)
+            }
+        }
+        try check(git_index_write(index))
+
         try withStringArray(Array(paths).sorted()) { array in
             // First the index, which also drops the conflict entries…
             try check(git_reset_default(pointer, head, &array))
@@ -505,11 +519,8 @@ extension Repository {
         }
         // A picked commit's message is kept byte for byte, as git keeps it.
         let text = keepsMessage ? message : message.trimmingCharacters(in: .whitespacesAndNewlines) + "\n"
-        var id = git_oid()
-        try check(git_commit_create(
-            &id, pointer, "HEAD", author, committer, nil, text, tree, parents.count, &parents
-        ))
-        return OID(id)
+        // Through the signing choke point (Repository+Signing.swift).
+        return try createCommit(author: author, committer: committer, message: text, tree: tree, parents: parents)
     }
 
     /// Points the current branch, or a detached `HEAD`, at a commit. The

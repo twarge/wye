@@ -12,6 +12,8 @@ public actor Repository {
 
     private let handle: Handle
     var walks: [HistoryCursor: Walk] = [:]
+    /// The key new commits are signed with, if any (`Repository+Signing.swift`).
+    let signing = CommitSigning()
 
     /// Opens the repository at `url`: a working copy, or a bare repository.
     public init(at url: URL) throws {

@@ -45,7 +45,7 @@ extension RepositoryModel {
         _ action: String,
         _ operation: @escaping @Sendable (isolated Repository) throws -> Value
     ) async throws -> Value {
-        let policy = RemotePreferences.autostash
+        let policy = autostashPolicy
         if policy == .always {
             return try await runAutostashed(action, operation)
         }

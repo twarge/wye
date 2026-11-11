@@ -14,9 +14,6 @@ struct DiffSettingsSection: View {
                 ForEach(DiffOptions.Whitespace.allCases, id: \.self) { Text($0.title).tag($0) }
             }
             Toggle("Show Invisible Characters", isOn: $preferences.showsInvisibles)
-            Picker("Tab Width", selection: $preferences.tabWidth) {
-                ForEach(DiffPreferences.tabWidthChoices, id: \.self) { Text($0.formatted()).tag($0) }
-            }
             Picker("Fold Files in a Commit", selection: $preferences.collapseThreshold) {
                 ForEach(DiffPreferences.collapseChoices, id: \.self) { threshold in
                     Text(threshold.map { "When More Than \($0.formatted()) Change" } ?? "Never").tag(threshold)

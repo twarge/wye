@@ -11,12 +11,13 @@ struct BlameView: View {
 
     @State private var blame: Blame?
     @State private var selection: OID?
+    @State private var syntax = TextSyntaxLoader()
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         Group {
             if let blame {
-                let gutter = CGFloat(String(max(blame.lineCount, 10)).count) * 8 + 6
+                let gutter = CGFloat(String(max(blame.lineCount, 10)).count) * AppearancePreferences.shared.digitWidth + 6
                 ScrollView([.vertical, .horizontal]) {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(blame.runs) { run in
@@ -28,15 +29,19 @@ struct BlameView: View {
                                     offset: offset,
                                     numberWidth: gutter,
                                     isCompact: sizeClass == .compact,
-                                    isSelected: run.commitID == selection
+                                    isSelected: run.commitID == selection,
+                                    tokens: syntax.tokens(forLine: run.startLine - 1 + offset)
                                 ) {
                                     selection = selection == run.commitID ? nil : run.commitID
                                 }
+                                .id(FindRow(group: "", line: run.startLine - 1 + offset))
                             }
                         }
                     }
                     .padding(.bottom, 8)
                 }
+                .findInLines(blame.runs.flatMap(\.lines))
+                .task(id: blame.commitID) { syntax.load(blame.runs.flatMap(\.lines), path: path) }
                 .safeAreaInset(edge: .bottom) {
                     if let run = blame.runs.first(where: { $0.commitID == selection }) {
                         SelectedRunBar(run: run, path: path) {
@@ -67,6 +72,7 @@ private struct BlameLineRow: View {
     var numberWidth: CGFloat
     var isCompact: Bool
     var isSelected: Bool
+    var tokens: [SyntaxToken] = []
     var select: () -> Void
 
     var body: some View {
@@ -85,11 +91,11 @@ private struct BlameLineRow: View {
                 .foregroundStyle(.tertiary)
                 .frame(width: numberWidth, alignment: .trailing)
                 .padding(.horizontal, 8)
-            Text(run.lines[offset].isEmpty ? " " : run.lines[offset])
+            CodeLineText(text: run.lines[offset], tokens: tokens, findRow: FindRow(group: "", line: run.startLine - 1 + offset))
                 .fixedSize()
                 .padding(.trailing, 12)
         }
-        .font(.code)
+        .font(AppearancePreferences.shared.codeFont)
         .padding(.vertical, 1)
         .background(isSelected ? Color.accentColor.opacity(0.08) : .clear)
         .overlay(alignment: .top) {

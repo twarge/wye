@@ -34,6 +34,11 @@ final class DiskChanges {
         operations -= 1
     }
 
+    /// Whether one of Twig's own operations is writing to the repository now.
+    var isOperating: Bool {
+        operations > 0
+    }
+
     fileprivate func stop() {
         timer?.cancel()
         timer = nil

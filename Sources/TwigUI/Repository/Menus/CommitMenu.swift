@@ -60,6 +60,8 @@ struct CommitActionsMenu: View {
             }
         }
 
+        RebaseCommitItems(model: model, commit: commit)
+
         Section {
             Button("New Branch from \(hash)…", systemImage: "arrow.triangle.branch") {
                 model.present(.newBranch(at: commit.id))
@@ -68,6 +70,8 @@ struct CommitActionsMenu: View {
                 model.present(.newTag(at: commit.id))
             }
         }
+
+        CommitNoteMenuItems(model: model, commit: commit)
 
         Section {
             Button("Save as Patch…", systemImage: "square.and.arrow.down") {

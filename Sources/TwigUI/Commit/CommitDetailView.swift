@@ -97,9 +97,11 @@ private struct CommitDetailContent: View {
                     model.history.selection = $0
                 }
                 .textSelection(.enabled)
+                .overlay(alignment: .bottomTrailing) { CommitSignatureBadge(model: model, commitID: loaded.commit.id) }
                 Divider()
                 message(of: loaded.commit)
                     .textSelection(.enabled)
+                CommitNoteSection(model: model, commit: loaded.commit)
                 if loaded.commit.isMerge {
                     parentPicker(loaded.commit)
                 }
@@ -115,6 +117,7 @@ private struct CommitDetailContent: View {
             }
             .padding(.bottom, 20)
         }
+        .findInDiffs(loaded.files.map { FindableDiff($0) })
     }
 
     /// A merge has a diff against each parent; this chooses which one.
@@ -155,12 +158,14 @@ private struct CommitDetailContent: View {
         }
     }
 
+    /// The message, with its addresses and issue references as links.
     private func message(of commit: Commit) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(commit.summary)
+        let linker = model.messageLinker
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(linker.attributed(commit.summary))
                 .font(.headline)
             if !commit.body.isEmpty {
-                Text(commit.body)
+                Text(linker.attributed(commit.body))
                     .font(.body)
             }
         }

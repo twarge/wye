@@ -40,6 +40,7 @@ struct BranchMenu: View {
                 model.present(.rebase(onto: id))
             }
             .disabled(branch.isHead || model.isBusy || model.headBranchName == nil)
+            RebaseOntoMenuItem(model: model, newBase: id)
         }
 
         Section {
@@ -118,7 +119,8 @@ struct BranchMenu: View {
             PullRequestButton(
                 title: "New Pull Request from \(name)…",
                 url: model.pullRequestURL(forBranch: id),
-                unavailable: model.pullRequestUnavailableReason(forBranch: id)
+                unavailable: model.pullRequestUnavailableReason(forBranch: id),
+                inApp: model.pullRequestTarget == nil ? nil : { model.hosting.sheet = .newPullRequest(head: id) }
             )
         }
 
@@ -164,14 +166,22 @@ struct PullRequestButton: View {
     var title: String
     var url: URL?
     var unavailable: String?
+    /// Opens Twig's own sheet instead, where the remote's service is one
+    /// Twig talks to; the sheet still offers the page.
+    var inApp: (() -> Void)?
 
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        Button(title, systemImage: "arrow.triangle.pull") {
-            if let url { openURL(url) }
+        if let inApp {
+            Button(title, systemImage: "arrow.triangle.pull", action: inApp)
+                .help("Open a pull request from this branch")
+        } else {
+            Button(title, systemImage: "arrow.triangle.pull") {
+                if let url { openURL(url) }
+            }
+            .disabled(url == nil)
+            .help(unavailable ?? "Open the hosting service’s page for a new pull request")
         }
-        .disabled(url == nil)
-        .help(unavailable ?? "Open the hosting service’s page for a new pull request")
     }
 }

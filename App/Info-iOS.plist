@@ -27,5 +27,44 @@
 	<true/>
 	<key>UIFileSharingEnabled</key>
 	<true/>
+	<!-- twig:// links: the widget opens a repository with one, and the share
+	     extension, Services and Shortcuts ask for the clone sheet with one.
+	     Sources/TwigShared/TwigLink.swift reads them. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.twarge.app.twig</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>twig</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Background fetch: Sources/TwigUI/Activity/BackgroundRefresh.swift
+	     registers this identifier, and does nothing without it here. -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.twarge.app.twig.fetch</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
+	<!-- Signing in to hosting services with the OAuth device flow, by host.
+	     Each value is the client id of an OAuth application the app's
+	     publisher registers with that service, with the device flow
+	     enabled and no client secret (GitHub: an OAuth app with "Enable
+	     Device Flow"; GitLab: a non-confidential application with the
+	     "api" and "write_repository" scopes). Empty means Twig offers only
+	     personal access tokens for that host. A key per GitHub Enterprise
+	     or self-managed GitLab host offers it there too. -->
+	<key>TwigOAuthClientIDs</key>
+	<dict>
+		<key>github.com</key>
+		<string></string>
+		<key>gitlab.com</key>
+		<string></string>
+	</dict>
 </dict>
 </plist>

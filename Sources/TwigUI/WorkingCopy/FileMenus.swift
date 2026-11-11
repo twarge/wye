@@ -138,13 +138,27 @@ private struct IgnoreMenu: View {
     var path: String
     var isFolder: Bool
 
+    @Environment(\.requestCustomIgnore) private var requestCustomIgnore
+
     var body: some View {
-        Menu("Ignore", systemImage: "eye.slash.circle") {
+        Menu("Add to .gitignore", systemImage: "eye.slash.circle") {
             choices(in: .shared)
+            customPattern(in: .shared)
             Divider()
-            Menu("Ignore Only in This Clone") {
+            Menu("Ignore Privately") {
                 choices(in: .local)
+                customPattern(in: .local)
             }
+            .help("Rules kept in .git/info/exclude, which is never committed")
+        }
+    }
+
+    /// A rule of one's own, starting from this file's or folder's.
+    private func customPattern(in file: IgnoreFile) -> some View {
+        Button("Custom Pattern…") {
+            requestCustomIgnore(CustomIgnoreRequest(
+                pattern: isFolder ? IgnorePattern.folder(path) : IgnorePattern.file(path), file: file
+            ))
         }
     }
 

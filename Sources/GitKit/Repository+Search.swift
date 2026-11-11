@@ -36,6 +36,52 @@ public struct HistoryQuery: Hashable, Sendable {
     public var isEmpty: Bool { term.isEmpty }
 }
 
+/// Which commits of a history to keep, beyond a text search: a range of
+/// dates and a choice of authors. Keeps the history's order.
+public struct HistoryFilter: Hashable, Sendable {
+    /// Someone who wrote commits, as git records them.
+    public struct Author: Hashable, Sendable, Comparable {
+        public var name: String
+        public var email: String
+
+        public init(name: String, email: String) {
+            self.name = name
+            self.email = email
+        }
+
+        public static func < (lhs: Author, rhs: Author) -> Bool {
+            let order = lhs.name.localizedStandardCompare(rhs.name)
+            return order == .orderedSame ? lhs.email < rhs.email : order == .orderedAscending
+        }
+    }
+
+    /// Commits made at or after this moment, by committer date, as
+    /// `git log --since` takes it.
+    public var since: Date?
+    /// Commits made at or before this moment, by committer date, as
+    /// `git log --until` takes it.
+    public var until: Date?
+    /// When not empty, only commits by one of these authors.
+    public var authors: Set<Author>
+
+    public init(since: Date? = nil, until: Date? = nil, authors: Set<Author> = []) {
+        self.since = since
+        self.until = until
+        self.authors = authors
+    }
+
+    /// Whether it lets every commit through.
+    public var isEmpty: Bool { since == nil && until == nil && authors.isEmpty }
+
+    /// Whether a commit, by its author and committer, passes.
+    public func admits(author: Signature, committer: Signature) -> Bool {
+        if let since, committer.date < since { return false }
+        if let until, committer.date > until { return false }
+        if !authors.isEmpty, !authors.contains(Author(name: author.name, email: author.email)) { return false }
+        return true
+    }
+}
+
 /// One page of a search: the matches found among the commits examined.
 public struct SearchPage: Hashable, Sendable {
     public var matches: [Commit]
@@ -57,8 +103,11 @@ extension Repository {
     /// <path>`. A merge is listed only when it changed the path itself, as in
     /// resolving a conflict there, rather than whenever one side brought in a
     /// change: those changes are listed already, as the commits that made them.
+    ///
+    /// `filter` narrows the matches further, by date and author.
     public func nextMatches(
-        from cursor: HistoryCursor, matching query: HistoryQuery, limit: Int, examining budget: Int = 2_000
+        from cursor: HistoryCursor, matching query: HistoryQuery, filter: HistoryFilter = HistoryFilter(),
+        limit: Int, examining budget: Int = 2_000
     ) throws -> SearchPage {
         guard let walk = walks[cursor] else { return SearchPage(matches: [], examined: 0, isComplete: true) }
         let term = query.term
@@ -75,6 +124,10 @@ extension Repository {
             var commit: OpaquePointer?
             try check(git_commit_lookup(&commit, pointer, &oid))
             defer { git_commit_free(commit) }
+            if !filter.isEmpty, !filter.admits(author: Signature(git_commit_author(commit!).pointee),
+                                                committer: Signature(git_commit_committer(commit!).pointee)) {
+                continue
+            }
             if try term.isEmpty || matches(commit!, field: query.field, term: term) {
                 page.matches.append(Commit(commit!))
             }

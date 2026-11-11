@@ -168,6 +168,62 @@ private func conflicting(_ fixture: Fixture) throws {
         #expect(try await repository.snapshot().state == .clean)
     }
 
+    /// One side changed the file and the other deleted it.
+    private func modifyDelete(_ fixture: Fixture, deletedOn deleter: String) throws {
+        try fixture.commit("a.txt", "base\n", message: "Base")
+        try fixture.commit("other.txt", "other\n", message: "Other")
+        try fixture.git("checkout", "--quiet", "-b", "topic")
+        if deleter == "topic" {
+            try fixture.git("rm", "--quiet", "a.txt")
+            try fixture.git("commit", "--quiet", "-m", "Topic deletes")
+        } else {
+            try fixture.commit("a.txt", "topic\n", message: "Topic")
+        }
+        try fixture.git("checkout", "--quiet", "main")
+        if deleter == "main" {
+            try fixture.git("rm", "--quiet", "a.txt")
+            try fixture.git("commit", "--quiet", "-m", "Main deletes")
+        } else {
+            try fixture.commit("a.txt", "main\n", message: "Main")
+        }
+    }
+
+    @Test(arguments: ["topic", "main"])
+    func abortingAMergeStoppedOnAModifyDeleteConflict(deleter: String) async throws {
+        let (ours, git) = try Fixture.twins { try modifyDelete($0, deletedOn: deleter) }
+        defer { ours.remove(); git.remove() }
+        let repository = try ours.open()
+
+        #expect(try await repository.merge("refs/heads/topic", mode: .alwaysCommit) == .conflicts(["a.txt"]))
+        #expect(throws: (any Error).self) { try git.git("merge", "--quiet", "--no-edit", "topic") }
+        try await repository.abortOperation()
+        try git.git("merge", "--abort")
+
+        #expect(try ours.git("status", "--porcelain") == "")
+        #expect(try ours.git("status", "--porcelain") == git.git("status", "--porcelain"))
+        #expect(ours.fileExists("a.txt") == git.fileExists("a.txt"))
+        #expect(try await repository.snapshot().state == .clean)
+    }
+
+    @Test(arguments: ["topic", "main"])
+    func skippingACherryPickStoppedOnAModifyDeleteConflict(deleter: String) async throws {
+        let (ours, git) = try Fixture.twins { try modifyDelete($0, deletedOn: deleter) }
+        defer { ours.remove(); git.remove() }
+        let repository = try ours.open()
+        let pick = try ours.git("rev-parse", "topic")
+
+        #expect(try await repository.cherryPick([OID(hex: pick)!]) == .stopped(at: OID(hex: pick)!, conflicts: ["a.txt"]))
+        #expect(throws: (any Error).self) { try git.git("cherry-pick", "topic") }
+        try await repository.skipOperation()
+        try git.git("cherry-pick", "--skip")
+
+        #expect(try ours.git("status", "--porcelain") == "")
+        #expect(try ours.git("status", "--porcelain") == git.git("status", "--porcelain"))
+        #expect(ours.fileExists("a.txt") == git.fileExists("a.txt"))
+        #expect(try ours.git("rev-parse", "HEAD") == git.git("rev-parse", "HEAD"))
+        #expect(try await repository.snapshot().state == .clean)
+    }
+
     @Test func abortingAMergeRemovesFilesItAdded() async throws {
         let (ours, git) = try Fixture.twins { fixture in
             try conflicting(fixture)
