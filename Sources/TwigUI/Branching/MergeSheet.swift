@@ -90,7 +90,8 @@ struct RebaseSheet: View {
             }
         }
         .task {
-            guard let target = model.snapshot?.branchingTarget(of: onto) else { return }
+            // A revision picked by its hash is no reference.
+            guard let target = model.snapshot?.branchingTarget(of: onto) ?? OID(hex: onto) else { return }
             replayed = try? await model.repository.headCommitCount(notIn: target)
         }
     }

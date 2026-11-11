@@ -33,7 +33,6 @@ extension Repository {
         let remote = try lookupRemote(name)
         defer { git_remote_free(remote) }
         if let url = git_remote_url(remote).map({ String(cString: $0) }) {
-            try Self.requireSupportedURL(url)
             try useResolvedURL(url, for: remote, push: false)
         }
         session.report(TransferProgress(phase: .connecting))
@@ -143,7 +142,6 @@ extension Repository {
         let remotePointer = try lookupRemote(remoteName)
         defer { git_remote_free(remotePointer) }
         if let url = (git_remote_pushurl(remotePointer) ?? git_remote_url(remotePointer)).map({ String(cString: $0) }) {
-            try Self.requireSupportedURL(url)
             try useResolvedURL(url, for: remotePointer, push: git_remote_pushurl(remotePointer) != nil)
         }
         session.leases = leases
@@ -264,6 +262,88 @@ extension Repository {
             }
         }
         return renamed
+    }
+
+    // MARK: Pruning
+
+    /// Removes the remote branches whose branch is gone from the remote, as
+    /// `git remote prune` does: the remote is asked which branches it has,
+    /// but nothing is fetched and no other remote branch moves. Returns the
+    /// full names of the remote branches removed.
+    @discardableResult
+    public func pruneRemote(
+        _ name: String, credentials: (any CredentialProvider)? = nil, transfer: Transfer? = nil
+    ) throws -> [String] {
+        defer { transfer?.finish() }
+        let session = RemoteSession(transfer: transfer, credentials: credentials)
+        let remote = try lookupRemote(name)
+        defer { git_remote_free(remote) }
+        if let url = git_remote_url(remote).map({ String(cString: $0) }) {
+            try useResolvedURL(url, for: remote, push: false)
+        }
+        let before = Set(try referenceNames(matching: "refs/remotes/\(name)/*"))
+        session.report(TransferProgress(phase: .connecting))
+        var callbacks = session.callbacks()
+        try withExtendedLifetime(session) {
+            try session.check(git_remote_connect(remote, GIT_DIRECTION_FETCH, &callbacks, nil, nil))
+            defer { git_remote_disconnect(remote) }
+            try session.check(git_remote_prune(remote, &callbacks))
+        }
+        return before.subtracting(try referenceNames(matching: "refs/remotes/\(name)/*")).sorted()
+    }
+
+    // MARK: Pushing a commit
+
+    /// Pushes a commit to a branch of a chosen name on a remote, as
+    /// `git push <remote> <commit>:refs/heads/<name>` does, creating the
+    /// branch there if it is new. Nothing here changes but the remote
+    /// branch, which follows the push.
+    ///
+    /// A push that would drop commits on the remote is refused, unless
+    /// `force` is set; even then it is refused if the remote branch moved
+    /// since it was last fetched.
+    @discardableResult
+    public func push(
+        commit id: OID,
+        to remote: String,
+        as remoteBranch: String,
+        force: Bool = false,
+        credentials: (any CredentialProvider)? = nil,
+        transfer: Transfer? = nil
+    ) throws -> PushResult {
+        defer { transfer?.finish() }
+        let destination = try Self.branchDestination(remoteBranch)
+        var leases: [String: OID?] = [:]
+        if force {
+            leases[destination] = trackingTarget(of: destination, on: remote)
+        }
+        try pushReferences(
+            [(force ? "+" : "") + "\(id.hex):\(destination)"], to: remote, leases: leases,
+            session: RemoteSession(transfer: transfer, credentials: credentials)
+        )
+        return PushResult(remote: remote, reference: destination, setUpstream: false)
+    }
+
+    /// Whether pushing `id` to a branch on `remote` only adds commits to it,
+    /// as far as the last fetch knows: when the remote branch is not known
+    /// here, or its commit is `id` or in `id`'s history.
+    public func pushWouldFastForward(_ id: OID, to remote: String, as remoteBranch: String) throws -> Bool {
+        let destination = try Self.branchDestination(remoteBranch)
+        guard let current = trackingTarget(of: destination, on: remote), current != id else { return true }
+        var commit = id.raw, ancestor = current.raw
+        let result = git_graph_descendant_of(pointer, &commit, &ancestor)
+        try check(result)
+        return result == 1
+    }
+
+    /// `refs/heads/<name>` for a branch name, which must be a valid one.
+    private static func branchDestination(_ remoteBranch: String) throws -> String {
+        let name = remoteBranch.trimmingCharacters(in: .whitespaces)
+        let destination = name.hasPrefix("refs/") ? name : "refs/heads/" + name
+        var valid: Int32 = 0
+        try check(git_reference_name_is_valid(&valid, destination))
+        guard valid != 0, !name.isEmpty else { throw BranchingError.notABranch(name) }
+        return destination
     }
 
     /// The remote, and the reference on it, that a remote branch stands for.
@@ -496,7 +576,6 @@ extension Repository {
     ) async throws -> Repository {
         GitEnvironment.ensureInitialized()
         defer { transfer?.finish() }
-        try requireSupportedURL(url)
         let session = RemoteSession(transfer: transfer, credentials: credentials)
         // A clone from a local path copies files without reporting progress,
         // so cancellation is checked before it starts too.
@@ -708,18 +787,5 @@ extension Repository {
     static func isSCPLike(_ url: String) -> Bool {
         guard !url.contains("://"), let colon = url.firstIndex(of: ":") else { return false }
         return !url[..<colon].contains("/") && url[..<colon].count > 1
-    }
-
-    /// Refuses SSH addresses up front, with a better message than libgit2's.
-    /// HTTPS, plain HTTP, the git protocol and local paths all work.
-    static func requireSupportedURL(_ url: String) throws {
-        if let schemeEnd = url.range(of: "://") {
-            let scheme = url[..<schemeEnd.lowerBound].lowercased()
-            if scheme == "ssh" || scheme.hasPrefix("ssh+") || scheme.hasSuffix("+ssh") {
-                throw RemoteError.sshNotSupported(url: url)
-            }
-        } else if isSCPLike(url) {
-            throw RemoteError.sshNotSupported(url: url)
-        }
     }
 }

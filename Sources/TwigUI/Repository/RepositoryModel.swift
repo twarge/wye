@@ -89,6 +89,11 @@ final class RepositoryModel: Identifiable {
     let fileRequests = FileRequests()
     /// What Undo and Redo apply next.
     let undoStack: UndoStack
+    /// Submodule and worktree sheets, questions and windows to open.
+    let nested = NestedRequests()
+    /// Pinned and archived branches, and how branches stand against the
+    /// main branch.
+    let interface: RepositoryInterfaceState
 
     private let access: RepositoryAccess
 
@@ -101,6 +106,7 @@ final class RepositoryModel: Identifiable {
         repository = try Repository(at: access.url)
         history = HistoryModel(repository: repository)
         undoStack = UndoStack(repositoryID: bookmark.id)
+        interface = RepositoryInterfaceState(repositoryID: bookmark.id)
     }
 
     /// Reads the repository again and updates whatever changed.

@@ -33,6 +33,15 @@ final class CredentialStore: CredentialProvider {
         return try? savedCredential(for: request.host)
     }
 
+    /// Every SSH key, in turn: the server takes the first it knows.
+    func sshKeys(for request: SSHKeyRequest) -> [SSHPrivateKey] {
+        SSHKeyStore.shared.privateKeys()
+    }
+
+    func trust(for hostKey: SSHHostKey) -> SSHHostKeyTrust {
+        SSHKeyStore.shared.knownHosts.trust(for: hostKey)
+    }
+
     /// Keeps a credential for this run of the app, or in the Keychain.
     func store(_ credential: Credential, for host: String, inKeychain: Bool) throws {
         if inKeychain {

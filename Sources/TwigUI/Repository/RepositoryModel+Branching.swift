@@ -60,6 +60,7 @@ extension RepositoryModel {
     func renameBranch(_ id: String, to name: String) async {
         await perform(.renameBranch) { repository in
             let renamed = try await repository.renameBranch(id, to: name)
+            self.interface.renamed(id, to: renamed)
             if self.selection == .branch(id) {
                 self.selection = .branch(renamed)
             }
@@ -69,6 +70,7 @@ extension RepositoryModel {
     func deleteBranch(_ id: String, force: Bool) async {
         await perform(.deleteBranch) { repository in
             try await repository.deleteBranch(id, force: force)
+            self.interface.forget(id)
             if self.selection == .branch(id) {
                 self.selection = .history
             }

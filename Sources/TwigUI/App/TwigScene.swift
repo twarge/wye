@@ -27,8 +27,11 @@ public struct TwigScene: Scene {
         #if os(macOS)
         Settings {
             SettingsView()
+                // A fixed width; as tall as the user drags it.
                 .frame(width: 440)
+                .frame(minHeight: 320, idealHeight: 640, maxHeight: .infinity)
         }
+        .windowResizability(.contentSize)
         #endif
     }
 }
@@ -53,6 +56,7 @@ struct RootView: View {
         }
         .alert(for: $error)
         .windowActions(actions, model: model)
+        .settingsOpener()
         .onAppear {
             actions.open = { open($0) }
             actions.close = { close() }

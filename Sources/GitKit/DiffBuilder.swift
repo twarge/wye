@@ -20,12 +20,27 @@ enum DiffBuilder {
             // the file is binary.
             guard let delta = patch.map(git_patch_get_delta) ?? git_diff_get_delta(diff, index) else { continue }
             var file = FileDiff(delta.pointee)
-            if let patch {
+            if let change = submoduleChange(delta.pointee) {
+                // Its patch is only "Subproject commit" lines.
+                file.submodule = change
+                file.isBinary = false
+            } else if let patch {
                 try read(patch, into: &file)
             }
             files.append(file)
         }
         return files
+    }
+
+    /// The recorded commits, when either side of a delta is a submodule.
+    private static func submoduleChange(_ delta: git_diff_delta) -> SubmoduleChange? {
+        let commit = UInt16(GIT_FILEMODE_COMMIT.rawValue)
+        guard delta.old_file.mode == commit || delta.new_file.mode == commit else { return nil }
+        func id(_ file: git_diff_file) -> OID? {
+            let id = OID(file.id)
+            return file.mode == commit && id != RemoteSession.noObject ? id : nil
+        }
+        return SubmoduleChange(oldID: id(delta.old_file), newID: id(delta.new_file))
     }
 
     private static func read(_ patch: OpaquePointer, into file: inout FileDiff) throws {

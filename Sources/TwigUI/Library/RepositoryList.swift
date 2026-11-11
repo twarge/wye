@@ -46,9 +46,9 @@ struct RepositoryList: View {
                 ContentUnavailableView.search(text: query)
             }
         }
-        .task(id: StatusKey(ids: library.bookmarks.map(\.id), isActive: scenePhase == .active)) {
+        .task(id: StatusKey(ids: library.listedBookmarks.map(\.id), isActive: scenePhase == .active)) {
             guard scenePhase == .active else { return }
-            await heads.load(library.bookmarks, from: library)
+            await heads.load(library.listedBookmarks, from: library)
         }
     }
 
@@ -69,7 +69,7 @@ struct RepositoryList: View {
     /// with no match are left out; otherwise empty groups show, so there is
     /// somewhere to drop.
     private var sections: [ListSection] {
-        let matching = library.bookmarks.filter(matches)
+        let matching = library.listedBookmarks.filter(matches)
         var sections = library.groups.map { group in
             ListSection(group: group, bookmarks: order.sorted(matching.filter { $0.groupID == group.id }))
         }

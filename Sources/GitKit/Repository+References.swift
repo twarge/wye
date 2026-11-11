@@ -34,6 +34,18 @@ extension Repository {
             }
         }
 
+        let worktreeList = (try? worktrees()) ?? []
+        // A branch checked out in another worktree is that worktree's to move.
+        let elsewhere = Dictionary(
+            worktreeList.filter { !$0.isCurrent }.compactMap { tree -> (String, String)? in
+                tree.head?.branchName.map { ($0, tree.path) }
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        for index in branches.indices {
+            branches[index].worktreePath = elsewhere[branches[index].id]
+        }
+
         return RepositorySnapshot(
             head: head,
             state: RepositoryState(git_repository_state(pointer)),
@@ -41,8 +53,8 @@ extension Repository {
             remotes: try remotes(with: remoteBranches),
             tags: tags.sorted { $0.name.localizedStandardCompare($1.name) == .orderedDescending },
             stashes: try stashes(),
-            submodules: submodules(),
-            worktrees: worktrees()
+            submodules: (try? submodules()) ?? [],
+            worktrees: worktreeList
         )
     }
 
@@ -127,45 +139,13 @@ extension Repository {
         }
     }
 
-    private func submodules() -> [Submodule] {
-        let collected = Collector<Submodule>()
-        _ = git_submodule_foreach(pointer, { submodule, name, payload in
-            guard let submodule, let name, let payload else { return 0 }
-            let collected = Unmanaged<Collector<Submodule>>.fromOpaque(payload).takeUnretainedValue()
-            collected.items.append(Submodule(
-                name: String(cString: name),
-                path: String(cString: git_submodule_path(submodule)),
-                url: git_submodule_url(submodule).map { String(cString: $0) },
-                headID: git_submodule_head_id(submodule).map { OID($0) }
-            ))
-            return 0
-        }, Unmanaged.passUnretained(collected).toOpaque())
-        return collected.items.sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
-    }
-
-    private func worktrees() -> [Worktree] {
-        var names = git_strarray()
-        guard git_worktree_list(&names, pointer) == 0 else { return [] }
-        defer { git_strarray_dispose(&names) }
-        return strings(in: names).compactMap { name in
-            var worktree: OpaquePointer?
-            guard git_worktree_lookup(&worktree, pointer, name) == 0 else { return nil }
-            defer { git_worktree_free(worktree) }
-            return Worktree(
-                name: name,
-                path: String(cString: git_worktree_path(worktree)),
-                isLocked: git_worktree_is_locked(nil, worktree) > 0
-            )
-        }
-    }
-
-    private func strings(in array: git_strarray) -> [String] {
+    func strings(in array: git_strarray) -> [String] {
         (0..<array.count).compactMap { array.strings[$0].map { String(cString: $0) } }
     }
 }
 
 /// Gathers values from a C callback, which cannot capture Swift state.
-private final class Collector<Item> {
+final class Collector<Item> {
     var items: [Item] = []
 }
 

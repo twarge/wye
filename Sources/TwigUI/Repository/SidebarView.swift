@@ -5,10 +5,22 @@ struct SidebarView: View {
     @Bindable var model: RepositoryModel
     /// Branch folders opened or closed against their default.
     @State private var toggledFolders: Set<String> = []
+    // Which sections are open, remembered between launches. Each heading
+    // gets the list's own disclosure control at its trailing edge.
+    @AppStorage("sidebar.workspaceExpanded") private var workspaceExpanded = true
+    @AppStorage("sidebar.branchesExpanded") private var branchesExpanded = true
+    @AppStorage("sidebar.tagsExpanded") private var tagsExpanded = true
+    @AppStorage("sidebar.remotesExpanded") private var remotesExpanded = true
+    @AppStorage("sidebar.submodulesExpanded") private var submodulesExpanded = true
+    @AppStorage("sidebar.worktreesExpanded") private var worktreesExpanded = true
+    @AppStorage("sidebar.archivedExpanded") private var archivedExpanded = false
+    @AppStorage(BranchPreferences.staleMonthsKey) private var staleMonths = 3
+    @AppStorage(BranchPreferences.autoArchiveMonthsKey) private var autoArchiveMonths = 0
 
     var body: some View {
+        let listing = model.branchListing(staleMonths: staleMonths, autoArchiveMonths: autoArchiveMonths)
         List(selection: $model.selection) {
-            Section("Workspace") {
+            Section("Workspace", isExpanded: $workspaceExpanded) {
                 Label("Working Copy", systemImage: "folder")
                     .badge(model.workingCopy.entries.count)
                     .tag(SidebarItem.workingCopy)
@@ -22,19 +34,33 @@ struct SidebarView: View {
             }
 
             if let snapshot = model.snapshot {
-                Section("Branches") {
+                Section("Branches", isExpanded: $branchesExpanded) {
+                    // Pinned branches first, by their full names, outside the folders.
+                    ForEach(listing.pinned) { branch in
+                        BranchLabel(branch: branch, title: branch.name, marks: listing.marks[branch.id] ?? .init())
+                            .tag(SidebarItem.branch(branch.id))
+                    }
                     BranchFolderRows(
-                        nodes: BranchFolderNode.tree(of: snapshot.branches, path: \.name, idPrefix: "local:"),
+                        nodes: BranchFolderNode.tree(of: listing.listed, path: \.name, idPrefix: "local:"),
                         toggled: $toggledFolders,
                         headBranch: snapshot.head.branchName
                     ) { branch, name in
-                        BranchLabel(branch: branch, title: name)
+                        BranchLabel(branch: branch, title: name, marks: listing.marks[branch.id] ?? .init())
                             .tag(SidebarItem.branch(branch.id))
                     }
                 }
 
+                if !listing.archived.isEmpty {
+                    Section("Archived Branches", isExpanded: $archivedExpanded) {
+                        ForEach(listing.archived) { branch in
+                            BranchLabel(branch: branch, title: branch.name, marks: listing.marks[branch.id] ?? .init())
+                                .tag(SidebarItem.branch(branch.id))
+                        }
+                    }
+                }
+
                 if !snapshot.tags.isEmpty {
-                    Section("Tags") {
+                    Section("Tags", isExpanded: $tagsExpanded) {
                         ForEach(snapshot.tags) { tag in
                             Label(tag.name, systemImage: "tag")
                                 .tag(SidebarItem.tag(tag.id))
@@ -43,7 +69,7 @@ struct SidebarView: View {
                 }
 
                 if !snapshot.remotes.isEmpty {
-                    Section("Remotes") {
+                    Section("Remotes", isExpanded: $remotesExpanded) {
                         ForEach(snapshot.remotes) { remote in
                             DisclosureGroup {
                                 BranchFolderRows(
@@ -59,27 +85,32 @@ struct SidebarView: View {
                                 }
                             } label: {
                                 Label(remote.name, systemImage: "cloud")
-                                    .contextMenu { RemoteRowActions(model: model, remote: remote) }
+                                    .contextMenu { RemoteMenu(model: model, remote: remote) }
                             }
                         }
                     }
                 }
 
                 if !snapshot.submodules.isEmpty {
-                    Section("Submodules") {
+                    Section(isExpanded: $submodulesExpanded) {
                         ForEach(snapshot.submodules) { submodule in
-                            Label(submodule.path, systemImage: "shippingbox")
+                            SubmoduleLabel(submodule: submodule)
                                 .tag(SidebarItem.submodule(submodule.name))
                         }
+                    } header: {
+                        SidebarSectionHeader(title: "Submodules") { AllSubmodulesActions(model: model) }
                     }
                 }
 
-                if !snapshot.worktrees.isEmpty {
-                    Section("Worktrees") {
+                // The main worktree alone is just this repository.
+                if model.hasLinkedWorktrees {
+                    Section(isExpanded: $worktreesExpanded) {
                         ForEach(snapshot.worktrees) { worktree in
-                            Label(worktree.name, systemImage: "square.on.square")
+                            WorktreeLabel(worktree: worktree)
                                 .tag(SidebarItem.worktree(worktree.name))
                         }
+                    } header: {
+                        SidebarSectionHeader(title: "Worktrees") { AllWorktreesActions(model: model) }
                     }
                 }
             }
@@ -92,9 +123,13 @@ struct SidebarView: View {
         }
         .contextMenu(forSelectionType: SidebarItem.self, menu: { items in
             if items.count == 1, let item = items.first {
-                menu(for: item)
+                menu(for: item, listing: listing)
             }
         }, primaryAction: doubleClickAction)
+        .task(id: model.snapshot) {
+            // Merged and stale marks, worked out off the main thread.
+            await model.updateBranchReview()
+        }
     }
 
     /// `origin/HEAD` only says which branch the remote has checked out; it
@@ -105,115 +140,38 @@ struct SidebarView: View {
 
     // MARK: Menus
 
+    /// Each row's menu, from its own file under Menus.
     @ViewBuilder
-    private func menu(for item: SidebarItem) -> some View {
+    private func menu(for item: SidebarItem, listing: BranchListing) -> some View {
         switch item {
+        case .workingCopy:
+            WorkingCopyRowMenu(model: model)
         case .branch(let id):
-            branchMenu(id)
+            if let branch = model.snapshot?.branches.first(where: { $0.id == id }) {
+                BranchMenu(
+                    model: model, branch: branch, marks: listing.marks[id] ?? .init(),
+                    isArchived: listing.archived.contains { $0.id == id }
+                )
+            }
         case .remoteBranch(let id):
-            remoteBranchMenu(id)
+            if let branch = model.snapshot?.remotes.flatMap(\.branches).first(where: { $0.id == id }) {
+                RemoteBranchMenu(model: model, branch: branch)
+            }
         case .tag(let id):
-            Button("Check Out", systemImage: "arrow.uturn.down") {
-                Task { await model.checkOutTag(id) }
+            if let tag = model.snapshot?.tags.first(where: { $0.id == id }) {
+                TagMenu(model: model, tag: tag)
             }
-            .disabled(isBusy)
-            Divider()
-            Button("Delete…", systemImage: "trash", role: .destructive) {
-                model.present(.deleteTag(id))
+        case .submodule(let name):
+            if let submodule = model.submodule(named: name) {
+                SubmoduleActions(model: model, submodule: submodule)
             }
-            TagRemoteActions(model: model, tag: id)
-        default:
+        case .worktree(let name):
+            if let worktree = model.worktree(named: name) {
+                WorktreeActions(model: model, worktree: worktree)
+            }
+        case .history, .stashes, .reflog:
             EmptyView()
         }
-    }
-
-    @ViewBuilder
-    private func branchMenu(_ id: String) -> some View {
-        let isHead = model.snapshot?.head.branchName == id
-        let name = RepositoryModel.displayName(ofReference: id)
-        let current = model.headBranchName.map { "“\($0)”" } ?? "Current"
-
-        Button("Check Out", systemImage: "arrow.uturn.down") {
-            Task { await model.checkOutBranch(id) }
-        }
-        .disabled(isHead || isBusy)
-
-        Divider()
-
-        Button("Merge “\(name)” into \(current)…", systemImage: "arrow.triangle.merge") {
-            model.present(.merge(id))
-        }
-        .disabled(isHead || isBusy)
-        Button("Rebase \(current) onto “\(name)”…", systemImage: "arrow.triangle.pull") {
-            model.present(.rebase(onto: id))
-        }
-        .disabled(isHead || isBusy || model.headBranchName == nil)
-
-        Divider()
-
-        Button("Rename…", systemImage: "pencil") {
-            model.present(.renameBranch(id))
-        }
-        upstreamMenu(for: id)
-        PushToMenuItem(model: model, branch: id)
-        Button("Delete…", systemImage: "trash", role: .destructive) {
-            model.present(.deleteBranch(id))
-        }
-        .disabled(isHead)
-    }
-
-    @ViewBuilder
-    private func remoteBranchMenu(_ id: String) -> some View {
-        let name = RepositoryModel.displayName(ofReference: id)
-        let current = model.headBranchName.map { "“\($0)”" } ?? "Current"
-
-        Button("Check Out as Local Branch", systemImage: "arrow.uturn.down") {
-            Task { await model.trackRemoteBranch(id) }
-        }
-        .disabled(isBusy)
-
-        Divider()
-
-        Button("Merge “\(name)” into \(current)…", systemImage: "arrow.triangle.merge") {
-            model.present(.merge(id))
-        }
-        .disabled(isBusy)
-        Button("Rebase \(current) onto “\(name)”…", systemImage: "arrow.triangle.pull") {
-            model.present(.rebase(onto: id))
-        }
-        .disabled(isBusy || model.headBranchName == nil)
-        RemoteBranchRemoteActions(model: model, branch: id)
-    }
-
-    /// Which remote branch a local branch follows.
-    private func upstreamMenu(for id: String) -> some View {
-        let upstream = model.snapshot?.branches.first { $0.id == id }?.upstream?.name
-        let candidates = model.snapshot?.remotes.flatMap(Self.listedBranches) ?? []
-        return Menu("Set Upstream", systemImage: "arrow.up.arrow.down") {
-            ForEach(candidates) { candidate in
-                Button {
-                    Task { await model.setUpstream(of: id, to: candidate.id) }
-                } label: {
-                    if candidate.name == upstream {
-                        Label(candidate.name, systemImage: "checkmark")
-                    } else {
-                        Text(candidate.name)
-                    }
-                }
-            }
-            if !candidates.isEmpty {
-                Divider()
-            }
-            Button("None") {
-                Task { await model.setUpstream(of: id, to: nil) }
-            }
-            .disabled(upstream == nil)
-        }
-    }
-
-    /// Whether a merge, rebase or the like has to be finished first.
-    private var isBusy: Bool {
-        model.snapshot?.state ?? .clean != .clean
     }
 
     /// Double-clicking a branch checks it out, and a remote branch checks
@@ -228,6 +186,10 @@ struct SidebarView: View {
                 Task { await model.checkOutBranch(id) }
             case .remoteBranch(let id):
                 Task { await model.trackRemoteBranch(id) }
+            case .submodule(let name):
+                model.nested.opening = .submodule(name)
+            case .worktree(let name):
+                model.nested.opening = .worktree(name)
             default:
                 break
             }
@@ -239,6 +201,7 @@ private struct BranchLabel: View {
     var branch: Branch
     /// The name within its folder.
     var title: String
+    var marks: BranchListing.Marks
 
     var body: some View {
         Label {
@@ -247,6 +210,15 @@ private struct BranchLabel: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer(minLength: 0)
+                if marks.isPinned {
+                    mark("pin.fill", "Pinned")
+                }
+                if marks.isMerged {
+                    mark("checkmark.circle", "Merged", help: "Everything on this branch is in the main branch")
+                }
+                if marks.isStale {
+                    mark("clock", "Stale", help: "No commits for a while")
+                }
                 if let upstream = branch.upstream {
                     if upstream.ahead > 0 {
                         Text("↑\(upstream.ahead)")
@@ -254,6 +226,12 @@ private struct BranchLabel: View {
                     if upstream.behind > 0 {
                         Text("↓\(upstream.behind)")
                     }
+                }
+                if let path = branch.worktreePath {
+                    Image(systemName: "square.on.square")
+                        .foregroundStyle(.secondary)
+                        .help("Checked out in the worktree at \(path)")
+                        .accessibilityLabel("Checked out in another worktree")
                 }
                 if branch.isHead {
                     Text("HEAD")
@@ -268,5 +246,14 @@ private struct BranchLabel: View {
             Image(systemName: "arrow.triangle.branch")
         }
         .help(branch.name)
+    }
+
+    /// A small mark beside the name, said aloud as `label`.
+    private func mark(_ systemImage: String, _ label: String, help: String? = nil) -> some View {
+        Image(systemName: systemImage)
+            .imageScale(.small)
+            .foregroundStyle(.secondary)
+            .help(help ?? label)
+            .accessibilityLabel(label)
     }
 }

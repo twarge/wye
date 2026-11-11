@@ -20,6 +20,10 @@ struct RepositoryView: View {
         } content: {
             content
                 .navigationSplitViewColumnWidth(min: 320, ideal: 500)
+                // The window stands for the repository's folder: on macOS the
+                // title gets the folder's icon, to drag, and a menu of the
+                // folders that enclose it.
+                .navigationDocument(model.repository.url)
                 // On the content column, so it shows whatever the sidebar selects.
                 .remoteControls(for: model)
                 .undoControls(for: model)
@@ -31,6 +35,13 @@ struct RepositoryView: View {
         .branchingSheets(model)
         .remoteDialogs(for: model)
         .fileRequestDialogs(model)
+        .nestedDialogs(model)
+        .background {
+            // The sidebar's menus ask for them too, so they do not wait
+            // for the history to be on screen; on a view of their own,
+            // whose file dialogs then take no others' place.
+            Color.clear.commitActionPresenters(model)
+        }
         .task {
             await model.refresh()
         }
@@ -57,9 +68,9 @@ struct RepositoryView: View {
         case .reflog:
             ReflogView(model: model)
         case .submodule(let name):
-            SubmoduleView(submodule: model.snapshot?.submodules.first { $0.name == name })
+            SubmoduleView(model: model, name: name)
         case .worktree(let name):
-            WorktreeView(worktree: model.snapshot?.worktrees.first { $0.name == name })
+            WorktreeView(model: model, name: name)
         case nil:
             ContentUnavailableView("Nothing Selected", systemImage: "sidebar.left")
         }
@@ -78,40 +89,6 @@ struct RepositoryView: View {
             CommitDetailView(model: model, commitID: model.history.reflog.selectedCommit, emptyTitle: "No Entry Selected")
         case .submodule, .worktree, nil:
             Color.clear
-        }
-    }
-}
-
-private struct SubmoduleView: View {
-    var submodule: Submodule?
-
-    var body: some View {
-        if let submodule {
-            Form {
-                LabeledContent("Path", value: submodule.path)
-                LabeledContent("URL", value: submodule.url ?? "None")
-                LabeledContent("Commit") {
-                    Text(submodule.headID?.abbreviated() ?? "Not committed")
-                        .font(.code)
-                }
-            }
-            .formStyle(.grouped)
-            .navigationTitle(submodule.name)
-        }
-    }
-}
-
-private struct WorktreeView: View {
-    var worktree: Worktree?
-
-    var body: some View {
-        if let worktree {
-            Form {
-                LabeledContent("Path", value: worktree.path)
-                LabeledContent("Locked", value: worktree.isLocked ? "Yes" : "No")
-            }
-            .formStyle(.grouped)
-            .navigationTitle(worktree.name)
         }
     }
 }

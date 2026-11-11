@@ -22,7 +22,8 @@ struct CredentialPrompt: Identifiable {
 final class CredentialBroker {
     /// The prompt to show, while one is waiting for an answer.
     var prompt: CredentialPrompt?
-
+    /// An SSH server's key to trust or refuse.
+    var hostKeyPrompt: HostKeyPrompt?
     private var continuation: CheckedContinuation<Bool, Never>?
 
     /// Runs `operation` until it succeeds, fails for another reason, or the
@@ -32,6 +33,18 @@ final class CredentialBroker {
             do {
                 return try await operation()
             } catch let error as RemoteError {
+                if let hostKeyPrompt = HostKeyPrompt(error) {
+                    guard await ask({ self.hostKeyPrompt = hostKeyPrompt }) else { throw CancellationError() }
+                    try SSHKeyStore.shared.knownHosts.trust(hostKeyPrompt.hostKey)
+                    continue
+                }
+                if let sshKeyPrompt = SSHKeyPrompt(error) {
+                    // Nothing to answer on the spot: the key has to be made
+                    // or added to the account first. The settings open at
+                    // the keys, saying why, and the operation stops.
+                    SettingsFocus.shared.showSSHKeys(for: sshKeyPrompt)
+                    throw CancellationError()
+                }
                 guard let (host, username) = error.credentialHost else { throw error }
                 let wasRejected = if case .credentialsRejected = error { true } else { false }
                 let saved = CredentialStore.shared.credential(
@@ -40,7 +53,7 @@ final class CredentialBroker {
                 let prompt = CredentialPrompt(
                     host: host, username: saved?.username ?? username ?? "", wasRejected: wasRejected
                 )
-                guard await ask(prompt) else { throw CancellationError() }
+                guard await ask({ self.prompt = prompt }) else { throw CancellationError() }
             }
         }
     }
@@ -52,20 +65,35 @@ final class CredentialBroker {
         finish(answered: true)
     }
 
+    /// Answers an SSH prompt: trust the host's key, or try the keys again.
+    func proceed() {
+        finish(answered: true)
+    }
+
     /// Declines the current prompt; the operation stops.
     func decline() {
         finish(answered: false)
     }
 
-    private func ask(_ prompt: CredentialPrompt) async -> Bool {
+    /// A prompt's sheet went away. Unless it was answered, that declines
+    /// it; a newer prompt, shown before the old sheet finished leaving,
+    /// stays.
+    func dismissed(_ id: UUID) {
+        if prompt?.id == id || hostKeyPrompt?.id == id {
+            decline()
+        }
+    }
+
+    private func ask(_ show: () -> Void) async -> Bool {
         await withCheckedContinuation { continuation in
             self.continuation = continuation
-            self.prompt = prompt
+            show()
         }
     }
 
     private func finish(answered: Bool) {
         prompt = nil
+        hostKeyPrompt = nil
         continuation?.resume(returning: answered)
         continuation = nil
     }

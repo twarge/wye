@@ -66,6 +66,7 @@ extension Repository {
     /// reference name. Local changes are kept; the switch fails rather than
     /// overwrite one.
     public func checkOut(branch name: String) throws {
+        try requireNotInOtherWorktree(name)
         var object: OpaquePointer?
         try check(git_revparse_single(&object, pointer, name))
         defer { git_object_free(object) }
@@ -165,6 +166,7 @@ extension Repository {
         if git_branch_is_head(branch) == 1 {
             throw BranchingError.currentBranch(shortName)
         }
+        try requireNotInOtherWorktree(name)
         if !force {
             let unmerged = try unmergedCommitCount(of: name)
             if unmerged > 0 {
@@ -299,6 +301,14 @@ extension Repository {
         try check(git_reference_peel(&object, reference, GIT_OBJECT_COMMIT))
         defer { git_object_free(object) }
         return OID(git_object_id(object))
+    }
+
+    /// Refuses a branch, by full reference name, that another worktree has
+    /// checked out, as git does, saying which.
+    private func requireNotInOtherWorktree(_ name: String) throws {
+        if let holder = try? worktreeHolding(branch: name) {
+            throw WorktreeError.branchCheckedOut(branch: String(name.dropFirst("refs/heads/".count)), path: holder.path)
+        }
     }
 
     /// Looks up a local branch by its full reference name. The caller frees it.

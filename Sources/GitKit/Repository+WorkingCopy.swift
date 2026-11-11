@@ -16,9 +16,9 @@ extension Repository {
         var list: OpaquePointer?
         try check(git_status_list_new(&list, pointer, &options))
         defer { git_status_list_free(list) }
-        return (0..<git_status_list_entrycount(list)).compactMap { index in
+        return withSubmoduleChanges((0..<git_status_list_entrycount(list)).compactMap { index in
             git_status_byindex(list, index).flatMap { StatusEntry($0.pointee) }
-        }
+        })
     }
 
     /// Records the working tree's version of each path in the index.

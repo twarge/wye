@@ -12,6 +12,11 @@ struct RepositoryBookmark: Identifiable, Codable, Hashable {
     var groupID: UUID?
     /// When it was last opened, for sorting the list.
     var lastOpened: Date?
+    /// Another repository whose folder has to be open as well: the main
+    /// repository of a linked worktree, whose git directory holds the
+    /// worktree's own. Added later than the rest, so missing from older
+    /// saved lists.
+    var requires: UUID?
 
     enum Location: Codable, Hashable {
         /// A folder in the app's Documents, by its path from there. The
@@ -23,6 +28,10 @@ struct RepositoryBookmark: Identifiable, Codable, Hashable {
         /// A folder inside a watched folder, by its path from there. The
         /// watched folder's permission covers it.
         case watched(folder: UUID, path: String)
+        /// A folder inside another repository in the list, by its path
+        /// from there: a submodule, or a worktree kept in the repository's
+        /// folder. That repository's permission covers it.
+        case nested(parent: UUID, path: String)
     }
 }
 
@@ -30,9 +39,12 @@ struct RepositoryBookmark: Identifiable, Codable, Hashable {
 final class RepositoryAccess {
     let url: URL
     private let isScoped: Bool
+    /// Access to the folders this one depends on, held as long as it is.
+    private let held: [RepositoryAccess]
 
-    init(url: URL, scoped: Bool) {
+    init(url: URL, scoped: Bool, holding held: [RepositoryAccess] = []) {
         self.url = url
+        self.held = held
         isScoped = scoped && url.startAccessingSecurityScopedResource()
     }
 
@@ -70,7 +82,7 @@ final class RepositoryLibrary {
     var openFolders: [UUID: OpenWatchedFolder] = [:]
 
     private let storage: URL
-    private let documents: URL
+    let documents: URL
 
     init(
         storage: URL = .applicationSupportDirectory.appending(path: "Twig/Repositories.json"),
@@ -111,9 +123,14 @@ final class RepositoryLibrary {
         return bookmark
     }
 
-    /// Forgets a repository. Its files are left alone.
+    /// Forgets a repository, and the submodules and worktrees listed
+    /// through its folder. Their files are left alone.
     func remove(_ bookmark: RepositoryBookmark) {
-        bookmarks.removeAll { $0.id == bookmark.id }
+        var gone: Set<UUID> = [bookmark.id]
+        while let child = bookmarks.first(where: { !gone.contains($0.id) && $0.nestedParent.map(gone.contains) == true }) {
+            gone.insert(child.id)
+        }
+        bookmarks.removeAll { gone.contains($0.id) }
         sortAndSave()
     }
 
@@ -163,14 +180,36 @@ final class RepositoryLibrary {
         groups.first { $0.id == bookmark.groupID }
     }
 
-    /// Opens access to a repository's folder.
+    /// Opens access to a repository's folder, and to the folders it needs:
+    /// the repository a nested one is inside, the main repository of a
+    /// linked worktree.
     func access(to bookmark: RepositoryBookmark) throws -> RepositoryAccess {
-        let resolved = try resolve(bookmark)
+        try access(to: bookmark, depth: 0)
+    }
+
+    private func access(to bookmark: RepositoryBookmark, depth: Int) throws -> RepositoryAccess {
+        // A list edited by hand could make a loop.
+        guard depth < 16 else { throw CocoaError(.fileNoSuchFile) }
+        var held: [RepositoryAccess] = []
+        for id in [bookmark.nestedParent, bookmark.requires].compactMap(\.self) {
+            guard let other = bookmarks.first(where: { $0.id == id }) else {
+                if id == bookmark.nestedParent { throw CocoaError(.fileNoSuchFile) }
+                continue
+            }
+            // A worktree can still open without its main repository's
+            // permission when the sandbox allows it some other way.
+            if let access = try? access(to: other, depth: depth + 1) {
+                held.append(access)
+            } else if id == bookmark.nestedParent {
+                throw CocoaError(.fileNoSuchFile)
+            }
+        }
+        let resolved = try resolve(bookmark, depth: depth)
         if let fresh = resolved.refreshedLocation, let index = bookmarks.firstIndex(where: { $0.id == bookmark.id }) {
             bookmarks[index].location = fresh
             sortAndSave()
         }
-        return RepositoryAccess(url: resolved.url, scoped: resolved.isScoped)
+        return RepositoryAccess(url: resolved.url, scoped: resolved.isScoped, holding: held)
     }
 
     /// Where a repository is, for display. `nil` once the folder is gone.
@@ -182,7 +221,7 @@ final class RepositoryLibrary {
     }
 
     func resolve(
-        _ bookmark: RepositoryBookmark
+        _ bookmark: RepositoryBookmark, depth: Int = 0
     ) throws -> (url: URL, isScoped: Bool, refreshedLocation: RepositoryBookmark.Location?) {
         switch bookmark.location {
         case .documents(let path):
@@ -196,6 +235,12 @@ final class RepositoryLibrary {
         case .watched(let folder, let path):
             guard let open = openFolders[folder] else { throw CocoaError(.fileNoSuchFile) }
             return (open.url.appending(path: path, directoryHint: .isDirectory), false, nil)
+        case .nested(let parent, let path):
+            guard depth < 16, let parent = bookmarks.first(where: { $0.id == parent }) else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            let base = try resolve(parent, depth: depth + 1).url
+            return (base.appending(path: path, directoryHint: .isDirectory), false, nil)
         }
     }
 

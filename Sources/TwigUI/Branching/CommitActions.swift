@@ -2,129 +2,6 @@ import GitKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The actions on a commit in a history: check it out, branch or tag it,
-/// apply or undo its changes, reset to it, compare it, save it as a patch,
-/// copy its name.
-struct CommitActionsMenu: View {
-    var model: RepositoryModel
-    var commit: Commit
-
-    var body: some View {
-        let requests = model.history.requests
-        Button("Check Out", systemImage: "arrow.uturn.down") {
-            Task { await model.checkOutCommit(commit.id) }
-        }
-        .disabled(isHead)
-        Button("New Branch Here…", systemImage: "arrow.triangle.branch") {
-            model.present(.newBranch(at: commit.id))
-        }
-        Button("New Tag Here…", systemImage: "tag") {
-            model.present(.newTag(at: commit.id))
-        }
-
-        Divider()
-
-        Button("Cherry-Pick", systemImage: "arrow.down.to.line") {
-            Task { await model.cherryPick([commit.id]) }
-        }
-        .disabled(isHead || isBusy)
-        Button("Revert", systemImage: "arrow.uturn.backward") {
-            Task { await model.revert([commit.id]) }
-        }
-        .disabled(isBusy)
-        Button("Reset Current Branch to Here…", systemImage: "arrow.counterclockwise") {
-            model.present(.reset(to: commit.id))
-        }
-        .disabled(isHead || model.snapshot?.head.target == nil)
-        if isHead {
-            Button("Edit Message…", systemImage: "pencil") {
-                requests.reword = commit
-            }
-            .disabled(isBusy)
-        }
-
-        Divider()
-
-        Button("Compare With…", systemImage: "arrow.left.arrow.right") {
-            requests.compare = CompareRequest(from: commit.id.hex, to: "HEAD")
-        }
-        Button("Save as Patch…", systemImage: "square.and.arrow.down") {
-            Task { await requests.export(commit, from: model) }
-        }
-        .disabled(commit.isMerge)
-        Button("Apply Patch…", systemImage: "doc.badge.plus") {
-            requests.isImportingPatch = true
-        }
-        .disabled(isBusy)
-
-        Divider()
-
-        if model.history.search.isActive {
-            Button("Reveal in History", systemImage: "scope") {
-                Task { await model.revealInHistory(commit.id) }
-            }
-        }
-        Button("Copy Hash", systemImage: "doc.on.doc") {
-            Platform.copyToClipboard(commit.id.hex)
-        }
-        Button("Copy Commit Info", systemImage: "info.circle") {
-            Platform.copyToClipboard(commit.info)
-        }
-    }
-
-    private var isHead: Bool {
-        model.snapshot?.head.target == commit.id
-    }
-
-    /// Whether another operation has to be finished first.
-    private var isBusy: Bool {
-        model.snapshot?.state ?? .clean != .clean
-    }
-}
-
-/// The actions on several commits selected together, in the order the
-/// history lists them: newest first.
-struct MultipleCommitsMenu: View {
-    var model: RepositoryModel
-    var commits: [Commit]
-
-    var body: some View {
-        let count = commits.count
-        Button("Cherry-Pick \(count) Commits", systemImage: "arrow.down.to.line") {
-            Task { await model.cherryPick(commits.map(\.id)) }
-        }
-        .disabled(isBusy || commits.contains { $0.id == model.snapshot?.head.target })
-        .help("Apply their changes on top of HEAD, oldest first")
-        Button("Revert \(count) Commits", systemImage: "arrow.uturn.backward") {
-            Task { await model.revert(commits.map(\.id)) }
-        }
-        .disabled(isBusy)
-        .help("Undo their changes, newest first, one commit each")
-
-        Divider()
-
-        Button("Compare First and Last", systemImage: "arrow.left.arrow.right") {
-            if let oldest = commits.last, let newest = commits.first {
-                model.history.requests.compare = CompareRequest(from: oldest.id.hex, to: newest.id.hex)
-            }
-        }
-        .help("Compare the oldest selected commit with the newest")
-
-        Divider()
-
-        Button("Copy Hashes", systemImage: "doc.on.doc") {
-            Platform.copyToClipboard(commits.map(\.id.hex).joined(separator: "\n"))
-        }
-        Button("Copy Commit Info", systemImage: "info.circle") {
-            Platform.copyToClipboard(commits.map(\.info).joined(separator: "\n\n"))
-        }
-    }
-
-    private var isBusy: Bool {
-        model.snapshot?.state ?? .clean != .clean
-    }
-}
-
 extension Commit {
     /// What Copy Commit Info puts on the clipboard: the hash, author, date
     /// and subject.
@@ -168,6 +45,8 @@ final class CommitActionRequests {
     var importedPatch: ImportedPatch?
     /// The commit whose message is being edited: `HEAD`'s.
     var reword: Commit?
+    /// A zip of a commit's files, waiting to be saved.
+    var archiveExport: ArchiveExport?
 
     /// Writes a commit's patch and asks where to save it.
     func export(_ commit: Commit, from model: RepositoryModel) async {
@@ -232,6 +111,20 @@ private struct CommitActionPresenters: ViewModifier {
                 defaultFilename: requests.patchExport?.fileName
             ) { result in
                 if case .failure(let failure) = result { model.error = PresentedError(failure) }
+            }
+            .background {
+                // On its own view: one view takes only one file exporter.
+                Color.clear
+                    .fileExporter(
+                        isPresented: Binding { requests.archiveExport != nil } set: { if !$0 { requests.archiveExport = nil } },
+                        document: requests.archiveExport?.document,
+                        contentType: .zip,
+                        defaultFilename: requests.archiveExport?.fileName
+                    ) { result in
+                        // Once it is written: the export may already be off screen.
+                        ArchiveDocument.removeTemporaryFiles()
+                        if case .failure(let failure) = result { model.error = PresentedError(failure) }
+                    }
             }
             .fileImporter(isPresented: $requests.isImportingPatch, allowedContentTypes: [.patch, .diffFile, .plainText]) { result in
                 switch result {

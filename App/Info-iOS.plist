@@ -8,12 +8,17 @@
 	     state it here rather than depend on that. -->
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
-	<!-- Export compliance. Twig's only encryption is HTTPS to git remotes,
-	     done by the operating system's TLS stack: libgit2 is built against
+	<!-- Export compliance. Twig encrypts in two ways. HTTPS to git remotes
+	     is done by the operating system's TLS stack: libgit2 is built against
 	     Secure Transport and carries no crypto library of its own (its SHA-1
-	     and SHA-256 object hashing is not encryption), and tokens are kept in
-	     the system Keychain. Encryption provided by the OS is exempt, so this
-	     is false and App Store Connect asks no encryption questions. -->
+	     and SHA-256 object hashing is not encryption). SSH remotes use the
+	     SSH protocol implemented in the app (swift-nio-ssh), whose ciphers,
+	     key exchange and signatures are the operating system's CryptoKit;
+	     private keys and tokens are kept in the system Keychain. The app
+	     carries no cryptographic algorithm of its own except bcrypt_pbkdf,
+	     used only to read passphrase-protected key files. Whether SSH changes
+	     the answer below is the owner's decision: see docs/app-store.md,
+	     "Export compliance". The value is unchanged until that is decided. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<!-- Together these show the app's Documents folder in the Files app,

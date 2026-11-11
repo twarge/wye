@@ -24,6 +24,9 @@ public struct FileDiff: Identifiable, Hashable, Sendable {
     public var hunks: [Hunk]
     /// Whether lines were left out because the file's diff is very long.
     public var isTruncated: Bool
+    /// For a submodule, the commits it records on each side in place of
+    /// lines, which a submodule has none of.
+    public var submodule: SubmoduleChange? = nil
 
     public var id: String { path }
 
@@ -60,6 +63,8 @@ public struct StatusEntry: Identifiable, Hashable, Sendable {
     public var staged: FileChange?
     /// The change between the index and the working tree.
     public var unstaged: FileChange?
+    /// For a submodule: what is changed in it.
+    public var submodule: SubmoduleChanges?
 
     public init(path: String, originalPath: String? = nil, staged: FileChange?, unstaged: FileChange?) {
         self.path = path

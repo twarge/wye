@@ -13,6 +13,14 @@ let package = Package(
         .library(name: "GitKit", targets: ["GitKit"]),
         .library(name: "TwigUI", targets: ["TwigUI"])
     ],
+    dependencies: [
+        // SSH remotes: the protocol in Swift, over Network.framework, with
+        // the primitives from CryptoKit. libgit2 is built without SSH.
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.105.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssh.git", from: "0.15.1"),
+        .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.28.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "5.1.1")
+    ],
     targets: [
         // libgit2, compiled from the Vendor/libgit2 submodule. It is GPLv2 with
         // a linking exception, which is why it stays a submodule: none of its
@@ -69,7 +77,13 @@ let package = Package(
         ),
         .target(
             name: "GitKit",
-            dependencies: ["Clibgit2"],
+            dependencies: [
+                "Clibgit2",
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "NIOSSH", package: "swift-nio-ssh"),
+                .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
+                .product(name: "Crypto", package: "swift-crypto")
+            ],
             path: "Sources/GitKit",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),

@@ -12,8 +12,16 @@ struct StashListView: View {
         List(selection: $model.selectedStash) {
             ForEach(stashes) { stash in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(stash.message)
-                        .lineLimit(2)
+                    HStack(spacing: 6) {
+                        if stash.isSnapshot {
+                            Label("Snapshot", systemImage: "camera")
+                                .labelStyle(.iconOnly)
+                                .foregroundStyle(.secondary)
+                                .help("A snapshot: its changes were left in place when it was made")
+                        }
+                        Text(stash.isSnapshot ? stash.title : stash.message)
+                            .lineLimit(2)
+                    }
                     Text(stash.date, format: Date.FormatStyle(date: .abbreviated, time: .shortened))
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -21,15 +29,12 @@ struct StashListView: View {
                 .padding(.vertical, 2)
                 .tag(stash.id)
                 .contextMenu {
-                    applyButton(stash)
-                    popButton(stash)
-                    Divider()
-                    dropButton(stash)
+                    StashMenu(model: model, stash: stash) { pendingDrop = stash }
                 }
                 .swipeActions(edge: .leading) {
-                    popButton(stash)
+                    StashPopButton(model: model, stash: stash)
                         .tint(.accentColor)
-                    applyButton(stash)
+                    StashApplyButton(model: model, stash: stash)
                 }
                 .swipeActions(edge: .trailing) {
                     // Not destructive in role: that would take the row away
@@ -63,26 +68,5 @@ struct StashListView: View {
         } message: { stash in
             Text("“\(stash.message)” is deleted, and the changes it holds are lost.")
         }
-    }
-
-    private func applyButton(_ stash: Stash) -> some View {
-        Button("Apply", systemImage: "arrow.uturn.down") {
-            Task { await model.apply(stash) }
-        }
-        .help("Apply the stash’s changes and keep the stash")
-    }
-
-    private func popButton(_ stash: Stash) -> some View {
-        Button("Pop", systemImage: "tray.and.arrow.up") {
-            Task { await model.pop(stash) }
-        }
-        .help("Apply the stash’s changes, then drop it")
-    }
-
-    private func dropButton(_ stash: Stash) -> some View {
-        Button("Drop…", systemImage: "trash", role: .destructive) {
-            pendingDrop = stash
-        }
-        .help("Delete the stash")
     }
 }

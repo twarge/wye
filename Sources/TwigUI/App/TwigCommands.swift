@@ -148,6 +148,8 @@ private struct RepositoryMenu: View {
                 .disabled(isTransferring || model?.currentBranch == nil || model?.hasRemotes != true)
             Button("Push to…") { model?.remotes.sheet = .pushTo(branch: model?.snapshot?.head.branchName) }
                 .disabled(isTransferring || model?.hasRemotes != true)
+            Button("Push Revision To…") { model?.present(.pickRevision(.pushRevision)) }
+                .disabled(isTransferring || model?.hasRemotes != true)
             Button("Force Push…") { model?.remotes.isConfirmingForcePush = true }
                 .disabled(isTransferring || upstream == nil)
             Button("Remotes…") { model?.remotes.isManagingRemotes = true }
@@ -164,6 +166,22 @@ private struct RepositoryMenu: View {
                 .disabled(model?.canStartMerge != true)
             Button("Rebase…") { window?.quickOpen = .rebase }
                 .disabled(model?.canStartMerge != true || model?.headBranchName == nil)
+        }
+        Section {
+            Button("Check Out Revision…") { model?.present(.pickRevision(.checkOut)) }
+                .disabled(model?.snapshot == nil || model?.isBusy != false)
+            Button("Reset to Revision…") { model?.present(.pickRevision(.resetCurrentBranch)) }
+                .disabled(model?.snapshot?.head.target == nil)
+            Button("Merge With Revision…") { model?.present(.pickRevision(.merge)) }
+                .disabled(model?.canStartMerge != true)
+            Button("Rebase On Revision…") { model?.present(.pickRevision(.rebase)) }
+                .disabled(model?.canStartMerge != true || model?.headBranchName == nil)
+        }
+        Section {
+            AllSubmodulesActions(model: model)
+        }
+        Section {
+            AllWorktreesActions(model: model)
         }
         Section {
             Button("Stash Changes…") { model?.showWorkingCopy(asking: .stashChanges) }
@@ -198,6 +216,11 @@ private struct WorkingCopyMenu: View {
                 Task { await model?.setAmending(isAmending) }
             })
             .disabled(model == nil || (workingCopy?.isAmending != true && model?.canAmend != true))
+        }
+        Section {
+            Button("Create Snapshot…") { model?.present(.snapshot) }
+                .disabled(workingCopy?.entries.isEmpty != false || model?.isBusy != false)
+            WorkingTreeCompareMenu(model: model)
         }
         Section {
             Button("Discard All Changes…") { model?.showWorkingCopy(asking: .discardAllChanges) }

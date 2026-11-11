@@ -285,13 +285,14 @@ extension RepositoryModel {
     /// `autostashes` is told whether to set local changes aside: from the
     /// start when the setting says always, or after asking when they turn
     /// out to be in its way.
-    private func runRemote(
+    func runRemote(
         _ title: String,
         autostashes: Bool = false,
         autostash: Bool? = nil,
         _ operation: @escaping (Repository, Transfer, Bool) async throws -> Void
     ) async {
         guard remotes.activity == nil else { return }
+        let recordedSubmodules = recordedSubmoduleCommits()
         // A choice made for this operation stands; there is nothing to ask.
         let policy = autostash == nil ? RemotePreferences.autostash : .never
         var stashing = autostashes && (autostash ?? (policy == .always))
@@ -319,6 +320,7 @@ extension RepositoryModel {
         }
         remotes.end()
         await refresh()
+        await followRecordedSubmodules(from: recordedSubmodules)
     }
 
     /// "Pull" for "Pulling": the name a question about it uses.

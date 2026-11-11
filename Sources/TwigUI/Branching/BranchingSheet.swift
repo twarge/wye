@@ -15,6 +15,20 @@ enum BranchingSheet: Identifiable, Hashable {
     case newBranch(at: OID)
     case newTag(at: OID)
     case reset(to: OID)
+    /// Choose a branch, tag or commit for something, then do it.
+    case pickRevision(RevisionPurpose)
+    /// Compare two revisions, as the Compare sheet takes them.
+    case compare(from: String, to: String)
+    /// Two of the working tree, the index and `HEAD`.
+    case compareWorkingTree(WorkingTreeComparison)
+    /// Make a local branch that tracks a remote branch, by full name.
+    case trackRemoteBranch(String)
+    case snapshot
+    case branchFromStash(Stash)
+    /// Push a commit to a branch of a remote.
+    case pushRevision(OID)
+    /// Force push a local branch, by full name, to its upstream.
+    case forcePushBranch(String)
 
     var id: Self { self }
 }
@@ -48,6 +62,22 @@ private struct BranchingSheets: ViewModifier {
                 NewTagSheet(model: model, commit: commit)
             case .reset(let commit):
                 ResetSheet(model: model, commit: commit)
+            case .pickRevision(let purpose):
+                RevisionPickerSheet(model: model, purpose: purpose)
+            case .compare(let from, let to):
+                CompareView(model: model, from: from, to: to)
+            case .compareWorkingTree(let comparison):
+                WorkingTreeCompareView(model: model, comparison: comparison)
+            case .trackRemoteBranch(let branch):
+                TrackRemoteBranchSheet(model: model, remoteBranch: branch)
+            case .snapshot:
+                SnapshotSheet(model: model)
+            case .branchFromStash(let stash):
+                StashBranchSheet(model: model, stash: stash)
+            case .pushRevision(let commit):
+                PushRevisionSheet(model: model, commit: commit)
+            case .forcePushBranch(let branch):
+                ForcePushBranchSheet(model: model, branch: branch)
             }
         }
     }

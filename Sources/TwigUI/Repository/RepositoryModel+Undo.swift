@@ -10,12 +10,14 @@ extension RepositoryModel {
     /// await perform(.createTag) { try await $0.createTag(named: name, at: commit) }
     /// ```
     func perform(_ undoable: UndoOperation, _ operation: (Repository) async throws -> Void) async {
+        let recordedSubmodules = recordedSubmoduleCommits()
         await perform { repository in
             let start = await repository.beginUndoable(undoable)
             try await operation(repository)
             let finish = await repository.finishUndoable(start)
             self.undoStack.take(finish, for: undoable)
         }
+        await followRecordedSubmodules(from: recordedSubmodules)
     }
 
     var canUndo: Bool { undoStack.nextUndo != nil && !undoStack.isApplying }

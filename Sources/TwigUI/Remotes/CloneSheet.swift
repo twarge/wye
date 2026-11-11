@@ -23,7 +23,7 @@ struct CloneSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("URL", text: $url, prompt: Text("https://example.com/owner/project.git"))
+                    TextField("URL", text: $url, prompt: Text("https://example.com/owner/project.git or git@example.com:owner/project.git"))
                         .textContentType(.URL)
                         .autocorrectionDisabled()
                         .noAutocapitalization()
@@ -37,7 +37,7 @@ struct CloneSheet: View {
                     .autocorrectionDisabled()
                     .noAutocapitalization()
                 } footer: {
-                    Text("An HTTPS address. Twig asks for an access token if the host wants one.")
+                    Text("An HTTPS or SSH address. Twig asks for an access token or an SSH key if the host wants one.")
                 }
                 .disabled(activity != nil)
 
@@ -87,9 +87,7 @@ struct CloneSheet: View {
             case .failure(let failure): error = PresentedError(failure)
             }
         }
-        .sheet(item: $credentials.prompt, onDismiss: { credentials.decline() }) { prompt in
-            CredentialsSheet(prompt: prompt, broker: credentials)
-        }
+        .credentialPrompts(credentials)
         .alert(for: $error)
         .interactiveDismissDisabled(activity != nil)
     }

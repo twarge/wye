@@ -12,6 +12,8 @@ public enum GitEnvironment {
         // another user (an external volume, a file provider) is no reason to
         // refuse it.
         _ = clibgit2_set_owner_validation(0)
+        // libgit2 is built without SSH; the transport is GitKit's own.
+        SSHTransport.register()
         return true
     }()
 

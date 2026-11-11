@@ -29,6 +29,20 @@ public struct CredentialRequest: Hashable, Sendable {
     }
 }
 
+/// What an SSH server is being logged in to as.
+public struct SSHKeyRequest: Hashable, Sendable {
+    public var host: String
+    public var port: Int
+    /// The name in the remote's address, or `git` when it gives none.
+    public var username: String
+
+    public init(host: String, port: Int, username: String) {
+        self.host = host
+        self.port = port
+        self.username = username
+    }
+}
+
 /// Supplies credentials when a remote asks for them.
 ///
 /// libgit2 asks in the middle of a network operation, on the repository's
@@ -38,8 +52,21 @@ public struct CredentialRequest: Hashable, Sendable {
 /// ``RemoteError/credentialsRejected(host:username:)``; the caller can then
 /// ask the user and run it again. That keeps GitKit free of any knowledge of
 /// where secrets are kept.
-public protocol CredentialProvider: Sendable {
+///
+/// SSH remotes ask for keys instead, and for a judgement of the server's
+/// host key, which fails the operation with
+/// ``RemoteError/unknownHostKey(_:)`` or
+/// ``RemoteError/hostKeyChanged(_:known:)`` unless it is trusted.
+public protocol CredentialProvider: SSHHostKeyValidator {
     func credential(for request: CredentialRequest) -> Credential?
+    /// The keys to offer an SSH server, in order. The server takes the
+    /// first it accepts.
+    func sshKeys(for request: SSHKeyRequest) -> [SSHPrivateKey]
+}
+
+extension CredentialProvider {
+    public func sshKeys(for request: SSHKeyRequest) -> [SSHPrivateKey] { [] }
+    public func trust(for hostKey: SSHHostKey) -> SSHHostKeyTrust { .unknown }
 }
 
 /// How far a network operation has got.
@@ -101,7 +128,13 @@ public final class Transfer: Sendable {
         cancelled.load(ordering: .relaxed)
     }
 
+    /// For tests: called with each report on the operation's own thread,
+    /// before the report is passed on, so a test can act at an exact point.
+    /// Set it before the operation starts.
+    nonisolated(unsafe) var willReport: ((TransferProgress) -> Void)?
+
     func report(_ progress: TransferProgress) {
+        willReport?(progress)
         continuation.yield(progress)
     }
 
@@ -116,8 +149,21 @@ public enum RemoteError: Error, Hashable, Sendable, LocalizedError {
     case credentialsRequired(host: String, username: String?)
     /// The remote refused the credentials the provider gave.
     case credentialsRejected(host: String, username: String?)
-    /// SSH needs libssh2, which this build of libgit2 does not include.
-    case sshNotSupported(url: String)
+    /// The SSH server's host key is not among the known hosts.
+    case unknownHostKey(SSHHostKey)
+    /// The SSH server presented a different key from the one known for it.
+    case hostKeyChanged(SSHHostKey, known: SSHPublicKey)
+    /// There is no SSH key to log in with.
+    case sshKeyRequired(host: String, username: String)
+    /// The SSH server refused every key offered.
+    case sshKeysRejected(host: String, username: String)
+    /// The SSH server does not take keys at all.
+    case sshKeysNotAccepted(host: String)
+    /// Connecting to the SSH server, or its handshake, failed.
+    case sshConnectionFailed(host: String, reason: String)
+    /// The git command on the SSH server failed; what it said.
+    case remoteCommandFailed(host: String, message: String)
+    case invalidSSHAddress(String)
     case noRemotes
     case remoteNotFound(String)
     /// `HEAD` is not on a branch, so there is nothing to push or pull.
@@ -145,8 +191,22 @@ public enum RemoteError: Error, Hashable, Sendable, LocalizedError {
             "\(host) asked for a username and access token."
         case .credentialsRejected(let host, _):
             "\(host) did not accept the username and access token."
-        case .sshNotSupported(let url):
-            "Twig can’t use SSH remotes yet. Use the remote’s HTTPS address instead of \(url)."
+        case .unknownHostKey(let key):
+            "The authenticity of \(key.host) can’t be established. Its \(key.publicKey.displayName) key has the fingerprint \(key.fingerprint)."
+        case .hostKeyChanged(let key, _):
+            "The host key of \(key.host) has changed. It may have been replaced, or someone may be intercepting the connection. Its \(key.publicKey.displayName) key now has the fingerprint \(key.fingerprint)."
+        case .sshKeyRequired(let host, _):
+            "\(host) wants an SSH key, and Twig has none. Create or import one in Settings, then add its public key to your account on \(host)."
+        case .sshKeysRejected(let host, let username):
+            "\(host) did not accept Twig’s SSH keys for “\(username)”. Add your public key to your account on \(host)."
+        case .sshKeysNotAccepted(let host):
+            "\(host) does not accept SSH keys for logging in, and Twig has no other way."
+        case .sshConnectionFailed(let host, let reason):
+            "Could not connect to \(host) over SSH. \(reason)"
+        case .remoteCommandFailed(let host, let message):
+            "\(host) said: \(message)"
+        case .invalidSSHAddress(let url):
+            "“\(url)” is not an SSH address Twig can read."
         case .noRemotes:
             "This repository has no remotes."
         case .remoteNotFound(let name):

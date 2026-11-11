@@ -58,6 +58,34 @@ struct HostedRepository: Hashable {
         return path.flatMap { URL(string: url.absoluteString + "/" + $0) }
     }
 
+    /// The page that starts a pull request (a merge request on GitLab)
+    /// from a branch on this repository, into `base` when one is given and
+    /// into the repository's default branch otherwise. `nil` where the host
+    /// has no such page or its addresses are unknown.
+    func newPullRequestURL(forBranch branch: String, into base: String? = nil) -> URL? {
+        let head = Self.encode(branch)
+        let path: String? = switch kind {
+        case .github, .gitea:
+            "compare/" + (base.map { Self.encode($0) + "..." } ?? "") + head + (kind == .github ? "?expand=1" : "")
+        case .gitlab:
+            "-/merge_requests/new?merge_request%5Bsource_branch%5D=\(Self.encodeQuery(branch))"
+                + (base.map { "&merge_request%5Btarget_branch%5D=\(Self.encodeQuery($0))" } ?? "")
+        case .bitbucket:
+            "pull-requests/new?source=\(Self.encodeQuery(branch))" + (base.map { "&dest=\(Self.encodeQuery($0))" } ?? "")
+        case .sourcehut, .other:
+            // sourcehut takes patches by email rather than pull requests.
+            nil
+        }
+        return path.flatMap { URL(string: url.absoluteString + "/" + $0) }
+    }
+
+    /// Percent-encodes a query value, slashes included.
+    private static func encodeQuery(_ value: String) -> String {
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: "&=+#?/")
+        return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
+    }
+
     // MARK: Parsing
 
     /// The scheme for the web page, the host and the repository path.
@@ -120,6 +148,44 @@ extension RepositoryModel {
     func webURL(forRemoteBranch id: String) -> URL? {
         let (remote, branch) = remoteParts(of: id)
         return hostedRepository(remote: remote)?.url(forBranch: branch)
+    }
+
+    /// The page that starts a pull request from a remote branch, by its
+    /// full name, into the main branch when that is known.
+    func pullRequestURL(forRemoteBranch id: String) -> URL? {
+        let (remote, branch) = remoteParts(of: id)
+        return hostedRepository(remote: remote)?.newPullRequestURL(forBranch: branch, into: pullRequestBase(on: remote))
+    }
+
+    /// The page that starts a pull request from a local branch: from the
+    /// remote branch it tracks, which must exist.
+    func pullRequestURL(forBranch id: String) -> URL? {
+        guard let upstream = snapshot?.branches.first(where: { $0.id == id })?.upstream else { return nil }
+        let remoteBranch = "refs/remotes/" + upstream.name
+        guard snapshot?.remotes.flatMap(\.branches).contains(where: { $0.id == remoteBranch }) == true else { return nil }
+        return pullRequestURL(forRemoteBranch: remoteBranch)
+    }
+
+    /// Why a branch's menu cannot start a pull request, for its help text,
+    /// or `nil` when it can.
+    func pullRequestUnavailableReason(forBranch id: String) -> String? {
+        guard snapshot?.branches.first(where: { $0.id == id })?.upstream != nil else {
+            return "Publish the branch first: a pull request is made from a branch on the remote."
+        }
+        return pullRequestURL(forBranch: id) == nil ? Self.unknownHostReason : nil
+    }
+
+    static let unknownHostReason = "Twig does not know how this remote’s hosting service makes pull requests."
+
+    /// The main branch's name on a remote, as a pull request's target:
+    /// `main` for both `refs/heads/main` and `refs/remotes/origin/main`.
+    private func pullRequestBase(on remote: String) -> String? {
+        guard let base = interface.review?.base else { return nil }
+        if base.hasPrefix("refs/remotes/") {
+            let (baseRemote, branch) = remoteParts(of: base)
+            return baseRemote == remote ? branch : nil
+        }
+        return Self.displayName(ofReference: base)
     }
 
     /// A commit's page on the hosting service of the remote it most likely

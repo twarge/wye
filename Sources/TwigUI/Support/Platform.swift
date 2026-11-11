@@ -57,6 +57,24 @@ enum Platform {
         #endif
     }
 
+    /// Whether a new worktree goes into a folder the user picks, which is
+    /// what grants Twig access to it. On iOS worktrees go into the app's
+    /// Documents, the only place outside the repository Twig can write.
+    static var placesWorktreesInChosenFolder: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
+    }
+
+    /// Whether a submodule or worktree opens in a new tab beside its
+    /// repository. On iOS it takes the window's place, as opening any
+    /// repository there does.
+    static var opensNestedRepositoriesInNewTab: Bool {
+        hasWindowTabs
+    }
+
     /// Whether a file can be shown in the system's file browser. macOS has
     /// the Finder; iOS has no public way to open the Files app at a file.
     static var canRevealFiles: Bool {
@@ -118,6 +136,17 @@ enum Platform {
         NSPasteboard.general.setString(text, forType: .string)
         #else
         UIPasteboard.general.string = text
+        #endif
+    }
+
+    /// The device's name, for the comment of a new SSH key, so that the
+    /// key can be told apart on the hosting service. iOS gives only the
+    /// model's name to apps.
+    @MainActor static var deviceName: String {
+        #if os(macOS)
+        Host.current().localizedName ?? "Mac"
+        #else
+        UIDevice.current.name
         #endif
     }
 }
@@ -420,6 +449,58 @@ struct SelectionModeButton: View {
         EmptyView()
         #else
         EditButton()
+        #endif
+    }
+}
+
+// MARK: Home folder
+
+extension Platform {
+    /// The user's own home folder. Inside the sandbox `URL.homeDirectory` is
+    /// the app's container, so on macOS the real one is looked up from the
+    /// account. The app cannot read it; a file dialog can start there.
+    static var userHomeDirectory: URL {
+        #if os(macOS)
+        if let entry = getpwuid(getuid()), let path = entry.pointee.pw_dir {
+            return URL(filePath: String(cString: path), directoryHint: .isDirectory)
+        }
+        #endif
+        return .homeDirectory
+    }
+}
+
+// MARK: Showing the settings
+
+extension View {
+    /// Shows the settings when something asks ``SettingsFocus`` for them:
+    /// the Settings window on macOS, a sheet on iOS.
+    func settingsOpener() -> some View {
+        modifier(SettingsOpener())
+    }
+}
+
+private struct SettingsOpener: ViewModifier {
+    @State private var focus = SettingsFocus.shared
+    #if os(macOS)
+    @Environment(\.openSettings) private var openSettings
+    #endif
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        content.onChange(of: focus.requests) { openSettings() }
+        #else
+        content.sheet(isPresented: $focus.isPresented) {
+            NavigationStack {
+                SettingsView()
+                    .navigationTitle("Settings")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { focus.isPresented = false }
+                        }
+                    }
+            }
+        }
         #endif
     }
 }

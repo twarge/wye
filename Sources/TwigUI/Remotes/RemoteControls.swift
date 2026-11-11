@@ -35,12 +35,10 @@ private struct RemoteDialogs: ViewModifier {
 
     func body(content: Content) -> some View {
         @Bindable var remotes = model.remotes
-        @Bindable var credentials = model.remotes.credentials
+        let credentials = model.remotes.credentials
         let autostash = model.remotes.autostash
         content
-            .sheet(item: $credentials.prompt, onDismiss: { credentials.decline() }) { prompt in
-                CredentialsSheet(prompt: prompt, broker: credentials)
-            }
+            .credentialPrompts(credentials)
             .sheet(isPresented: $remotes.isManagingRemotes) {
                 RemoteListSheet(model: model)
             }

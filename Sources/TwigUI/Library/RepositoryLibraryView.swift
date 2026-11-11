@@ -21,7 +21,7 @@ struct RepositoryLibraryView: View {
                 self.naming = naming
             }
             .overlay {
-                if library.bookmarks.isEmpty {
+                if library.listedBookmarks.isEmpty {
                     ContentUnavailableView {
                         Label("No Repositories", systemImage: "arrow.triangle.branch")
                     } description: {

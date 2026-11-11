@@ -73,6 +73,12 @@ public struct UndoOperation: Hashable, Sendable, Codable {
         kind: .stashPop, title: "Pop Stash", captures: [.index, .workTree, .untracked, .stash]
     )
     public static let stashDrop = UndoOperation(kind: .stashDrop, title: "Drop Stash", captures: .stash)
+    /// A snapshot leaves the files as they were; undoing it only takes it
+    /// off the stash list.
+    public static let snapshot = UndoOperation(kind: .stashSave, title: "Create Snapshot", captures: .stash)
+    public static let branchFromStash = UndoOperation(
+        kind: .stashPop, title: "New Branch from Stash", captures: [.index, .workTree, .untracked, .stash]
+    )
 
     public static func cherryPick(count: Int = 1) -> UndoOperation {
         UndoOperation(kind: .cherryPick, title: count == 1 ? "Cherry-Pick" : "Cherry-Pick \(count) Commits",

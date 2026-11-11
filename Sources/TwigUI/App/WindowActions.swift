@@ -76,7 +76,7 @@ private struct WindowActionsPresenter: ViewModifier {
                     purpose: purpose,
                     currentBranch: model?.headBranchName,
                     items: QuickOpenItem.items(
-                        for: purpose, snapshot: model?.snapshot, repositories: library.bookmarks,
+                        for: purpose, snapshot: model?.snapshot, repositories: library.listedBookmarks,
                         currentRepository: model?.id
                     )
                 ) { item, inNewTab in

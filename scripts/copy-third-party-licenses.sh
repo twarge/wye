@@ -9,6 +9,13 @@
 # first three are all in libgit2's COPYING, which also holds the notices for the
 # smaller pieces it borrows; llhttp's is its own file.
 #
+# The Swift packages behind SSH (swift-nio, swift-nio-ssh,
+# swift-nio-transport-services, swift-crypto, and swift-atomics and
+# swift-collections under them) are Apache 2.0, which asks for their LICENSE
+# and NOTICE files. Xcode keeps package checkouts in DerivedData, which this
+# sandboxed phase cannot read without naming every path, so copies live in
+# Vendor/ThirdPartyLicenses; a test checks them against the checkouts.
+#
 # Only what the binary actually contains is listed.
 #
 # Run as a build phase. Sources are the libgit2 submodule; a missing one is a
@@ -45,6 +52,16 @@ install_license() {
 LIBGIT2="${SRCROOT_DIR}/Vendor/libgit2"
 install_license libgit2 "${LIBGIT2}/COPYING"
 install_license llhttp  "${LIBGIT2}/deps/llhttp/LICENSE-MIT"
+
+PACKAGES="${SRCROOT_DIR}/Vendor/ThirdPartyLicenses"
+install_license swift-nio "${PACKAGES}/swift-nio/LICENSE.txt"
+install_license swift-nio "${PACKAGES}/swift-nio/NOTICE.txt"
+install_license swift-nio-ssh "${PACKAGES}/swift-nio-ssh/LICENSE.txt"
+install_license swift-nio-transport-services "${PACKAGES}/swift-nio-transport-services/LICENSE.txt"
+install_license swift-crypto "${PACKAGES}/swift-crypto/LICENSE.txt"
+install_license swift-crypto "${PACKAGES}/swift-crypto/NOTICE.txt"
+install_license swift-atomics "${PACKAGES}/swift-atomics/LICENSE.txt"
+install_license swift-collections "${PACKAGES}/swift-collections/LICENSE.txt"
 
 # Twig's own licence, beside them, so the app carries the terms it is under.
 cp -f "${SRCROOT_DIR}/LICENSE" "${RESOURCES}/LICENSE.txt"

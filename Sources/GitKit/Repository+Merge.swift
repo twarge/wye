@@ -64,7 +64,9 @@ extension Repository {
     // MARK: Merge
 
     /// Merges a branch, remote branch or tag, by its full reference name,
-    /// into `HEAD`. `message` replaces the usual "Merge branch 'x'".
+    /// into `HEAD`; or any other revision, such as a commit's hash, which
+    /// git names "commit 'x'" in the message. `message` replaces the usual
+    /// "Merge branch 'x'".
     @discardableResult
     public func merge(_ reference: String, mode: MergeMode, message: String? = nil) throws -> MergeOutcome {
         try merge(reference, mode: mode, message: message, fastForwardLog: nil)
@@ -74,11 +76,7 @@ extension Repository {
     /// writes its own, as git's does.
     func merge(_ reference: String, mode: MergeMode, message: String?, fastForwardLog: String?) throws -> MergeOutcome {
         try requireNoOperation()
-        var theirs: OpaquePointer?
-        var referencePointer: OpaquePointer?
-        try check(git_reference_lookup(&referencePointer, pointer, reference))
-        defer { git_reference_free(referencePointer) }
-        try check(git_annotated_commit_from_ref(&theirs, pointer, referencePointer))
+        let theirs = try annotatedCommit(for: reference)
         defer { git_annotated_commit_free(theirs) }
         let theirID = OID(git_annotated_commit_id(theirs))
 
@@ -589,7 +587,9 @@ extension Repository {
     /// The message git writes for merging a reference.
     private func defaultMergeMessage(for reference: String, squash: Bool) -> String {
         let name = shortName(of: reference)
-        let what = if reference.hasPrefix("refs/remotes/") {
+        let what = if !reference.hasPrefix("refs/") {
+            "commit '\(reference)'"
+        } else if reference.hasPrefix("refs/remotes/") {
             "remote-tracking branch '\(name)'"
         } else if reference.hasPrefix("refs/tags/") {
             "tag '\(name)'"
@@ -604,6 +604,22 @@ extension Repository {
             return "Merge \(what) into \(current)"
         }
         return "Merge \(what)"
+    }
+
+    /// What merging and rebasing start from: a full reference name, looked
+    /// up as a reference so its name is kept, or any other revision. The
+    /// caller frees it.
+    func annotatedCommit(for revision: String) throws -> OpaquePointer? {
+        var annotated: OpaquePointer?
+        if revision.hasPrefix("refs/") {
+            var reference: OpaquePointer?
+            try check(git_reference_lookup(&reference, pointer, revision))
+            defer { git_reference_free(reference) }
+            try check(git_annotated_commit_from_ref(&annotated, pointer, reference))
+        } else {
+            try check(git_annotated_commit_from_revspec(&annotated, pointer, revision))
+        }
+        return annotated
     }
 
     func shortName(of reference: String) -> String {

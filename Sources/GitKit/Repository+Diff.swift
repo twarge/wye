@@ -28,20 +28,20 @@ extension Repository {
         try check(git_diff_tree_to_tree(&diff, pointer, oldTree, newTree, &options))
         defer { git_diff_free(diff) }
         try check(git_diff_find_similar(diff, nil))
-        return try DiffBuilder.files(in: diff)
+        return withSubmoduleCommits(try DiffBuilder.files(in: diff))
     }
 
     /// A file's changes between `HEAD` and the index.
     public func stagedDiff(of path: String, options: DiffOptions = .standard) throws -> FileDiff? {
         try withWorkingCopyDiff(of: path, side: .staged, options: options) { diff in
-            try DiffBuilder.files(in: diff).first
+            withSubmoduleCommits(try DiffBuilder.files(in: diff)).first
         }
     }
 
     /// A file's changes between the index and the working tree.
     public func unstagedDiff(of path: String, options: DiffOptions = .standard) throws -> FileDiff? {
         try withWorkingCopyDiff(of: path, side: .unstaged, options: options) { diff in
-            try DiffBuilder.files(in: diff).first
+            withSubmoduleCommits(try DiffBuilder.files(in: diff), workingCopy: true).first
         }
     }
 }

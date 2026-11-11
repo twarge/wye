@@ -3,7 +3,8 @@ import Foundation
 
 extension Repository {
     /// Replays the current branch's own commits on top of another branch,
-    /// given by its full reference name, through libgit2's rebase. Merge
+    /// given by its full reference name or any other revision, such as a
+    /// commit's hash, through libgit2's rebase. Merge
     /// commits are left out and commits whose changes are already there are
     /// dropped, as git does. Stops at the first conflict, to resume with
     /// `continueOperation()` or `skipOperation()`, or undo with
@@ -14,11 +15,7 @@ extension Repository {
         let signature = try branchingSignature()
         git_signature_free(signature)
 
-        var target: OpaquePointer?
-        var upstream: OpaquePointer?
-        try check(git_reference_lookup(&target, pointer, reference))
-        defer { git_reference_free(target) }
-        try check(git_annotated_commit_from_ref(&upstream, pointer, target))
+        let upstream = try annotatedCommit(for: reference)
         defer { git_annotated_commit_free(upstream) }
 
         var options = try rebaseOptions()

@@ -89,22 +89,55 @@ the demo account empty):
 > commit's changes and the working copy can all be explored without any
 > credentials. Pushing to a remote needs the user's own access token for
 > that host, which is stored in the Keychain and sent only to that host.
+> SSH remotes log in with an SSH key the user creates or imports in
+> Settings ▸ SSH Keys, also kept in the Keychain.
 >
-> The app connects only to the git remotes the user configures, over HTTPS.
+> The app connects only to the git remotes the user configures, over HTTPS
+> or SSH.
 > It collects no data and contains no analytics or advertising. It is free
 > and open source under the Apache License 2.0.
 
 ## Export compliance
 
 `ITSAppUsesNonExemptEncryption` is `false` in both Info.plists, so App Store
-Connect does not ask. If it ever does: the app uses encryption, but only
-that provided by the operating system (HTTPS through the system TLS stack,
-the Keychain). libgit2 is built against Secure Transport with no crypto
-library of its own; its SHA-1 and SHA-256 hashing is not encryption. No
-export documentation or French declaration is needed.
+Connect does not ask. That answer was written when the only encryption was
+HTTPS through the system TLS stack and the Keychain: libgit2 is built
+against Secure Transport with no crypto library of its own, and its SHA-1
+and SHA-256 hashing is not encryption.
 
-Revisit this before shipping SSH (the roadmap's libssh2 and a bundled crypto
-library) or anything else that brings encryption of its own.
+**SSH changes this, and the answer needs the owner's decision before the
+next upload.** What is in the app now:
+
+- The SSH protocol (key exchange, encrypted transport, public-key login) is
+  implemented inside the app by swift-nio-ssh, Apple's open-source Swift
+  package. libgit2 is still built without SSH, libssh2 or OpenSSL.
+- Every cryptographic primitive it uses comes from the operating system's
+  CryptoKit, through swift-crypto (which on Apple platforms only forwards to
+  CryptoKit; its BoringSSL copy is not compiled): AES-GCM, Curve25519 and
+  NIST-curve ECDH, Ed25519 and ECDSA signatures, SHA-2.
+- One algorithm is the app's own: bcrypt_pbkdf (on a small Blowfish), used
+  only to decrypt a passphrase-protected private key file the user imports.
+  AES-CTR for that comes from the system's CommonCrypto.
+- All of it is standard, published algorithms in a standard protocol, in a
+  free, open-source, mass-market app.
+
+Apple's exemption for apps whose encryption is "limited to that within the
+operating system" plainly covered HTTPS through the system. Whether an SSH
+implementation in the app, built on the system's primitives, still falls
+under it is not clear-cut, so this was left unchanged rather than decided
+here. To re-check in App Store Connect (App Information ▸ App Encryption
+Documentation, or the questions it asks when the key is removed):
+
+1. "Does your app use encryption?" — yes, now beyond HTTPS.
+2. Whether it qualifies for an exemption: either the operating-system one,
+   or, if not, the one for standard encryption in a mass-market product;
+   open-source publication may also bear on it. If the answer is that it
+   is exempt, `false` can stay; if not, set the key to `true` and file
+   what App Store Connect asks for (and check whether the French
+   declaration applies for distribution in France).
+
+This is not legal advice; Apple's "Complying with Encryption Export
+Regulations" page and the BIS rules are the references.
 
 ## App Privacy
 

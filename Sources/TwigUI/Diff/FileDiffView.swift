@@ -38,7 +38,9 @@ struct FileDiffView: View {
     var body: some View {
         header
         if !isCollapsed {
-            if file.isBinary {
+            if let submodule = file.submodule {
+                SubmoduleDiffRows(change: submodule)
+            } else if file.isBinary {
                 note("Binary file")
             } else if file.hunks.isEmpty {
                 note(file.change == .renamed ? "Renamed without changes" : "No changes to show")
@@ -285,5 +287,81 @@ private extension FileDiff {
         // Numbers only grow, so the largest are in the last hunk.
         let largest = hunks.last?.lines.reduce(0) { max($0, $1.oldNumber ?? 0, $1.newNumber ?? 0) } ?? 0
         return CGFloat(String(max(largest, 10)).count) * 8 + 6
+    }
+}
+
+/// A submodule's change: the commits it records on each side and, when the
+/// submodule is here to read, the commits between them, as
+/// `git diff --submodule=log` lists them. Rows in a row, like the lines of
+/// a file's diff, so a lazy stack makes each only when it shows.
+private struct SubmoduleDiffRows: View {
+    var change: SubmoduleChange
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "shippingbox")
+                .foregroundStyle(.secondary)
+            Text(range)
+                .font(.code)
+                .textSelection(.enabled)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.fill.quaternary)
+        if let changes = change.changes.subtracting(.newCommits).summary {
+            note("The submodule has \(changes), which are not part of this change: commit them inside it first.")
+        }
+        ForEach(change.commits) { commit in
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(commit.isAdded ? "+" : "−")
+                    .frame(width: 16)
+                    .foregroundStyle(.secondary)
+                Text(commit.id.abbreviated())
+                    .foregroundStyle(.secondary)
+                Text(commit.summary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .font(.code)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 1)
+            .background(commit.isAdded ? Color.green.opacity(0.16) : Color.red.opacity(0.16))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(commit.isAdded ? "Adds" : "Takes away") \(commit.summary)")
+        }
+        if change.isTruncated {
+            note("Only the first \(SubmoduleChange.commitLimit) commits each way are shown")
+        }
+        if let explanation {
+            note(explanation)
+        }
+    }
+
+    private var range: String {
+        switch (change.oldID, change.newID) {
+        case (nil, let new?): "Submodule added at \(new.abbreviated())"
+        case (let old?, nil): "Submodule removed, was at \(old.abbreviated())"
+        case (let old?, let new?) where old == new: "Submodule at \(new.abbreviated())"
+        case (let old?, let new?): "Submodule \(old.abbreviated()) → \(new.abbreviated())"
+        case (nil, nil): "Submodule"
+        }
+    }
+
+    private var explanation: String? {
+        guard change.oldID != change.newID, change.oldID != nil, change.newID != nil else { return nil }
+        if !change.isAvailable {
+            return "The commits in between can’t be listed: the submodule isn’t cloned here, or lacks one of these commits. Update or fetch it to see them."
+        }
+        return change.commits.isEmpty ? "No commits between them" : nil
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

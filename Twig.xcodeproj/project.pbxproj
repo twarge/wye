@@ -156,12 +156,28 @@
 				"$(SRCROOT)/scripts/copy-third-party-licenses.sh",
 				"$(SRCROOT)/Vendor/libgit2/COPYING",
 				"$(SRCROOT)/Vendor/libgit2/deps/llhttp/LICENSE-MIT",
+				"$(SRCROOT)/Vendor/ThirdPartyLicenses/swift-nio/LICENSE.txt",
+				"$(SRCROOT)/Vendor/ThirdPartyLicenses/swift-nio/NOTICE.txt",
+				"$(SRCROOT)/Vendor/ThirdPartyLicenses/swift-nio-ssh/LICENSE.txt",
+				"$(SRCROOT)/Vendor/ThirdPartyLicenses/swift-nio-transport-services/LICENSE.txt",
+				"$(SRCROOT)/Vendor/ThirdPartyLicenses/swift-crypto/LICENSE.txt",
+				"$(SRCROOT)/Vendor/ThirdPartyLicenses/swift-crypto/NOTICE.txt",
+				"$(SRCROOT)/Vendor/ThirdPartyLicenses/swift-atomics/LICENSE.txt",
+				"$(SRCROOT)/Vendor/ThirdPartyLicenses/swift-collections/LICENSE.txt",
 				"$(SRCROOT)/LICENSE",
 			);
 			name = "Copy Third-Party Licenses";
 			outputPaths = (
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ThirdPartyLicenses/libgit2/COPYING",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ThirdPartyLicenses/llhttp/LICENSE-MIT",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ThirdPartyLicenses/swift-nio/LICENSE.txt",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ThirdPartyLicenses/swift-nio/NOTICE.txt",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ThirdPartyLicenses/swift-nio-ssh/LICENSE.txt",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ThirdPartyLicenses/swift-nio-transport-services/LICENSE.txt",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ThirdPartyLicenses/swift-crypto/LICENSE.txt",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ThirdPartyLicenses/swift-crypto/NOTICE.txt",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ThirdPartyLicenses/swift-atomics/LICENSE.txt",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ThirdPartyLicenses/swift-collections/LICENSE.txt",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/LICENSE.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;

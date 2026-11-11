@@ -25,8 +25,9 @@ jobs:
     name: Test (GitKit)
     runs-on: xcode-27
     steps:
-      # libgit2 is compiled from source out of the Vendor/libgit2 submodule;
-      # it is the only dependency there is.
+      # libgit2 is compiled from source out of the Vendor/libgit2 submodule.
+      # The Swift packages SSH uses are fetched by SwiftPM, at the versions in
+      # Package.resolved.
       - uses: actions/checkout@v7
         with:
           submodules: recursive
@@ -41,9 +42,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: .build
-          key: spm-${{ runner.os }}-${{ hashFiles('Package.swift') }}-${{ github.sha }}
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved') }}-${{ github.sha }}
           restore-keys: |
-            spm-${{ runner.os }}-${{ hashFiles('Package.swift') }}-
+            spm-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved') }}-
 
       # The summary line goes on the run's page, where a drop in the count
       # shows.
@@ -78,5 +79,7 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      # The project's own Package.resolved pins the Swift packages; a build
+      # that would resolve them differently fails instead.
       - name: Build
-        run: make ${{ matrix.make }} CONFIG=Release XCODE_FLAGS=CODE_SIGNING_ALLOWED=NO
+        run: make ${{ matrix.make }} CONFIG=Release XCODE_FLAGS="CODE_SIGNING_ALLOWED=NO -disableAutomaticPackageResolution"

@@ -7,13 +7,18 @@ Tick an item when it lands on main.
 
 - [x] Fetch, pull and push over HTTPS, with progress and cancellation.
 - [x] Credentials: personal access tokens stored in the Keychain.
-- [ ] SSH: keys generated or imported into the app and kept in the Keychain.
-      libgit2 needs libssh2 and a crypto library for this; neither is built yet.
+- [x] SSH remotes (`ssh://` and `user@host:path`), with Ed25519 and ECDSA
+      keys created or imported in the app and kept in the Keychain, and
+      host keys checked against Twig's own known hosts. libgit2 is still built
+      without SSH: the connection is made in Swift (swift-nio-ssh on
+      CryptoKit) and plugged into libgit2 as a transport. RSA keys don't work.
 - [x] Clone, into a chosen folder on macOS and into Documents on iOS.
 - [x] Add, rename and remove remotes; track a remote branch on checkout.
 - [x] Pull by merge, rebase or fast-forward only, with autostash; sync;
       push to any remote and name; fetch options; relative remote URLs.
-- [x] Delete and rename remote branches; open remotes and branches on the web.
+- [x] Delete and rename remote branches; open remotes, branches and commits on the web.
+- [x] Prune a remote without fetching; push any commit to a chosen remote branch;
+      open the hosting service's page for a new pull request.
 - [ ] Hosting accounts (pull requests, repository lists).
 
 ## Working copy
@@ -22,7 +27,8 @@ Tick an item when it lands on main.
 - [x] Discard changes, with confirmation.
 - [x] Amend the last commit.
 - [x] Commit templates, subject length marker and recent messages.
-- [x] Stash: save, apply, pop and drop.
+- [x] Stash: save, apply, pop and drop; snapshots that keep the changes in place;
+      a branch from a stash; a stash as a patch.
 - [x] Resolve merge conflicts.
 - [x] Notice changes on disk and refresh without being asked.
 - [ ] Image diffs; syntax colouring; side-by-side diffs.
@@ -44,6 +50,8 @@ Tick an item when it lands on main.
 - [x] Show diffs of a merge against each parent.
 - [x] View options: graph, first parent only, date or topological order, grouping, row size.
 - [x] Act on several commits; save a commit as a patch and apply a patch file.
+- [x] Export the files of a commit, branch or tag as a zip.
+- [x] Compare the working tree, the index and `HEAD` as a whole.
 - [x] Edit the last commit's message.
 
 ## Branching
@@ -54,7 +62,12 @@ Tick an item when it lands on main.
 - [x] Publish tags.
 - [x] Reset to a commit.
 - [x] Group branches by folder in the sidebar.
-- [ ] Submodules: update, add, remove. Worktrees: add, remove, open.
+- [x] Pin and archive branches (automatically after a time, if asked); merged and
+      stale marks.
+- [x] A revision picker to check out, reset, merge with or rebase on anything.
+- [x] Complete context menus for commits, the working copy, branches, remotes,
+      remote branches, tags, stashes, submodules and worktrees, on macOS and iOS.
+- [x] Submodules: update, add, remove. Worktrees: add, remove, open.
 - [x] Undo and redo for the operations above, and for staging, stashes and discards.
 
 ## App
@@ -70,7 +83,8 @@ Tick an item when it lands on main.
 
 - Hooks do not run. A sandboxed app cannot run a repository's scripts.
 - The user's own `~/.gitconfig` and SSH keys are outside the sandbox, so Twig
-  keeps its own configuration and will keep its own keys.
+  keeps its own configuration, keys and known hosts. An existing key can be
+  imported from its file.
 - iOS has no recursive file watcher. Twig sees changes to git's own state
   and to the top two levels of the working tree as they happen; an edit
   deeper down, or one that rewrites a file in place, shows when Twig comes

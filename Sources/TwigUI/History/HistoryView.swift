@@ -139,7 +139,6 @@ struct HistoryView: View {
         .sheet(isPresented: $isCreatingBranch) {
             NewBranchSheet(model: model, startingPoint: history.selection)
         }
-        .commitActionPresenters(model)
     }
 
     /// The context menu for the commits it was opened on: one commit's

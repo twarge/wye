@@ -86,9 +86,9 @@ final class RemoteSession {
     ) -> Int32 {
         if isCancelled { return GIT_EUSER.rawValue }
         let host = URLComponents(string: url)?.host ?? url
+        // SSH logs in by itself, in SSHTransport; this is for HTTPS.
         guard allowedTypes & GIT_CREDENTIAL_USERPASS_PLAINTEXT.rawValue != 0 else {
-            failure = .sshNotSupported(url: url)
-            return GIT_EAUTH.rawValue
+            return GIT_PASSTHROUGH.rawValue
         }
         credentialAttempts += 1
         // Asked again: the remote refused what was given the first time.

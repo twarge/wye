@@ -594,6 +594,13 @@ private struct FileLabel: View {
                         .lineLimit(1)
                         .truncationMode(.head)
                 }
+                // A submodule says what changed in it, as git's status does.
+                if let summary = entry.submodule?.summary {
+                    Text("Submodule: \(summary)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
         }
     }

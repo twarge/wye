@@ -3,7 +3,9 @@
 <plist version="1.0">
 <!-- Twig's privacy manifest, which covers the app and the libgit2 compiled
      into it (libgit2 is built from source as part of the app, not shipped as
-     a separate SDK, so its API use is declared here).
+     a separate SDK, so its API use is declared here), and the Swift packages
+     SSH is built on (SwiftNIO, SwiftNIO SSH, SwiftNIO Transport Services,
+     Swift Crypto), which are linked statically into the app too.
 
      Twig has no accounts of its own, no analytics and no advertising. It talks
      only to the git remotes the user configures, and nothing it reads leaves
@@ -34,7 +36,9 @@
 		</dict>
 		<!-- System boot time. libgit2's monotonic clock is mach_absolute_time(),
 		     used to time progress updates during fetch and push and to mix into
-		     its random seed: elapsed time within the app only (35F9.1). -->
+		     its random seed; SwiftNIO's deadlines and Twig's SSH timeouts read
+		     the monotonic clock the same way: elapsed time within the app only
+		     (35F9.1). -->
 		<dict>
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>

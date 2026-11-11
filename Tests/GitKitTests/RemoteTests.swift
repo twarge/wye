@@ -118,15 +118,15 @@ import Testing
         }
     }
 
-    @Test func sshRemotesAreRefusedWithAClearError() async throws {
+    @Test func anSSHRemoteThatCannotBeReachedFailsWithAClearError() async throws {
         defer { remove() }
-        try local.git("remote", "add", "ssh", "git@example.com:owner/project.git")
-        try local.git("remote", "add", "sshurl", "ssh://git@example.com/owner/project.git")
-        await #expect(throws: RemoteError.sshNotSupported(url: "git@example.com:owner/project.git")) {
+        // Port 9 on this machine: nothing listens there.
+        try local.git("remote", "add", "ssh", "ssh://git@127.0.0.1:9/owner/project.git")
+        await #expect {
             try await local.open().fetch(remote: "ssh")
-        }
-        await #expect(throws: RemoteError.sshNotSupported(url: "ssh://git@example.com/owner/project.git")) {
-            try await local.open().fetch(remote: "sshurl")
+        } throws: { error in
+            guard case RemoteError.sshConnectionFailed(let host, _) = error else { return false }
+            return host == "127.0.0.1"
         }
     }
 
