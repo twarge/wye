@@ -90,9 +90,9 @@ import Testing
 
     @Test func generatedKeysAreWhatSSHKeygenReads() throws {
         defer { folder.remove() }
-        let key = SSHPrivateKey.generateEd25519(comment: "twig@example")
+        let key = SSHPrivateKey.generateEd25519(comment: "wye@example")
         #expect(key.openSSHPublicKey.hasPrefix("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5"))
-        #expect(key.openSSHPublicKey.hasSuffix(" twig@example"))
+        #expect(key.openSSHPublicKey.hasSuffix(" wye@example"))
         try key.openSSHPublicKey.write(to: folder.url.appending(path: "generated.pub"), atomically: true, encoding: .utf8)
         #expect(key.publicKey.fingerprint == (try folder.fingerprint("generated.pub")))
         #expect(SSHPrivateKey.generateEd25519(comment: "") != key)
@@ -116,7 +116,7 @@ import Testing
         #expect(throws: SSHKeyError.invalidFormat) { try SSHPublicKey(openSSH: "ssh-rsa " + parsed.blob.base64EncodedString()) }
     }
 
-    /// The fingerprints the hosting services publish, for the keys Twig
+    /// The fingerprints the hosting services publish, for the keys Wye
     /// trusts from the start.
     @Test func builtInHostKeysMatchTheirPublishedFingerprints() {
         defer { folder.remove() }

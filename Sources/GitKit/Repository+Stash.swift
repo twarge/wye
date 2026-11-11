@@ -442,7 +442,7 @@ extension Stash {
     /// What a snapshot's message starts with, after git's "On <branch>: ".
     public static let snapshotMarker = "Snapshot: "
 
-    /// Whether Twig made this stash as a snapshot: a copy of changes that
+    /// Whether Wye made this stash as a snapshot: a copy of changes that
     /// were left in place.
     public var isSnapshot: Bool {
         subject.hasPrefix(Self.snapshotMarker)

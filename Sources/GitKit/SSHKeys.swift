@@ -1,7 +1,7 @@
 internal import Crypto
 import Foundation
 
-/// The kinds of key Twig signs SSH logins with: the ones SSH's Swift
+/// The kinds of key Wye signs SSH logins with: the ones SSH's Swift
 /// implementation supports. RSA is not among them.
 public enum SSHKeyKind: String, Hashable, Sendable, Codable, CaseIterable {
     case ed25519
@@ -58,14 +58,14 @@ public enum SSHKeyKind: String, Hashable, Sendable, Codable, CaseIterable {
 public enum SSHKeyError: Error, Hashable, Sendable, LocalizedError {
     /// Not an OpenSSH private key, or a damaged one.
     case invalidFormat
-    /// An RSA key, which Twig cannot sign with.
+    /// An RSA key, which Wye cannot sign with.
     case rsaNotSupported
     /// Another kind of key, such as DSA or a security key; the algorithm's name.
     case unsupportedKind(String)
     /// The key is protected by a passphrase and none was given.
     case passphraseRequired
     case wrongPassphrase
-    /// Encrypted with a cipher or key derivation Twig does not implement.
+    /// Encrypted with a cipher or key derivation Wye does not implement.
     case unsupportedEncryption(String)
     /// The file holds more than one key.
     case multipleKeys
@@ -75,15 +75,15 @@ public enum SSHKeyError: Error, Hashable, Sendable, LocalizedError {
         case .invalidFormat:
             "This is not an OpenSSH private key. It should begin with “-----BEGIN OPENSSH PRIVATE KEY-----”."
         case .rsaNotSupported:
-            "This is an RSA key, which Twig can’t use. Create an Ed25519 key in Twig, or use an Ed25519 or ECDSA key of your own."
+            "This is an RSA key, which Wye can’t use. Create an Ed25519 key in Wye, or use an Ed25519 or ECDSA key of your own."
         case .unsupportedKind(let name):
-            "Twig can’t use \(name) keys. Use an Ed25519 or ECDSA key."
+            "Wye can’t use \(name) keys. Use an Ed25519 or ECDSA key."
         case .passphraseRequired:
             "This key is protected by a passphrase."
         case .wrongPassphrase:
             "The passphrase is not right for this key."
         case .unsupportedEncryption(let name):
-            "This key is encrypted with \(name), which Twig can’t read. Remove its passphrase with ssh-keygen -p first, then import it."
+            "This key is encrypted with \(name), which Wye can’t read. Remove its passphrase with ssh-keygen -p first, then import it."
         case .multipleKeys:
             "The file holds more than one key. Import one key at a time."
         }

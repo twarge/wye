@@ -33,7 +33,7 @@ public enum WorktreeError: Error, Hashable, Sendable, LocalizedError {
         case .invalidName(let name):
             "“\(name)” cannot name a worktree."
         case .unreachable(let path):
-            "Twig has no access to the folder at \(path). Open the worktree and choose its folder to give Twig access."
+            "Wye has no access to the folder at \(path). Open the worktree and choose its folder to give Wye access."
         }
     }
 }
@@ -178,7 +178,7 @@ extension Repository {
         case .detached(let commit):
             // libgit2 adds a worktree only on a branch; one made for the
             // purpose is dropped once HEAD is detached.
-            reference = try createBranch(named: "twig-worktree-\(UUID().uuidString.prefix(8))", at: commit)
+            reference = try createBranch(named: "wye-worktree-\(UUID().uuidString.prefix(8))", at: commit)
             temporaryBranch = reference
         }
 

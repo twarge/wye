@@ -91,7 +91,7 @@ final class LocalSSHServer: @unchecked Sendable {
 
     var log: String { (try? folder.read("sshd.log")) ?? "" }
 
-    /// The server's key as Twig would be shown it.
+    /// The server's key as Wye would be shown it.
     var presentedHostKey: SSHHostKey {
         SSHHostKey(host: "127.0.0.1", port: port, publicKey: hostKey)
     }

@@ -1,6 +1,6 @@
 # Plan
 
-How Twig gets from its first version to a complete git client for macOS and
+How Wye gets from its first version to a complete git client for macOS and
 iOS. [roadmap.md](roadmap.md) is the checklist; this says how each piece
 should work and how the work is divided.
 
@@ -9,11 +9,11 @@ should work and how the work is divided.
 These hold for every feature.
 
 - **One codebase.** Interface code is SwiftUI, written once for macOS and iOS.
-  A platform difference goes in `Sources/TwigUI/Support/Platform.swift`, not
+  A platform difference goes in `Sources/WyeUI/Support/Platform.swift`, not
   in an `#if` scattered through a view.
 - **Two layers.** `GitKit` is the engine: a Swift API over libgit2 with value
   types that are `Sendable`, no interface code, and every operation a method on
-  the `Repository` actor. `TwigUI` never imports `Clibgit2`.
+  the `Repository` actor. `WyeUI` never imports `Clibgit2`.
 - **Sandbox first.** No command line git, no hooks, no reading `~/.gitconfig`
   or `~/.ssh`. Secrets live in the Keychain. Anything that cannot work in the
   App Store sandbox on both platforms is not built.
@@ -44,7 +44,7 @@ The engine gets `Repository+Remotes.swift`.
 - **Push** the current branch to its upstream, setting one on first push
   ("publish"). Force push is a separate, confirmed action that uses
   force-with-lease semantics: it refuses if the remote moved since the last fetch.
-- **Clone** from a URL into a chosen folder (macOS) or Documents (iOS), with
+- **Clone** from a URL into a chosen folder (macOS) or Wye's location in the Files app (iOS), with
   progress, then opens the result.
 - **Credentials.** libgit2 asks through a callback. HTTPS uses a username and
   personal access token stored in the Keychain per host; a failed attempt

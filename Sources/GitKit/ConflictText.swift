@@ -15,7 +15,7 @@ public struct MergeText: Hashable, Sendable {
     }
 
     public let regions: [Region]
-    /// The line ending the file mostly uses, for lines Twig has to end
+    /// The line ending the file mostly uses, for lines Wye has to end
     /// itself, such as text typed by hand.
     public let lineEnding: String
 

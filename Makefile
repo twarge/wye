@@ -1,10 +1,10 @@
-# Twig — the single build entry point.
+# Wye — the single build entry point.
 #
-# Every app target here drives `xcodebuild` against Twig.xcodeproj, so
+# Every app target here drives `xcodebuild` against Wye.xcodeproj, so
 # `make build` produces exactly what Build & Run in Xcode produces.
 #
 # Package.swift stays: the Xcode project consumes it as a local package for
-# GitKit and TwigUI, and `make test` runs its tests.
+# GitKit and WyeUI, and `make test` runs its tests.
 #
 #   make            Debug build of the macOS app
 #   make run        build it, then launch it
@@ -18,8 +18,8 @@
 #   make clean      remove build products
 #   make help       list targets
 
-PROJECT     := Twig.xcodeproj
-SCHEME      := Twig
+PROJECT     := Wye.xcodeproj
+SCHEME      := Wye
 CONFIG      ?= Debug
 DESTINATION ?= platform=macOS
 DERIVED     := .build/xcode
@@ -46,7 +46,7 @@ build: deps
 
 ## run: build the macOS app, then launch it
 run: build
-	open $(DERIVED)/Build/Products/$(CONFIG)/Twig.app
+	open $(DERIVED)/Build/Products/$(CONFIG)/Wye.app
 
 ## release: Release build of the macOS app
 release:
@@ -82,7 +82,7 @@ icon:
 #
 # docs/app-store.md has the rest of the submission checklist.
 PLATFORM       ?= macOS
-ARCHIVE_PATH   ?= build/release/Twig-$(PLATFORM).xcarchive
+ARCHIVE_PATH   ?= build/release/Wye-$(PLATFORM).xcarchive
 EXPORT_PATH    ?= build/release/export-$(PLATFORM)
 EXPORT_OPTIONS ?= App/ExportOptions-AppStore.plist
 

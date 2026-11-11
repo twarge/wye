@@ -3,7 +3,7 @@ import Foundation
 
 /// Blowfish, only as far as bcrypt's key schedule needs it.
 ///
-/// Written for Twig from the published descriptions of Blowfish (Bruce
+/// Written for Wye from the published descriptions of Blowfish (Bruce
 /// Schneier, 1993, placed in the public domain) and of bcrypt_pbkdf (OpenBSD,
 /// which OpenSSH uses to protect private keys with a passphrase).
 struct Blowfish {

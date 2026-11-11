@@ -198,7 +198,7 @@ enum OpenSSHPrivateKeyFile {
         if let key = try? P521.Signing.PrivateKey(pemRepresentation: trimmed) {
             return (false, try SSHPrivateKey(kind: .ecdsaP521, rawRepresentation: key.rawRepresentation))
         }
-        // A PKCS #8 file of an RSA key, most likely; nothing Twig can use.
+        // A PKCS #8 file of an RSA key, most likely; nothing Wye can use.
         throw isPKCS8 ? SSHKeyError.rsaNotSupported : SSHKeyError.invalidFormat
     }
 

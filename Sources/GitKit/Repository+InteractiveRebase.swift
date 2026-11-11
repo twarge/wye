@@ -502,7 +502,7 @@ extension Repository {
     }
 
     private var sequencerFile: URL {
-        sequencerDirectory.appending(path: "twig-plan.json")
+        sequencerDirectory.appending(path: "wye-plan.json")
     }
 
     private func loadSequencer() throws -> SequencerState {
@@ -556,7 +556,7 @@ extension Repository {
 
 // MARK: Stored state
 
-/// An interactive rebase under way, as kept in `rebase-merge/twig-plan.json`.
+/// An interactive rebase under way, as kept in `rebase-merge/wye-plan.json`.
 private struct SequencerState: Codable {
     /// The branch being rebased, by full name; `nil` for a detached `HEAD`.
     var headName: String?

@@ -1,9 +1,9 @@
 #if os(macOS)
 import AppKit
-import TwigShared
+import WyeShared
 
-/// Services ▸ Clone in Twig, for a selected git address in any app. The
-/// address goes through the same `twig://clone` link the share sheet and
+/// Services ▸ Clone in Wye, for a selected git address in any app. The
+/// address goes through the same `wye://clone` link the share sheet and
 /// Shortcuts use, so the window that handles links shows the clone sheet.
 final class ServicesDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -21,7 +21,7 @@ final class ServicesDelegate: NSObject, NSApplicationDelegate {
             error.pointee = "The selection has no git repository address in it." as NSString
             return
         }
-        NSWorkspace.shared.open(TwigLink.clone(address).url)
+        NSWorkspace.shared.open(WyeLink.clone(address).url)
     }
 }
 #endif

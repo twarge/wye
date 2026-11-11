@@ -1,6 +1,6 @@
 name: App Store
 
-# Archives and uploads Twig, for iOS and macOS, to App Store Connect
+# Archives and uploads Wye, for iOS and macOS, to App Store Connect
 # (TestFlight / review).
 # Run it manually from the Actions tab, or push a version tag like v1.2.
 #
@@ -62,11 +62,11 @@ jobs:
         include:
           - name: iOS
             destination: generic/platform=iOS
-            archive: build/Twig-iOS.xcarchive
+            archive: build/Wye-iOS.xcarchive
             asc_platform: IOS
           - name: macOS
             destination: generic/platform=macOS
-            archive: build/Twig-macOS.xcarchive
+            archive: build/Wye-macOS.xcarchive
             asc_platform: MAC_OS
     steps:
       # libgit2 is compiled into the app from the Vendor/libgit2 submodule.
@@ -133,7 +133,7 @@ jobs:
           elif [[ -n "$INPUT_VERSION" ]]; then
             VERSION="$INPUT_VERSION"
           else
-            VERSION=$(sed -n 's/.*MARKETING_VERSION = \([0-9.][0-9.]*\);.*/\1/p' Twig.xcodeproj/project.pbxproj | head -1)
+            VERSION=$(sed -n 's/.*MARKETING_VERSION = \([0-9.][0-9.]*\);.*/\1/p' Wye.xcodeproj/project.pbxproj | head -1)
           fi
           [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+)*$ ]] || { echo "::error::Resolved version '$VERSION' is not a plain version number (tag like v1.2)"; exit 1; }
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -179,8 +179,8 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           xcodebuild archive \
-            -project Twig.xcodeproj \
-            -scheme Twig \
+            -project Wye.xcodeproj \
+            -scheme Wye \
             -configuration Release \
             -destination '${{ matrix.destination }}' \
             -archivePath '${{ matrix.archive }}' \
@@ -210,7 +210,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: Twig-${{ matrix.name }}-${{ steps.version.outputs.version }}.xcarchive
+          name: Wye-${{ matrix.name }}-${{ steps.version.outputs.version }}.xcarchive
           path: ${{ matrix.archive }}
           retention-days: 90
           if-no-files-found: warn

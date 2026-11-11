@@ -1,8 +1,8 @@
 # Missing features
 
-Everything a complete desktop git client offers that Twig does not do yet,
+Everything a complete desktop git client offers that Wye does not do yet,
 found by walking through the menus, right-click menus and screens of an
-established one and comparing them with Twig. [plan.md](plan.md) says how
+established one and comparing them with Wye. [plan.md](plan.md) says how
 features should be built; [roadmap.md](roadmap.md) is the short checklist.
 
 Each item is marked:
@@ -93,8 +93,8 @@ Each item is marked:
 | --- | --- |
 | Review of branches: each compared with a base branch, with ahead/behind, last update, contributors and whether it merges cleanly | Missing |
 | "Fully merged" and "stale" marks on branches in the sidebar | Done. Merged into `origin/HEAD`'s branch, else `main`, else `master`, else the current branch; stale after a time set in Settings (3 months unless changed). Each branch can hide its merged mark. |
-| Archive branches (hide without deleting), automatically after a time | Done. An Archived Branches section; automatic archiving after a time set in Settings, off unless turned on, which a branch can opt out of. Kept by Twig per repository, not in git. |
-| Pin branches to the top | Done. Kept by Twig per repository, not in git. |
+| Archive branches (hide without deleting), automatically after a time | Done. An Archived Branches section; automatic archiving after a time set in Settings, off unless turned on, which a branch can opt out of. Kept by Wye per repository, not in git. |
+| Pin branches to the top | Done. Kept by Wye per repository, not in git. |
 | Check out a branch into a new worktree | Done. From the branch's menu; a branch checked out in another worktree is marked in the sidebar. |
 | Push a branch to a chosen remote and name ("push to…") | Done |
 | Publish a tag; push all tags; delete a remote tag | Done |
@@ -115,7 +115,7 @@ Each item is marked:
 
 | Feature | Status |
 | --- | --- |
-| SSH remotes, with keys generated or imported into the app | Done. Ed25519 and ECDSA keys, made in the app or imported from an OpenSSH key file (passphrase-protected ones too); host keys checked against Twig's known hosts, with GitHub's, GitLab's and Bitbucket's built in. Not supported: RSA keys, ssh-agent, `~/.ssh/config`, jump hosts and proxies, agent forwarding, security keys (`sk-` keys), certificates, password or keyboard-interactive login, hashed known_hosts entries. Each stored key is offered in turn; there is no per-host choice of key yet. |
+| SSH remotes, with keys generated or imported into the app | Done. Ed25519 and ECDSA keys, made in the app or imported from an OpenSSH key file (passphrase-protected ones too); host keys checked against Wye's known hosts, with GitHub's, GitLab's and Bitbucket's built in. Not supported: RSA keys, ssh-agent, `~/.ssh/config`, jump hosts and proxies, agent forwarding, security keys (`sk-` keys), certificates, password or keyboard-interactive login, hashed known_hosts entries. Each stored key is offered in turn; there is no per-host choice of key yet. |
 | Fetch with options: one remote, all, prune, tags | Done. libgit2 brings all of a remote's tags where git brings only those on fetched commits. |
 | Pull with options: rebase instead of merge, fast-forward only, autostash | Done. `pull.rebase`, `branch.<name>.rebase` and `pull.ff = only` are read; `pull.ff = false` is not. |
 | Sync: pull then push in one step | Done |
@@ -139,7 +139,7 @@ Each item is marked:
 | Add a submodule; move, rename, delete one; change its URL | Done. Add clones with progress and can be cancelled; removing deletes its folder and its repository in `.git/modules`, after confirming. |
 | Update submodules automatically after checkout and pull | Done. A setting (never, ask, always) covers checkout, pull, merge, rebase and reset. |
 | Show a submodule's change in a diff as the range of commits | Done. Up to 50 commits each way, when the submodule is cloned; status says new commits, modified or untracked content. |
-| Worktrees: add, open, move, lock, remove | Done. Also prune. On macOS a new worktree goes into a folder the user picks; on iOS into Documents. A worktree Twig was not given asks for its folder when opened. |
+| Worktrees: add, open, move, lock, remove | Done. Also prune. On macOS a new worktree goes into a folder the user picks; on iOS into Documents. A worktree Wye was not given asks for its folder when opened. |
 
 ## Repository settings
 
@@ -160,7 +160,7 @@ Each item is marked:
 | Global git configuration editor (default branch name, pull mode, pruning) | Partial. Pull mode and autostash are app settings, not git configuration. |
 | Fetch in the background on a schedule | Done. While the app runs, and by background refresh on iOS. |
 | Notifications when a background fetch finds new commits | Done. |
-| iOS: Shortcuts actions, widgets, Files provider, share sheet "clone this URL" | Partial. App Intents for Siri and Shortcuts, an Unpushed Changes widget (also on the Mac desktop), and a share extension that hands a URL to the clone sheet. No Files provider. |
+| iOS: Shortcuts actions, widgets, Files provider, share sheet "clone this URL" | Partial. App Intents for Siri and Shortcuts, an Unpushed Changes widget (also on the Mac desktop), and a share extension that hands a URL to the clone sheet. A File Provider extension makes Wye a location in the Files app, with `.git` hidden. |
 | Handoff of the open repository between devices | Not planned for now |
 
 ## Not planned, and why
@@ -168,9 +168,9 @@ Each item is marked:
 - **Hooks.** A sandboxed app cannot run a repository's scripts.
 - **Terminal, external editors and external diff tools.** Outside the sandbox.
 - **The user's `~/.gitconfig`, `~/.ssh` and credential helpers.** Unreadable
-  from the sandbox; Twig keeps its own.
+  from the sandbox; Wye keeps its own.
 - **Subversion.**
-- **Licensing, trials, update checks.** Twig is free and updates through the
+- **Licensing, trials, update checks.** Wye is free and updates through the
   App Store.
 
 ## Suggested order

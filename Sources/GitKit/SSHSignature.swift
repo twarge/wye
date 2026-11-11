@@ -190,8 +190,8 @@ public enum SSHSignatureError: Error, Hashable, Sendable, LocalizedError {
         switch self {
         case .malformed: "The signature is damaged or not an SSH signature."
         case .wrongNamespace: "The signature was not made for git."
-        case .unsupportedHash(let name): "The signature uses the hash \(name), which Twig can’t check."
-        case .unsupportedKey(let name): "The signature was made with a \(name) key, which Twig can’t check."
+        case .unsupportedHash(let name): "The signature uses the hash \(name), which Wye can’t check."
+        case .unsupportedKey(let name): "The signature was made with a \(name) key, which Wye can’t check."
         }
     }
 }
@@ -219,7 +219,7 @@ public struct AllowedSigner: Hashable, Sendable, Codable, Identifiable {
 
     /// Reads an `allowed_signers` file: one `principals [options] keytype
     /// key [comment]` per line, `#` comments and blank lines skipped. Lines
-    /// whose key Twig cannot read, or whose options limit them to other
+    /// whose key Wye cannot read, or whose options limit them to other
     /// namespaces than git's, are left out.
     public static func parse(_ text: String) -> [AllowedSigner] {
         text.split(whereSeparator: \.isNewline).compactMap { line in

@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 /// Commit signing with SSH keys, checked both ways against git and
-/// ssh-keygen: what Twig signs, they accept, and what they sign, Twig
+/// ssh-keygen: what Wye signs, they accept, and what they sign, Wye
 /// verifies. Keys are made by ssh-keygen in a temporary folder.
 @Suite struct SigningTests {
     let fixture: Fixture
@@ -41,7 +41,7 @@ import Testing
     }
 
     @Test(arguments: 0..<4)
-    func ssh_keygenAcceptsTwigsSignatures(_ index: Int) throws {
+    func ssh_keygenAcceptsWyesSignatures(_ index: Int) throws {
         defer { cleanUp() }
         let key = try makeKey(SSHKeyTests.kinds[index].options)
         try trust(key)
@@ -54,12 +54,12 @@ import Testing
         ], in: folder.url)
         #expect(output.contains("Good \"git\" signature for signer@example.com"))
 
-        // And Twig reads back what it wrote.
+        // And Wye reads back what it wrote.
         #expect(try SSHSignature.verify(signature, message: message).isValid)
     }
 
     @Test(arguments: 0..<4)
-    func twigVerifiesSsh_keygensSignatures(_ index: Int) throws {
+    func wyeVerifiesSsh_keygensSignatures(_ index: Int) throws {
         defer { cleanUp() }
         let key = try makeKey(SSHKeyTests.kinds[index].options)
         let message = Data("Signed by ssh-keygen\n".utf8)
@@ -76,7 +76,7 @@ import Testing
     }
 
     @Test(arguments: [["-t", "ed25519"], ["-t", "ecdsa", "-b", "256"]])
-    func gitVerifiesCommitsTwigSigns(_ options: [String]) async throws {
+    func gitVerifiesCommitsWyeSigns(_ options: [String]) async throws {
         defer { cleanUp() }
         let key = try makeKey(options)
         try trust(key)

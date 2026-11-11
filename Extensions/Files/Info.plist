@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Wye's location in the Files app: the repositories in the provider's
+	     document storage, in the app group the app writes them to. The
+	     non-replicated model, so the files are the working trees themselves. -->
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionFileProviderDocumentGroup</key>
+		<string>group.com.twarge.app.twig</string>
+		<key>NSExtensionFileProviderSupportsEnumeration</key>
+		<true/>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.fileprovider-nonui</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>$(PRODUCT_MODULE_NAME).FileProviderExtension</string>
+	</dict>
+</dict>
+</plist>

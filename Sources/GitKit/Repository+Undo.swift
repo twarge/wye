@@ -350,7 +350,7 @@ extension Repository {
             checkpoint.working = try workingState(
                 includingWorkTree: captures.contains(.workTree) || captures.contains(.untracked),
                 untracked: captures.contains(.untracked) ? .some(operation.untrackedPaths) : nil,
-                commitMessage: keepingCommit && keepsSnapshotCommit(operation) ? "Twig: before \(operation.title)" : nil
+                commitMessage: keepingCommit && keepsSnapshotCommit(operation) ? "Wye: before \(operation.title)" : nil
             )
         }
         return checkpoint

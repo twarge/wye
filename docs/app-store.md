@@ -1,6 +1,6 @@
 # App Store submission
 
-How Twig gets from a commit to App Store review, for iOS (iPhone and iPad)
+How Wye gets from a commit to App Store review, for iOS (iPhone and iPad)
 and macOS, and the answers App Store Connect asks for. The setup is the same
 as Twarge's other apps: `.github/workflows/ci.yml` builds and tests every
 push, and `.github/workflows/appstore.yml` archives, signs and uploads.
@@ -35,9 +35,9 @@ bundle ID both builds share.
    App ID `com.twarge.app.twig`, and the identifiers its extensions need
    (next section). Cloud signing makes the profiles.
 2. App Store Connect ▸ Apps ▸ New App: platforms **iOS** and **macOS**, name
-   **Twig** (have a fallback such as "Twig Git" if the name is taken),
+   **Wye** (have a fallback such as "Wye Git" if the name is taken),
    primary language English (U.S.), bundle ID `com.twarge.app.twig`, a SKU
-   such as `twig`, full access.
+   such as `wye`, full access.
 3. Pricing and Availability: free, all territories.
 4. App Information: category **Developer Tools**, secondary
    **Productivity**. Content rights: the app shows no third-party content.
@@ -46,36 +46,45 @@ bundle ID both builds share.
 
 ## Once: extensions and the app group
 
-The app carries two extensions, each with its own bundle ID under the app's:
+The app carries three extensions, each with its own bundle ID under the app's:
 
 | Target | Bundle ID | Platforms | What it is |
 | --- | --- | --- | --- |
-| TwigWidgets | `com.twarge.app.twig.widgets` | iOS, macOS | The Unpushed Changes widget. |
-| TwigShare | `com.twarge.app.twig.share` | iOS | Share sheet ▸ Clone in Twig. |
+| WyeWidgets | `com.twarge.app.twig.widgets` | iOS, macOS | The Unpushed Changes widget. |
+| WyeShare | `com.twarge.app.twig.share` | iOS | Share sheet ▸ Clone in Wye. |
+| WyeFiles | `com.twarge.app.twig.files` | iOS | The Wye location in the Files app (a File Provider extension). |
 
-The app writes the repositories' status where the widget reads it, and the
-share extension leaves an address for the app, through an app group:
+The app writes the repositories' status where the widget reads it, the
+share extension leaves an address for the app, and the repositories shown
+in the Files app live in the File Provider's storage, all through an app
+group:
 
-- iOS: `group.com.twarge.app.twig`, in `App/Twig-iOS.entitlements`,
-  `Extensions/Widgets/Widgets-iOS.entitlements` and
-  `Extensions/Share/Share.entitlements`.
+- iOS: `group.com.twarge.app.twig`, in `App/Wye-iOS.entitlements`,
+  `Extensions/Widgets/Widgets-iOS.entitlements`,
+  `Extensions/Share/Share.entitlements` and
+  `Extensions/Files/Files.entitlements`. The Files extension also names it
+  as `NSExtensionFileProviderDocumentGroup` in `Extensions/Files/Info.plist`:
+  its storage is the group container's `File Provider Storage` folder.
 - macOS: `257KW9ZJFP.com.twarge.app.twig`, the team-prefixed form, in
-  `App/Twig.entitlements` and `Extensions/Widgets/Widgets-macOS.entitlements`.
+  `App/Wye.entitlements` and `Extensions/Widgets/Widgets-macOS.entitlements`.
   A sandboxed Mac app may use a group named after its team without a
   provisioning profile, which is what keeps `make build` working with no
   profile installed. (The `group.` form on the Mac needs a profile for every
   build, local ones included.) Both names are in
-  `Sources/TwigShared/SharedContainer.swift`.
+  `Sources/WyeShared/SharedContainer.swift`.
 
 What the owner has to do once, in Certificates, Identifiers & Profiles:
 
 1. Identifiers ▸ App Groups ▸ +: register `group.com.twarge.app.twig`
-   (description "Twig").
-2. Identifiers ▸ App IDs: register `com.twarge.app.twig.widgets` and
-   `com.twarge.app.twig.share` as explicit App IDs (platform iOS, macOS
-   checked too for the widgets one; for the share one iOS is enough).
-3. On each of the three App IDs (`com.twarge.app.twig`, `.widgets`,
-   `.share`), enable **App Groups** and choose `group.com.twarge.app.twig`.
+   (description "Wye").
+2. Identifiers ▸ App IDs: register `com.twarge.app.twig.widgets`,
+   `com.twarge.app.twig.share` and `com.twarge.app.twig.files` as explicit
+   App IDs (platform iOS, macOS checked too for the widgets one; for the
+   share and files ones iOS is enough).
+3. On each of the four App IDs (`com.twarge.app.twig`, `.widgets`,
+   `.share`, `.files`), enable **App Groups** and choose
+   `group.com.twarge.app.twig`. The files one needs no other capability:
+   a File Provider extension is an ordinary app extension.
    The Mac's team-prefixed group needs no registration.
 4. Nothing else changes: the extensions are embedded in the app, ship in
    the same archive and upload, and need no App Store Connect record of
@@ -85,20 +94,21 @@ What the owner has to do once, in Certificates, Identifiers & Profiles:
    missed for that identifier.
 
 Local builds need none of this: `make build` signs the Mac app and its
-widget with the development certificate and the team-prefixed group, the
+widget with the development certificate and the team-prefixed group (the
+Files and share extensions are iOS only and are not in the Mac build), the
 Simulator needs no profile, and CI builds with `CODE_SIGNING_ALLOWED=NO`.
 Building for a real iPhone or iPad from Xcode does need the identifiers
 above (Xcode's automatic signing can register them itself when signed in
 to the team).
 
 Siri, Shortcuts and Spotlight need no setup: the App Intents (Pull, Fetch,
-Push, Open, Get Status of a repository, and Fetch All) are in TwigUI and
+Push, Open, Get Status of a repository, and Fetch All) are in WyeUI and
 reach the app's `Metadata.appintents` through `AppIntentsPackage`, with the
-App Shortcuts phrases ("Pull Horizontal in Twig").
+App Shortcuts phrases ("Pull Horizontal in Wye").
 
 ## Each release
 
-1. Bump `MARKETING_VERSION` in `Twig.xcodeproj/project.pbxproj` (the
+1. Bump `MARKETING_VERSION` in `Wye.xcodeproj/project.pbxproj` (the
    project's two configurations, which every target inherits so the app and
    its extensions always carry the same version), or leave it and give the
    version when running.
@@ -126,7 +136,7 @@ make archive upload PLATFORM=iOS \
 Paste into App Review Information ▸ Notes (no sign-in is needed, so leave
 the demo account empty):
 
-> Twig is a git client: it shows and edits git repositories, the folders
+> Wye is a git client: it shows and edits git repositories, the folders
 > developers keep source code in under version control. It has no account
 > of its own and needs no sign-in.
 >
@@ -134,8 +144,11 @@ the demo account empty):
 > is through the Open panel (the app is sandboxed, with the user-selected
 > read-write entitlement and security-scoped bookmarks so the repository
 > list survives a relaunch). On iPhone and iPad it is folders picked in the
-> Files picker, and repositories cloned into the app's own Documents folder,
-> which the Files app shows.
+> Files picker, and repositories cloned or created in the app, which are
+> kept in the app's own storage and shown in the Files app as the "Wye"
+> location through the app's File Provider extension, so other apps can
+> open and edit them in place. (Repositories from earlier versions are in
+> the app's Documents folder, which the Files app also shows.)
 >
 > To try it: choose Clone, enter a public HTTPS repository URL such as
 > REPLACE-WITH-A-SMALL-PUBLIC-REPOSITORY, and open it. The history, a
@@ -194,7 +207,7 @@ Regulations" page and the BIS rules are the references.
 
 ## App Privacy
 
-App Store Connect ▸ App Privacy: **Data Not Collected**. Twig has no server;
+App Store Connect ▸ App Privacy: **Data Not Collected**. Wye has no server;
 what it reads stays on the device except what the user pushes to their own
 remotes, which is the app's function and not collection. No tracking.
 

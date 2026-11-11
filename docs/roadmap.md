@@ -1,6 +1,6 @@
 # Roadmap
 
-What Twig needs to be a complete git client, roughly in the order planned.
+What Wye needs to be a complete git client, roughly in the order planned.
 Tick an item when it lands on main.
 
 ## Remotes
@@ -9,7 +9,7 @@ Tick an item when it lands on main.
 - [x] Credentials: personal access tokens stored in the Keychain.
 - [x] SSH remotes (`ssh://` and `user@host:path`), with Ed25519 and ECDSA
       keys created or imported in the app and kept in the Keychain, and
-      host keys checked against Twig's own known hosts. libgit2 is still built
+      host keys checked against Wye's own known hosts. libgit2 is still built
       without SSH: the connection is made in Swift (swift-nio-ssh on
       CryptoKit) and plugged into libgit2 as a transport. RSA keys don't work.
 - [x] Clone, into a chosen folder on macOS and into Documents on iOS.
@@ -82,12 +82,12 @@ Tick an item when it lands on main.
 ## Known limits
 
 - Hooks do not run. A sandboxed app cannot run a repository's scripts.
-- The user's own `~/.gitconfig` and SSH keys are outside the sandbox, so Twig
+- The user's own `~/.gitconfig` and SSH keys are outside the sandbox, so Wye
   keeps its own configuration, keys and known hosts. An existing key can be
   imported from its file.
-- iOS has no recursive file watcher. Twig sees changes to git's own state
+- iOS has no recursive file watcher. Wye sees changes to git's own state
   and to the top two levels of the working tree as they happen; an edit
-  deeper down, or one that rewrites a file in place, shows when Twig comes
+  deeper down, or one that rewrites a file in place, shows when Wye comes
   back to the front or after the next refresh.
 - The first page of a very large history is slow, because the commits are
   sorted before any are shown.

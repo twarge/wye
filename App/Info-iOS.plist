@@ -8,7 +8,7 @@
 	     state it here rather than depend on that. -->
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
-	<!-- Export compliance. Twig encrypts in two ways. HTTPS to git remotes
+	<!-- Export compliance. Wye encrypts in two ways. HTTPS to git remotes
 	     is done by the operating system's TLS stack: libgit2 is built against
 	     Secure Transport and carries no crypto library of its own (its SHA-1
 	     and SHA-256 object hashing is not encryption). SSH remotes use the
@@ -22,14 +22,16 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<!-- Together these show the app's Documents folder in the Files app,
-	     which is where repositories on the device live. -->
+	     where repositories cloned by earlier versions live. New ones go in
+	     the Files extension's storage instead (Extensions/Files), shown as
+	     the Wye location with .git hidden. -->
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>UIFileSharingEnabled</key>
 	<true/>
-	<!-- twig:// links: the widget opens a repository with one, and the share
+	<!-- wye:// links: the widget opens a repository with one, and the share
 	     extension, Services and Shortcuts ask for the clone sheet with one.
-	     Sources/TwigShared/TwigLink.swift reads them. -->
+	     Sources/WyeShared/WyeLink.swift reads them. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -37,11 +39,11 @@
 			<string>com.twarge.app.twig</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>twig</string>
+				<string>wye</string>
 			</array>
 		</dict>
 	</array>
-	<!-- Background fetch: Sources/TwigUI/Activity/BackgroundRefresh.swift
+	<!-- Background fetch: Sources/WyeUI/Activity/BackgroundRefresh.swift
 	     registers this identifier, and does nothing without it here. -->
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
@@ -56,10 +58,10 @@
 	     publisher registers with that service, with the device flow
 	     enabled and no client secret (GitHub: an OAuth app with "Enable
 	     Device Flow"; GitLab: a non-confidential application with the
-	     "api" and "write_repository" scopes). Empty means Twig offers only
+	     "api" and "write_repository" scopes). Empty means Wye offers only
 	     personal access tokens for that host. A key per GitHub Enterprise
 	     or self-managed GitLab host offers it there too. -->
-	<key>TwigOAuthClientIDs</key>
+	<key>WyeOAuthClientIDs</key>
 	<dict>
 		<key>github.com</key>
 		<string></string>

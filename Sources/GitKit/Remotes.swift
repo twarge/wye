@@ -196,17 +196,17 @@ public enum RemoteError: Error, Hashable, Sendable, LocalizedError {
         case .hostKeyChanged(let key, _):
             "The host key of \(key.host) has changed. It may have been replaced, or someone may be intercepting the connection. Its \(key.publicKey.displayName) key now has the fingerprint \(key.fingerprint)."
         case .sshKeyRequired(let host, _):
-            "\(host) wants an SSH key, and Twig has none. Create or import one in Settings, then add its public key to your account on \(host)."
+            "\(host) wants an SSH key, and Wye has none. Create or import one in Settings, then add its public key to your account on \(host)."
         case .sshKeysRejected(let host, let username):
-            "\(host) did not accept Twig’s SSH keys for “\(username)”. Add your public key to your account on \(host)."
+            "\(host) did not accept Wye’s SSH keys for “\(username)”. Add your public key to your account on \(host)."
         case .sshKeysNotAccepted(let host):
-            "\(host) does not accept SSH keys for logging in, and Twig has no other way."
+            "\(host) does not accept SSH keys for logging in, and Wye has no other way."
         case .sshConnectionFailed(let host, let reason):
             "Could not connect to \(host) over SSH. \(reason)"
         case .remoteCommandFailed(let host, let message):
             "\(host) said: \(message)"
         case .invalidSSHAddress(let url):
-            "“\(url)” is not an SSH address Twig can read."
+            "“\(url)” is not an SSH address Wye can read."
         case .noRemotes:
             "This repository has no remotes."
         case .remoteNotFound(let name):
@@ -332,10 +332,13 @@ public struct PushResult: Hashable, Sendable {
     public var reference: String
     /// Whether this push made the remote branch the local one's upstream.
     public var setUpstream: Bool
+    /// What became of the tags the push took along; `nil` when it took none.
+    public var tags: PushedTags?
 
-    public init(remote: String, reference: String, setUpstream: Bool) {
+    public init(remote: String, reference: String, setUpstream: Bool, tags: PushedTags? = nil) {
         self.remote = remote
         self.reference = reference
         self.setUpstream = setUpstream
+        self.tags = tags
     }
 }

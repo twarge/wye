@@ -1,11 +1,11 @@
-# Twig
+# Wye
 
 A git client for macOS and iOS, written in SwiftUI. Free, and open source
 under the Apache License 2.0.
 
 ![History and commit detail on iPad](docs/images/ipad-history.png)
 
-Twig is built for the App Store, so it runs in the sandbox and does not use
+Wye is built for the App Store, so it runs in the sandbox and does not use
 the `git` command line tool. Everything goes through
 [libgit2](https://libgit2.org), compiled from source into the app. SSH
 connections are made in Swift with
@@ -45,7 +45,7 @@ connections are made in Swift with
   branches and commits on their website and start pull requests there;
   access tokens kept in the Keychain.
 - **SSH:** `ssh://` and `user@host:path` remotes, logging in with Ed25519 or
-  ECDSA keys created in Twig or imported from an OpenSSH key file, kept in
+  ECDSA keys created in Wye or imported from an OpenSSH key file, kept in
   the Keychain; unknown or changed host keys are shown before connecting.
   RSA keys are not supported.
 - **App:** notices changes other tools make and refreshes; a full menu bar
@@ -69,7 +69,7 @@ git clone --recurse-submodules <this repository>
 make run
 ```
 
-Or open `Twig.xcodeproj` and run the Twig scheme on a Mac, iPhone or iPad.
+Or open `Wye.xcodeproj` and run the Wye scheme on a Mac, iPhone or iPad.
 `make test` runs the engine's tests and `make ios` builds for the simulator.
 
 ## Layout
@@ -78,18 +78,18 @@ Or open `Twig.xcodeproj` and run the Twig scheme on a Mac, iPhone or iPad.
 | --- | --- |
 | `App/` | The app target: an entry point, plists, entitlements and assets. |
 | `Sources/GitKit/` | The git engine: a Swift API over libgit2. No interface code. |
-| `Sources/TwigUI/` | The whole interface, shared by macOS and iOS. |
+| `Sources/WyeUI/` | The whole interface, shared by macOS and iOS. |
 | `Tests/GitKitTests/` | Tests that check GitKit against the command line git. |
 | `Vendor/libgit2/` | libgit2, as a git submodule. |
 | `Vendor/Clibgit2/` | The build configuration and module map that let Swift Package Manager compile libgit2, and the C half of the SSH transport. |
 | `Vendor/ThirdPartyLicenses/` | The licence texts of the Swift packages the app links, copied into the app. |
 
 Platform differences are kept to one file,
-`Sources/TwigUI/Support/Platform.swift`.
+`Sources/WyeUI/Support/Platform.swift`.
 
 ## Licenses
 
-Twig is licensed under the Apache License 2.0; see [LICENSE](LICENSE).
+Wye is licensed under the Apache License 2.0; see [LICENSE](LICENSE).
 
 libgit2 is licensed under the GNU GPL version 2 with a linking exception that
 permits linking it into programs under other licenses. It is included as a

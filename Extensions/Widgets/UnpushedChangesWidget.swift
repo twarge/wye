@@ -1,5 +1,5 @@
 import SwiftUI
-import TwigShared
+import WyeShared
 import WidgetKit
 
 /// Repositories with commits not pushed or changes not committed, from the
@@ -103,7 +103,7 @@ private struct SmallView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(changes.repositories.first.map { TwigLink.openRepository($0.id).url })
+        .widgetURL(changes.repositories.first.map { WyeLink.openRepository($0.id).url })
     }
 }
 
@@ -122,7 +122,7 @@ private struct ListView: View {
                     .foregroundStyle(.secondary)
             }
             ForEach(changes.repositories.prefix(limit)) { summary in
-                Link(destination: TwigLink.openRepository(summary.id).url) {
+                Link(destination: WyeLink.openRepository(summary.id).url) {
                     RowView(summary: summary)
                 }
             }

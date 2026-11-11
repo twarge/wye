@@ -55,7 +55,7 @@ public final class KnownHosts: SSHHostKeyValidator {
         /// `host` or `[host]:port`.
         public var pattern: String
         public var publicKey: SSHPublicKey
-        /// Whether it is one of Twig's own, which cannot be removed.
+        /// Whether it is one of Wye's own, which cannot be removed.
         public var isBuiltIn: Bool
 
         public var id: String { pattern + " " + publicKey.openSSH }
@@ -92,7 +92,7 @@ public final class KnownHosts: SSHHostKeyValidator {
         return .unknown
     }
 
-    /// Every trusted key, Twig's own first.
+    /// Every trusted key, Wye's own first.
     public func entries() -> [Entry] {
         let saved = lock.withLock { _ in readLines() }.compactMap { line in
             Self.parse(line).map { Entry(pattern: $0.pattern, publicKey: $0.key, isBuiltIn: false) }
@@ -114,7 +114,7 @@ public final class KnownHosts: SSHHostKeyValidator {
         }
     }
 
-    /// Stops trusting a saved key. Twig's own cannot be removed.
+    /// Stops trusting a saved key. Wye's own cannot be removed.
     public func remove(_ entry: Entry) throws {
         try lock.withLock { _ in
             let lines = readLines().filter { line in

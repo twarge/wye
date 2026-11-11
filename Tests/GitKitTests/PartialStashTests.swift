@@ -34,7 +34,7 @@ import Testing
     }
 
     @Test func stashesOnlyTheChosenFilesAsGitDoes() async throws {
-        // The same changes in two repositories, one stashed by git, one by Twig.
+        // The same changes in two repositories, one stashed by git, one by Wye.
         let reference = try Fixture()
         defer {
             fixture.remove()

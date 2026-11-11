@@ -61,20 +61,27 @@ extension Repository {
     /// A push that would drop commits on the remote is refused, unless
     /// `force` is set. Even then it is refused if the remote branch moved
     /// since it was last fetched, so that nobody's work is lost unseen.
+    ///
+    /// With `includingTags`, every local tag goes too, as with
+    /// `git push --tags`; see ``PushedTags`` for what becomes of them.
     @discardableResult
     public func push(
         to remote: String? = nil,
         force: Bool = false,
+        includingTags: Bool = false,
         credentials: (any CredentialProvider)? = nil,
         transfer: Transfer? = nil
     ) throws -> PushResult {
         defer { transfer?.finish() }
         return try pushCurrentBranch(
-            to: remote, force: force, session: RemoteSession(transfer: transfer, credentials: credentials)
+            to: remote, force: force, includingTags: includingTags,
+            session: RemoteSession(transfer: transfer, credentials: credentials)
         )
     }
 
-    func pushCurrentBranch(to remote: String?, force: Bool, session: RemoteSession) throws -> PushResult {
+    func pushCurrentBranch(
+        to remote: String?, force: Bool, includingTags: Bool = false, session: RemoteSession
+    ) throws -> PushResult {
         guard case .branch(let branchReference, _) = try head() else { throw RemoteError.notOnBranch }
         let upstream = upstreamConfiguration(of: branchReference)
         let remoteName = try remote ?? upstream?.remote ?? defaultRemoteName()
@@ -84,14 +91,15 @@ extension Repository {
         // leaves an existing upstream alone.
         return try pushBranch(
             branchReference, to: remoteName, as: destination, setUpstream: upstream?.merge == nil, force: force,
-            session: session
+            includingTags: includingTags, session: session
         )
     }
 
     /// Pushes any local branch, by its full reference name, to a branch of
     /// a chosen name on a chosen remote: the same name when `remoteBranch`
     /// is `nil`. With `setUpstream`, the local branch then tracks it.
-    /// A forced push has the same safeguard as ``push(to:force:credentials:transfer:)``.
+    /// A forced push has the same safeguard as ``push(to:force:includingTags:credentials:transfer:)``,
+    /// and `includingTags` takes every local tag along in the same way.
     @discardableResult
     public func push(
         branch localReference: String,
@@ -99,6 +107,7 @@ extension Repository {
         as remoteBranch: String? = nil,
         setUpstream: Bool = false,
         force: Bool = false,
+        includingTags: Bool = false,
         credentials: (any CredentialProvider)? = nil,
         transfer: Transfer? = nil
     ) throws -> PushResult {
@@ -109,36 +118,44 @@ extension Repository {
             ? localReference : (name.hasPrefix("refs/") ? name : "refs/heads/" + name)
         return try pushBranch(
             localReference, to: remote, as: destination, setUpstream: setUpstream, force: force,
-            session: RemoteSession(transfer: transfer, credentials: credentials)
+            includingTags: includingTags, session: RemoteSession(transfer: transfer, credentials: credentials)
         )
     }
 
     private func pushBranch(
         _ branchReference: String, to remoteName: String, as destination: String, setUpstream: Bool, force: Bool,
-        session: RemoteSession
+        includingTags: Bool = false, session: RemoteSession
     ) throws -> PushResult {
         var leases: [String: OID?] = [:]
         if force {
             leases[destination] = trackingTarget(of: destination, on: remoteName)
         }
-        try pushReferences(
-            [(force ? "+" : "") + "\(branchReference):\(destination)"], to: remoteName, leases: leases,
-            session: session
-        )
+        // Only the branch is ever forced; tags that go along never are.
+        let branchRefspec = (force ? "+" : "") + "\(branchReference):\(destination)"
+        var tags: PushedTags?
+        if includingTags {
+            tags = try pushWithAllTags(branchRefspec, to: remoteName, leases: leases, session: session)
+        } else {
+            try pushReferences([branchRefspec], to: remoteName, leases: leases, session: session)
+        }
         if setUpstream {
             let branchName = String(branchReference.dropFirst("refs/heads/".count))
             try setUpstreamConfiguration(of: branchName, remote: remoteName, merge: destination)
         }
-        return PushResult(remote: remoteName, reference: destination, setUpstream: setUpstream)
+        return PushResult(remote: remoteName, reference: destination, setUpstream: setUpstream, tags: tags)
     }
 
     /// Pushes refspecs to a remote and checks what the remote said about
     /// each. `leases` are the force-with-lease expectations, by remote
-    /// reference name.
-    private func pushReferences(
+    /// reference name. With `tagsAlong`, tags go with a branch: the remote
+    /// turning a tag down does not fail the push but comes back, by full
+    /// name with the remote's reason, and protected tags the remote has
+    /// elsewhere are all noted in the session (see `RemoteSession.tagConflicts`).
+    @discardableResult
+    func pushReferences(
         _ refspecs: [String], to remoteName: String, leases: [String: OID?] = [:], protectedTags: [String: OID] = [:],
-        session: RemoteSession
-    ) throws {
+        tagsAlong: Bool = false, session: RemoteSession
+    ) throws -> [(reference: String, reason: String)] {
         let remotePointer = try lookupRemote(remoteName)
         defer { git_remote_free(remotePointer) }
         if let url = (git_remote_pushurl(remotePointer) ?? git_remote_url(remotePointer)).map({ String(cString: $0) }) {
@@ -146,6 +163,10 @@ extension Repository {
         }
         session.leases = leases
         session.protectedTags = protectedTags
+        session.collectsTagConflicts = tagsAlong
+        session.tagConflicts = []
+        session.tagUpdates = []
+        session.failure = nil
         session.rejections = []
         session.report(TransferProgress(phase: .connecting))
 
@@ -162,9 +183,13 @@ extension Repository {
             throw RemoteError.nonFastForward(branch: shortName(of: destination))
         }
         try session.check(code)
-        if let rejection = session.rejections.first {
+        let tolerated = tagsAlong ? session.rejections.filter { $0.reference.hasPrefix("refs/tags/") } : []
+        if let rejection = session.rejections.first(where: { rejection in
+            !tolerated.contains { $0.reference == rejection.reference }
+        }) {
             throw RemoteError.pushRejected(reference: rejection.reference, reason: rejection.reason)
         }
+        return tolerated
     }
 
     // MARK: Tags and branches on a remote
@@ -543,9 +568,10 @@ extension Repository {
 
     /// Pulls the current branch as `options` say, then pushes it, under one
     /// progress display. A pull that stops part way, on conflicts, pushes
-    /// nothing.
+    /// nothing. `includingTags` is as for ``push(to:force:includingTags:credentials:transfer:)``.
     public func sync(
         options: PullOptions,
+        includingTags: Bool = false,
         credentials: (any CredentialProvider)? = nil,
         transfer: Transfer? = nil
     ) throws -> SyncResult {
@@ -556,7 +582,8 @@ extension Repository {
             return SyncResult(pull: pulled, push: nil)
         case .upToDate, .fastForwarded, .merged, .rebased:
             let pushed = try pushCurrentBranch(
-                to: nil, force: false, session: RemoteSession(transfer: transfer, credentials: credentials)
+                to: nil, force: false, includingTags: includingTags,
+                session: RemoteSession(transfer: transfer, credentials: credentials)
             )
             return SyncResult(pull: pulled, push: pushed)
         }
@@ -657,7 +684,7 @@ extension Repository {
     }
 
     /// The full names of the references matching a glob, such as `refs/tags/*`.
-    private func referenceNames(matching glob: String) throws -> [String] {
+    func referenceNames(matching glob: String) throws -> [String] {
         var iterator: OpaquePointer?
         try check(git_reference_iterator_glob_new(&iterator, pointer, glob))
         defer { git_reference_iterator_free(iterator) }

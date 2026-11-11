@@ -16,11 +16,11 @@ public struct ConfigurationEntry: Hashable, Sendable {
     }
 }
 
-/// The configuration files a repository reads, the ones Twig can show.
+/// The configuration files a repository reads, the ones Wye can show.
 public enum ConfigurationLevel: Hashable, Sendable {
     /// The repository's own `.git/config`.
     case local
-    /// The configuration for every repository: in Twig, the app's own file,
+    /// The configuration for every repository: in Wye, the app's own file,
     /// never the one in the user's home folder.
     case global
 }

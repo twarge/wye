@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<!-- Twig's privacy manifest, which covers the app and the libgit2 compiled
+<!-- Wye's privacy manifest, which covers the app and the libgit2 compiled
      into it (libgit2 is built from source as part of the app, not shipped as
      a separate SDK, so its API use is declared here), and the Swift packages
      SSH is built on (SwiftNIO, SwiftNIO SSH, SwiftNIO Transport Services,
      Swift Crypto), which are linked statically into the app too.
 
-     Twig has no accounts of its own, no analytics and no advertising. It talks
+     Wye has no accounts of its own, no analytics and no advertising. It talks
      only to the git remotes the user configures, and nothing it reads leaves
      the device except what the user pushes. -->
 <dict>
@@ -24,7 +24,8 @@
 		     which files changed, and stats its own files under .git; GitKit
 		     lstat()s a path before staging it. Those files are in folders the
 		     user chose (3B52.1) or, on iOS, repositories cloned into the app's
-		     own Documents folder (C617.1). No timestamp is shown or sent. -->
+		     own Documents folder or the File Provider storage in its app group
+		     container (C617.1). No timestamp is shown or sent. -->
 		<dict>
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
@@ -36,7 +37,7 @@
 		</dict>
 		<!-- System boot time. libgit2's monotonic clock is mach_absolute_time(),
 		     used to time progress updates during fetch and push and to mix into
-		     its random seed; SwiftNIO's deadlines and Twig's SSH timeouts read
+		     its random seed; SwiftNIO's deadlines and Wye's SSH timeouts read
 		     the monotonic clock the same way: elapsed time within the app only
 		     (35F9.1). -->
 		<dict>

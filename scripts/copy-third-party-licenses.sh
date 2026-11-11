@@ -63,7 +63,7 @@ install_license swift-crypto "${PACKAGES}/swift-crypto/NOTICE.txt"
 install_license swift-atomics "${PACKAGES}/swift-atomics/LICENSE.txt"
 install_license swift-collections "${PACKAGES}/swift-collections/LICENSE.txt"
 
-# Twig's own licence, beside them, so the app carries the terms it is under.
+# Wye's own licence, beside them, so the app carries the terms it is under.
 cp -f "${SRCROOT_DIR}/LICENSE" "${RESOURCES}/LICENSE.txt"
 
 if [ "$missing" -gt 0 ] && [ "$CONFIG" != "Debug" ]; then

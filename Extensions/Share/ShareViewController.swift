@@ -1,11 +1,11 @@
 import SwiftUI
-import TwigShared
+import WyeShared
 import UIKit
 import UniformTypeIdentifiers
 
-/// "Clone in Twig" in the share sheet, for a link or text with a git
+/// "Clone in Wye" in the share sheet, for a link or text with a git
 /// address in it. A share extension cannot open its app, so this leaves the
-/// address for Twig, which shows its clone sheet with it the next time it
+/// address for Wye, which shows its clone sheet with it the next time it
 /// comes to the front.
 final class ShareViewController: UIViewController {
     private let model = ShareModel()
@@ -43,7 +43,7 @@ final class ShareModel {
         case reading
         /// An address to clone, not yet handed over.
         case found(String)
-        /// Handed over; Twig picks it up when opened.
+        /// Handed over; Wye picks it up when opened.
         case handedOver(String)
         case nothingFound
         case failed(String)
@@ -95,11 +95,11 @@ struct ShareView: View {
                             .font(.callout.monospaced())
                             .textSelection(.enabled)
                     } footer: {
-                        Text("Twig shows its clone sheet with this address the next time you open it.")
+                        Text("Wye shows its clone sheet with this address the next time you open it.")
                     }
                 case .handedOver(let address):
                     Section {
-                        Label("Open Twig to finish cloning.", systemImage: "checkmark.circle")
+                        Label("Open Wye to finish cloning.", systemImage: "checkmark.circle")
                         Text(address)
                             .font(.callout.monospaced())
                             .foregroundStyle(.secondary)
@@ -110,7 +110,7 @@ struct ShareView: View {
                     Text(message)
                 }
             }
-            .navigationTitle("Clone in Twig")
+            .navigationTitle("Clone in Wye")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

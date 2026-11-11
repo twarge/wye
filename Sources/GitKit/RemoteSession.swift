@@ -21,6 +21,15 @@ final class RemoteSession {
     /// refuses to move a tag the remote already has somewhere else, but
     /// libgit2 leaves that check to the caller.
     var protectedTags: [String: OID] = [:]
+    /// Set when tags go along with a branch: instead of stopping at the
+    /// first protected tag the remote has elsewhere, the negotiation notes
+    /// every one in `tagConflicts` before stopping, so the push can go again
+    /// without them.
+    var collectsTagConflicts = false
+    /// Protected tags the remote has at another object, by full name.
+    var tagConflicts: [String] = []
+    /// Protected tags the push changes on the remote: those it did not have.
+    var tagUpdates: Set<String> = []
 
     private var credentialAttempts = 0
     private var lastReport = ContinuousClock.now
@@ -164,15 +173,25 @@ final class RemoteSession {
         callbacks.push_negotiation = { updates, count, payload in
             guard let session = RemoteSession.from(payload),
                   !session.leases.isEmpty || !session.protectedTags.isEmpty, let updates else { return 0 }
+            session.tagConflicts = []
+            session.tagUpdates = []
             for index in 0..<count {
                 guard let update = updates[index]?.pointee,
                       let name = update.dst_refname.map({ String(cString: $0) }) else { continue }
                 // `src` is where the remote's reference is now; zero if it does not exist.
                 let current = OID(update.src)
                 let actual: OID? = current == RemoteSession.noObject ? nil : current
-                if let local = session.protectedTags[name], let actual, actual != local {
-                    session.failure = .tagExistsOnRemote(String(name.dropFirst("refs/tags/".count)))
-                    return GIT_EUSER.rawValue
+                if let local = session.protectedTags[name] {
+                    if let actual, actual != local {
+                        guard session.collectsTagConflicts else {
+                            session.failure = .tagExistsOnRemote(String(name.dropFirst("refs/tags/".count)))
+                            return GIT_EUSER.rawValue
+                        }
+                        session.tagConflicts.append(name)
+                    } else if actual == nil {
+                        session.tagUpdates.insert(name)
+                    }
+                    continue
                 }
                 guard let expected = session.leases[name] else { continue }
                 if actual != expected {
@@ -180,6 +199,12 @@ final class RemoteSession {
                     session.failure = .remoteMoved(branch: branch)
                     return GIT_EUSER.rawValue
                 }
+            }
+            // libgit2 cannot leave a reference out once negotiating, so stop;
+            // the caller pushes again without these.
+            if let first = session.tagConflicts.first {
+                session.failure = .tagExistsOnRemote(String(first.dropFirst("refs/tags/".count)))
+                return GIT_EUSER.rawValue
             }
             return 0
         }

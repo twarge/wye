@@ -30,26 +30,26 @@ import Testing
         defer { fixture.remove() }
         let repository = try fixture.open()
 
-        try await repository.setConfigurationValue("true", for: "twigtest.flag")
-        #expect(try fixture.git("config", "--local", "--get", "twigtest.flag") == "true")
+        try await repository.setConfigurationValue("true", for: "wyetest.flag")
+        #expect(try fixture.git("config", "--local", "--get", "wyetest.flag") == "true")
 
-        try await repository.setConfigurationValues(["one", "two", "two", "three"], for: "twigtest.Section.list")
-        #expect(try fixture.git("config", "--local", "--get-all", "twigtest.Section.list") == "one\ntwo\ntwo\nthree")
+        try await repository.setConfigurationValues(["one", "two", "two", "three"], for: "wyetest.Section.list")
+        #expect(try fixture.git("config", "--local", "--get-all", "wyetest.Section.list") == "one\ntwo\ntwo\nthree")
 
         // Replacing one of several values keeps the others in order.
-        try await repository.setConfigurationValues(["one", "2", "two", "three"], for: "twigtest.Section.list")
-        #expect(try fixture.git("config", "--local", "--get-all", "twigtest.Section.list") == "one\n2\ntwo\nthree")
+        try await repository.setConfigurationValues(["one", "2", "two", "three"], for: "wyetest.Section.list")
+        #expect(try fixture.git("config", "--local", "--get-all", "wyetest.Section.list") == "one\n2\ntwo\nthree")
 
-        try await repository.removeConfiguration("twigtest.Section.list")
-        #expect(throws: FixtureError.self) { try fixture.git("config", "--local", "--get-all", "twigtest.Section.list") }
+        try await repository.removeConfiguration("wyetest.Section.list")
+        #expect(throws: FixtureError.self) { try fixture.git("config", "--local", "--get-all", "wyetest.Section.list") }
 
         // Values git would have to quote come back as they went in.
         let awkward = "a value; with # comment \"quotes\" and \\ backslash"
-        try await repository.setConfigurationValue(awkward, for: "twigtest.awkward")
-        #expect(try fixture.git("config", "--local", "--get", "twigtest.awkward") == awkward)
-        try await repository.setConfigurationValues([awkward, "tab\there", "plain"], for: "twigtest.awkwardlist")
-        #expect(try fixture.git("config", "--local", "--get-all", "twigtest.awkwardlist") == "\(awkward)\ntab\there\nplain")
-        #expect(try await repository.configurationValues("twigtest.awkwardlist") == [awkward, "tab\there", "plain"])
+        try await repository.setConfigurationValue(awkward, for: "wyetest.awkward")
+        #expect(try fixture.git("config", "--local", "--get", "wyetest.awkward") == awkward)
+        try await repository.setConfigurationValues([awkward, "tab\there", "plain"], for: "wyetest.awkwardlist")
+        #expect(try fixture.git("config", "--local", "--get-all", "wyetest.awkwardlist") == "\(awkward)\ntab\there\nplain")
+        #expect(try await repository.configurationValues("wyetest.awkwardlist") == [awkward, "tab\there", "plain"])
         #expect(try await repository.configurationEntries(at: .local) == gitEntries(fixture))
     }
 

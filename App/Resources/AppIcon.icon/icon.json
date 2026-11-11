@@ -1,21 +1,21 @@
 {
   "fill" : {
     "linear-gradient" : [
-      "extended-srgb:0.14900,0.49400,0.35700,1.00000",
-      "extended-srgb:0.03100,0.20000,0.14900,1.00000"
+      "extended-srgb:0.13700,0.17600,0.33700,1.00000",
+      "extended-srgb:0.03900,0.05100,0.11000,1.00000"
     ]
   },
   "groups" : [
     {
       "layers" : [
         {
-          "image-name" : "Leaves.svg",
-          "name" : "Leaves"
+          "image-name" : "Stem.svg",
+          "name" : "Stem"
         }
       ],
       "shadow" : {
         "kind" : "neutral",
-        "opacity" : 0.4
+        "opacity" : 0.5
       },
       "translucency" : {
         "enabled" : false,
@@ -25,8 +25,24 @@
     {
       "layers" : [
         {
-          "image-name" : "Twig.svg",
-          "name" : "Twig"
+          "image-name" : "Line.svg",
+          "name" : "Line"
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "image-name" : "Branch.svg",
+          "name" : "Branch"
         }
       ],
       "shadow" : {
