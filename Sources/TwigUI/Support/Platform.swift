@@ -85,6 +85,25 @@ enum Platform {
         #endif
     }
 
+    /// Where a placeholder sits to line up with a text editor's first line:
+    /// the text view insets its text differently on each platform.
+    static var textEditorPlaceholderInsets: EdgeInsets {
+        #if os(macOS)
+        EdgeInsets(top: 0, leading: 5, bottom: 0, trailing: 0)
+        #else
+        EdgeInsets(top: 8, leading: 5, bottom: 0, trailing: 0)
+        #endif
+    }
+
+    /// The space between a text editor and the border drawn round it.
+    static var textEditorFieldPadding: EdgeInsets {
+        #if os(macOS)
+        EdgeInsets(top: 4, leading: 2, bottom: 4, trailing: 2)
+        #else
+        EdgeInsets(top: 0, leading: 3, bottom: 0, trailing: 3)
+        #endif
+    }
+
     static var revealInFileBrowserTitle: String { "Reveal in Finder" }
 
     /// Shows a file selected in the Finder.

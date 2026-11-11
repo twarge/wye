@@ -100,6 +100,8 @@ struct WorkingCopyView: View {
                 if let state = model.snapshot?.state, state != .clean {
                     WorkingCopyBanner(model: model, state: state)
                 }
+                // The commit comes first, above the files it will take.
+                CommitComposer(model: model)
                 FileListControls(filter: $filter, layout: $layout, sort: $sort)
             }
         }
@@ -111,11 +113,10 @@ struct WorkingCopyView: View {
         .sheet(isPresented: $isEditingIgnoreRules) {
             IgnoreRulesSheet(model: model)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            CommitComposer(model: model)
-        }
         .navigationTitle(model.name)
         .navigationSubtitle(subtitle)
+        // A large title would sit behind the commit fields pinned at the top.
+        .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("Stage All", systemImage: "plus.square.on.square") {
@@ -618,8 +619,7 @@ private struct CommitComposer: View {
                 SubjectLengthMarker(subject: model.workingCopy.subject)
                 MessageMenu(model: model)
             }
-            TextField("Description", text: $model.workingCopy.details, axis: .vertical)
-                .lineLimit(2...8)
+            DescriptionEditor(text: $model.workingCopy.details)
             HStack {
                 if let identity = model.workingCopy.identity {
                     Text("As \(identity.name)")
@@ -649,12 +649,41 @@ private struct CommitComposer: View {
                 .disabled(!model.workingCopy.canCommitOrAmend)
             }
         }
-        .textFieldStyle(.plain)
+        .textFieldStyle(.roundedBorder)
         .padding(12)
         .background(.bar)
-        .overlay(alignment: .top) {
+        .overlay(alignment: .bottom) {
             Divider()
         }
+    }
+}
+
+/// The commit's description: a text view of several lines, where Return
+/// starts a new line, dressed as the system's bordered text field.
+private struct DescriptionEditor: View {
+    @Binding var text: String
+
+    var body: some View {
+        TextEditor(text: $text)
+            .font(.body)
+            .scrollContentBackground(.hidden)
+            .frame(minHeight: 64, idealHeight: 64, maxHeight: 160)
+            .fixedSize(horizontal: false, vertical: true)
+            .overlay(alignment: .topLeading) {
+                if text.isEmpty {
+                    Text("Description")
+                        .foregroundStyle(.placeholder)
+                        .padding(Platform.textEditorPlaceholderInsets)
+                        .allowsHitTesting(false)
+                }
+            }
+            .padding(Platform.textEditorFieldPadding)
+            .background(.background, in: .rect(cornerRadius: 6))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(.separator)
+            }
+            .accessibilityLabel("Description")
     }
 }
 
