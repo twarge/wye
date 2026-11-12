@@ -11,7 +11,7 @@ struct MenuBarStatus: Scene {
     @AppStorage(MenuBarPreferences.isShownKey) private var isShown = false
 
     var body: some Scene {
-        MenuBarExtra(isInserted: $isShown) {
+        MenuBarExtra(isInserted: insertion) {
             MenuBarStatusMenu(library: library)
         } label: {
             let count = MenuBarStatusList(
@@ -24,6 +24,19 @@ struct MenuBarStatus: Scene {
             }
         }
         .menuBarExtraStyle(.menu)
+    }
+
+    /// The setting, written only when it changes. SwiftUI sets the status
+    /// item's visibility on every update of the app's scenes and hears it
+    /// back through KVO as a write to this binding. Passed straight to the
+    /// setting, each echo was a defaults write, whose notification updated
+    /// the scenes again: a loop that held the main thread from launch on.
+    private var insertion: Binding<Bool> {
+        Binding {
+            isShown
+        } set: { isInserted in
+            if isInserted != isShown { isShown = isInserted }
+        }
     }
 }
 
