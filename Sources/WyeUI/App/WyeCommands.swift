@@ -39,6 +39,7 @@ final class ViewRequests {
 /// | ⌃⌘N | New Repository… |
 /// | ⌘[, ⌘] | Back, Forward |
 /// | ⇧⌘O | Quick Open… |
+/// | ⌥⇧⌘P, ⇧⌘R | Pull All Repositories, Review |
 /// | ⌘F | Find in the diff or file that has focus, otherwise Find in History |
 /// | ⌘G, ⇧⌘G | Find Next, Find Previous |
 /// | ⌘Z, ⇧⌘Z | Undo, Redo (the text's while a field has focus) |
@@ -84,6 +85,17 @@ struct WyeCommands: Commands {
                 Button("Quick Open…") { window?.quickOpen = .jump }
                     .keyboardShortcut("o", modifiers: [.command, .shift])
                     .disabled(window == nil)
+            }
+            Section {
+                Button("Pull All Repositories") { window?.isPullingAll = true }
+                    .keyboardShortcut("p", modifiers: [.command, .option, .shift])
+                    .disabled(window == nil || library.listedBookmarks.isEmpty)
+                Button("Review Uncommitted and Unpushed") {
+                    window?.close()
+                    window?.isReviewing = true
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+                .disabled(window == nil)
             }
             Section {
                 Button("Close Repository") { window?.close() }

@@ -60,7 +60,7 @@ struct BlameView: View {
             do {
                 blame = try await model.repository.blame(of: path, at: commitID)
             } catch {
-                model.error = PresentedError(error)
+                model.report(error)
             }
         }
     }

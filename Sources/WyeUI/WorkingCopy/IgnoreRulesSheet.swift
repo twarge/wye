@@ -107,7 +107,7 @@ struct IgnoreRulesSheet: View {
         do {
             patterns = try await model.repository.ignorePatterns(in: file)
         } catch {
-            model.error = PresentedError(error)
+            model.report(error)
         }
     }
 

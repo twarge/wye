@@ -1,5 +1,6 @@
 import GitKit
 import SwiftUI
+import TipKit
 
 /// The list of commits for whatever the sidebar selects.
 struct HistoryView: View {
@@ -14,6 +15,9 @@ struct HistoryView: View {
         @Bindable var search = history.search
         ScrollViewReader { proxy in
             List(selection: $history.listSelection) {
+                TipView(DragCommitTip())
+                    .listRowSeparator(.hidden)
+                    .selectionDisabled()
                 if search.isActive {
                     // Matches are rarely next to each other, so the graph would
                     // only mislead: results are plain rows in the history's order.
@@ -21,7 +25,7 @@ struct HistoryView: View {
                         SearchResultRow(commit: commit, labels: model.refLabels[commit.id] ?? [],
                                         isHead: commit.id == headID, hasNote: history.notes.hasNote(commit.id))
                             .tag(commit.id)
-                            .draggable(dragText(for: commit.id))
+                            .draggable(drag(for: commit))
                     }
                     if !search.isComplete {
                         SearchProgressRow(examined: search.examined)
@@ -45,7 +49,7 @@ struct HistoryView: View {
                             }
                                 .tag(row.id)
                                 // Onto a branch in the sidebar, to cherry-pick.
-                                .draggable(dragText(for: row.id))
+                                .draggable(drag(for: row.commit))
                         }
                     }
                     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 14))
@@ -68,7 +72,7 @@ struct HistoryView: View {
             }
             .onChange(of: history.scrollTarget) {
                 guard let target = history.scrollTarget else { return }
-                withAnimation {
+                withMotion {
                     proxy.scrollTo(HistoryModel.Item.ID.commit(target), anchor: .center)
                 }
                 history.didScroll()
@@ -198,11 +202,14 @@ struct HistoryView: View {
 
     private var headID: OID? { model.snapshot?.head.target }
 
-    /// A dragged commit carries the whole selection when it is part of it.
-    private func dragText(for id: OID) -> String {
+    /// A dragged commit carries the whole selection when it is part of it:
+    /// hashes for the sidebar, a patch file for anywhere outside the window.
+    private func drag(for commit: Commit) -> CommitDrag {
         let selected = model.history.listSelection
-        guard selected.count > 1, selected.contains(id) else { return SidebarDragPayload.text(for: [id]) }
-        return SidebarDragPayload.text(for: model.history.commits(selected).map(\.id))
+        guard selected.count > 1, selected.contains(commit.id) else {
+            return CommitDrag(repository: model.repository, commits: [commit])
+        }
+        return CommitDrag(repository: model.repository, commits: model.history.commits(selected))
     }
 
     private var title: String {

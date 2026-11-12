@@ -10,8 +10,21 @@ struct SSHKeysSection: View {
     @State private var isCreating = false
     @State private var isImporting = false
     @State private var isShowingHosts = false
-    @State private var error: PresentedError?
+    @State private var error: Notice?
+
+    /// Moves the keys into iCloud Keychain or out of it. The setting only
+    /// changes once they have moved.
+    private func setSynced(_ synced: Bool) {
+        do {
+            try SSHKeyStore.shared.setSynced(synced)
+            syncsKeys = synced
+        } catch {
+            self.error = Notice(error)
+        }
+        reload()
+    }
     @State private var focus = SettingsFocus.shared
+    @AppStorage(SSHKeyPreferences.syncsKey) private var syncsKeys = false
 
     var body: some View {
         Section {
@@ -47,6 +60,10 @@ struct SSHKeysSection: View {
                     Text("\(key.kind.displayName) · \(key.fingerprint)")
                         .font(.smallCode)
                         .textSelection(.enabled)
+                    if key.isSynced {
+                        Label("In iCloud Keychain", systemImage: "icloud")
+                            .font(.caption)
+                    }
                 }
                 .contextMenu {
                     Button("Copy Public Key", systemImage: "doc.on.doc") {
@@ -65,10 +82,14 @@ struct SSHKeysSection: View {
                 Spacer()
                 Button("Known Hosts…") { isShowingHosts = true }
             }
+            Toggle("Sync Keys with iCloud Keychain", isOn: Binding { syncsKeys } set: { setSynced($0) })
+            NoticeRow(notice: $error)
         } header: {
             Text("SSH Keys")
         } footer: {
-            Text("Kept in the Keychain on this device. Wye offers each key in turn to SSH remotes; add a key’s public half to your account on the host. Ed25519 and ECDSA keys work; RSA keys don’t.")
+            Text(syncsKeys
+                ? "Kept in iCloud Keychain, end-to-end encrypted, on every device signed in to your Apple Account. Wye offers each key in turn to SSH remotes; add a key’s public half to your account on the host. Ed25519 and ECDSA keys work; RSA keys don’t."
+                : "Kept in the Keychain on this device. Wye offers each key in turn to SSH remotes; add a key’s public half to your account on the host. Ed25519 and ECDSA keys work; RSA keys don’t.")
         }
         .onAppear(perform: reload)
         .confirmationDialog(
@@ -90,7 +111,6 @@ struct SSHKeysSection: View {
         .sheet(isPresented: $isShowingHosts) {
             KnownHostsSheet()
         }
-        .alert(for: $error)
     }
 
     private func name(_ key: StoredSSHKey) -> String {
@@ -101,7 +121,7 @@ struct SSHKeysSection: View {
         do {
             keys = try SSHKeyStore.shared.keys()
         } catch {
-            self.error = PresentedError(error)
+            self.error = Notice(error)
         }
     }
 
@@ -109,7 +129,7 @@ struct SSHKeysSection: View {
         do {
             try SSHKeyStore.shared.remove(key)
         } catch {
-            self.error = PresentedError(error)
+            self.error = Notice(error)
         }
         reload()
     }
@@ -120,7 +140,7 @@ private struct NewSSHKeySheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var comment = ""
     @State private var created: StoredSSHKey?
-    @State private var error: PresentedError?
+    @State private var error: Notice?
 
     var body: some View {
         NavigationStack {
@@ -161,7 +181,7 @@ private struct NewSSHKeySheet: View {
         }
         .frame(minWidth: 440)
         .onAppear { comment = SSHKeyHelp.defaultComment }
-        .alert(for: $error)
+        .notice(for: $error)
     }
 
     private func create() {
@@ -169,7 +189,7 @@ private struct NewSSHKeySheet: View {
             let key = SSHPrivateKey.generateEd25519(comment: comment.trimmingCharacters(in: .whitespacesAndNewlines))
             created = try SSHKeyStore.shared.add(key)
         } catch {
-            self.error = PresentedError(error)
+            self.error = Notice(error)
         }
     }
 }
@@ -281,7 +301,7 @@ private struct ImportSSHKeySheet: View {
 private struct KnownHostsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var entries: [KnownHosts.Entry] = []
-    @State private var error: PresentedError?
+    @State private var error: Notice?
 
     var body: some View {
         NavigationStack {
@@ -322,7 +342,7 @@ private struct KnownHostsSheet: View {
         }
         .frame(minWidth: 520, minHeight: 360)
         .onAppear(perform: reload)
-        .alert(for: $error)
+        .notice(for: $error)
     }
 
     private func reload() {
@@ -333,7 +353,7 @@ private struct KnownHostsSheet: View {
         do {
             try SSHKeyStore.shared.knownHosts.remove(entry)
         } catch {
-            self.error = PresentedError(error)
+            self.error = Notice(error)
         }
         reload()
     }

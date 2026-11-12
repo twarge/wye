@@ -115,6 +115,26 @@ public final class Transfer: Sendable {
 
     private let continuation: AsyncStream<TransferProgress>.Continuation
     private let cancelled = Atomic<Bool>(false)
+    private let heard = Mutex<[UInt8]>([])
+
+    /// As much of what the server says as is kept: plenty for its messages,
+    /// and a bound on a server that never stops talking.
+    static let serverOutputLimit = 64 * 1024
+
+    /// Everything the server has said so far, as it sent it: progress it
+    /// overwrote, a hook's output, a link to open a pull request. Read it
+    /// with ``ServerMessages`` once the operation is over.
+    public var serverOutput: String {
+        heard.withLock { String(decoding: $0, as: UTF8.self) }
+    }
+
+    func hear(_ bytes: UnsafeBufferPointer<UInt8>) {
+        heard.withLock { kept in
+            let room = Self.serverOutputLimit - kept.count
+            guard room > 0 else { return }
+            kept.append(contentsOf: bytes.prefix(room))
+        }
+    }
 
     public init() {
         (progress, continuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))

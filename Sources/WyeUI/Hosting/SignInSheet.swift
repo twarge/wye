@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 /// Adds an account: a service, its host, and a personal access token, or
@@ -9,6 +10,9 @@ struct SignInSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
+    /// The sign-in page, shown over the sheet for as long as it is wanted.
+    @State private var browser: Task<Void, Never>?
 
     @State private var kind: HostingKind = .github
     @State private var hostText = ""
@@ -92,7 +96,10 @@ struct SignInSheet: View {
             device = nil
             task?.cancel()
         }
-        .onDisappear { task?.cancel() }
+        .onDisappear {
+            task?.cancel()
+            browser?.cancel()
+        }
     }
 
     // MARK: Sections
@@ -135,6 +142,10 @@ struct SignInSheet: View {
                     }
                 }
                 Button("Open \(device.verificationURL.host() ?? "the Sign-In Page")", systemImage: "safari") {
+                    showSignInPage(device.completeVerificationURL ?? device.verificationURL)
+                }
+                Button("Open in Browser Instead", systemImage: "arrow.up.forward.app") {
+                    browser?.cancel()
                     openURL(device.completeVerificationURL ?? device.verificationURL)
                 }
                 HStack {
@@ -205,11 +216,27 @@ struct SignInSheet: View {
         run {
             let authorization = try await flow.start()
             device = authorization
-            openURL(authorization.completeVerificationURL ?? authorization.verificationURL)
+            showSignInPage(authorization.completeVerificationURL ?? authorization.verificationURL)
+            // The page has nowhere to send the user back to: Wye learns of
+            // the sign-in from the host, and closes the page itself.
+            defer { browser?.cancel() }
             let secret = try await flow.waitForAuthorization(authorization)
             return try await HostingSignIn.signIn(
                 kind: kind, host: host.host, scheme: host.scheme, secret: secret, method: .oauth,
                 store: .shared, transport: URLSessionTransport()
+            )
+        }
+    }
+
+    /// Shows the host's sign-in page in the system's authentication sheet,
+    /// which has the browser's own session, so someone already signed in
+    /// there only confirms. Closing it leaves the code waiting to be
+    /// entered some other way.
+    private func showSignInPage(_ url: URL) {
+        browser?.cancel()
+        browser = Task {
+            _ = try? await webAuthenticationSession.authenticate(
+                using: url, callback: .customScheme("wye"), additionalHeaderFields: [:]
             )
         }
     }

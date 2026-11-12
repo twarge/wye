@@ -56,7 +56,7 @@ struct FileContentView: View {
             do {
                 content = try await model.repository.fileContent(at: path, in: commitID)
             } catch {
-                model.error = PresentedError(error)
+                model.report(error)
             }
         }
     }

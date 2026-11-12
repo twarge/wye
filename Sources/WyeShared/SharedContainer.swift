@@ -5,8 +5,8 @@ public enum SharedContainer {
     /// The app group on iOS. The Mac uses the team-prefixed form, which a
     /// sandboxed Mac app may use without a provisioning profile, so local
     /// builds work before the group is registered.
-    public static let iOSGroupIdentifier = "group.com.twarge.app.twig"
-    public static let macOSGroupIdentifier = "257KW9ZJFP.com.twarge.app.twig"
+    public static let iOSGroupIdentifier = "group.com.twarge.app.wye"
+    public static let macOSGroupIdentifier = "257KW9ZJFP.com.twarge.app.wye"
 
     public static var groupIdentifier: String {
         #if os(macOS)
@@ -24,7 +24,7 @@ public enum SharedContainer {
     public static var directory: URL {
         if let directoryOverride { return directoryOverride }
         return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupIdentifier)
-            ?? URL.applicationSupportDirectory.appending(path: "Twig", directoryHint: .isDirectory)
+            ?? URL.applicationSupportDirectory.appending(path: "Wye", directoryHint: .isDirectory)
     }
 }
 

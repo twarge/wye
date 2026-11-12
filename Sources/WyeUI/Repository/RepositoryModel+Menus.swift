@@ -34,7 +34,7 @@ extension RepositoryModel {
                 document: PatchDocument(text: text), fileName: "stash-\(stash.index)-\(stash.id.abbreviated()).patch"
             )
         } catch {
-            self.error = PresentedError(error)
+            report(error)
         }
     }
 
@@ -70,13 +70,13 @@ extension RepositoryModel {
     func pruneRemote(_ name: String) async {
         await runRemote("Pruning “\(name)”") { repository, transfer, _ in
             let pruned = try await repository.pruneRemote(name, credentials: CredentialStore.shared, transfer: transfer)
-            self.remotes.notice = OperationNotice(
-                title: pruned.isEmpty ? "Nothing to Prune" : "Pruned “\(name)”",
+            self.notices.post(Notice(
+                .success, title: pruned.isEmpty ? "Nothing to Prune" : "Pruned “\(name)”",
                 message: pruned.isEmpty
                     ? "Every remote branch of “\(name)” is still on the remote."
                     : "Removed \(pruned.map { "“\(Self.displayName(ofReference: $0))”" }.joined(separator: ", ")), "
                         + "which \(pruned.count == 1 ? "is" : "are") gone from the remote. Local branches are kept."
-            )
+            ))
         }
     }
 

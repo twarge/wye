@@ -66,7 +66,7 @@ extension RepositoryModel {
         do {
             repository.setCommitSigner(try SigningKeys.signer(for: composerSigningPlan))
         } catch {
-            self.error = PresentedError(error)
+            report(error)
             return
         }
         let wasCommitting = !workingCopy.isAmending
@@ -123,7 +123,7 @@ extension RepositoryModel {
             guard !text.isEmpty else { throw EmptyPatchError() }
             history.requests.patchExport = PatchExport(document: PatchDocument(text: text), fileName: fileName)
         } catch {
-            self.error = PresentedError(error)
+            report(error)
         }
     }
 }

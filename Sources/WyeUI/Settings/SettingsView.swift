@@ -13,7 +13,7 @@ struct SettingsView: View {
                     Task {
                         // Once the notice's row has been laid out.
                         try? await Task.sleep(for: .milliseconds(200))
-                        withAnimation {
+                        withMotion {
                             proxy.scrollTo(SettingsFocus.sshKeysAnchor, anchor: .top)
                         }
                     }
@@ -37,6 +37,7 @@ struct SettingsView: View {
             NewRepositorySettingsSection()
             SubmoduleSettingsSection()
             FilesLocationSettingsSection()
+            SystemSettingsSection()
 
             AccountsSection()
             SSHKeysSection()

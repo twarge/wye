@@ -94,3 +94,12 @@ final class AppearancePreferences {
         return families.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
 }
+
+extension AppearancePreferences {
+    /// Takes up values another device changed, once iCloud has written
+    /// them to the defaults. The font is each device's own.
+    func reloadSynced() {
+        let fresh = AppearancePreferences(defaults: defaults)
+        if themeID != fresh.themeID { themeID = fresh.themeID }
+    }
+}

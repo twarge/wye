@@ -7,9 +7,13 @@ struct RepositoryView: View {
     @Bindable var model: RepositoryModel
     var close: () -> Void
 
+    @Environment(WindowActions.self) private var actions: WindowActions?
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     var body: some View {
         NavigationSplitView {
             SidebarView(model: model)
+                .modifier(notices(perColumn: true))
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 380)
                 .toolbar {
                     ToolbarItem(placement: .navigation) {
@@ -19,6 +23,7 @@ struct RepositoryView: View {
                 }
         } content: {
             content
+                .modifier(notices(perColumn: true))
                 .navigationSplitViewColumnWidth(min: 320, ideal: 500)
                 // The window stands for the repository's folder: on macOS the
                 // title gets the folder's icon, to drag, and a menu of the
@@ -29,12 +34,13 @@ struct RepositoryView: View {
                 .undoControls(for: model)
         } detail: {
             detail
+                .modifier(notices(perColumn: true))
         }
         .focusedSceneValue(model)
         // For diffs that read more than their lines, such as images.
         .environment(\.diffRepository, model.repository)
         .repositoryWindowServices(model)
-        .alert(for: $model.error)
+        .modifier(notices(perColumn: false))
         .branchingSheets(model)
         .remoteDialogs(for: model)
         .fileRequestDialogs(model)
@@ -60,6 +66,20 @@ struct RepositoryView: View {
                 await model.history.show(scope)
             }
         }
+    }
+
+    /// The strip of notices, over the whole window where the columns sit
+    /// side by side. On an iPhone one column fills the screen under its
+    /// own bar, so each carries the strip below that bar: over the window
+    /// it would cover the bar's buttons.
+    ///
+    /// The window's own notices show too: adding or opening another
+    /// repository can fail while this one is on screen.
+    private func notices(perColumn: Bool) -> NoticeStripModifier {
+        NoticeStripModifier(
+            center: model.notices, model: model, also: actions?.notices,
+            isShown: perColumn == (sizeClass == .compact)
+        )
     }
 
     @ViewBuilder

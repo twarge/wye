@@ -97,3 +97,16 @@ struct HistoryLayout: Hashable {
     var options = HistoryOptions()
     var grouping = HistoryPreferences.Grouping.month
 }
+
+extension HistoryPreferences {
+    /// Takes up values another device changed, once iCloud has written
+    /// them to the defaults.
+    func reloadSynced() {
+        let fresh = HistoryPreferences(defaults: defaults)
+        if showsGraph != fresh.showsGraph { showsGraph = fresh.showsGraph }
+        if firstParentOnly != fresh.firstParentOnly { firstParentOnly = fresh.firstParentOnly }
+        if order != fresh.order { order = fresh.order }
+        if grouping != fresh.grouping { grouping = fresh.grouping }
+        if rowSize != fresh.rowSize { rowSize = fresh.rowSize }
+    }
+}

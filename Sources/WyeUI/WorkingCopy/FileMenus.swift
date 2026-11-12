@@ -219,7 +219,7 @@ extension FileActions {
                 if FileManager.default.fileExists(atPath: url.path) {
                     Platform.revealInFileBrowser(url)
                 } else {
-                    model.error = PresentedError(FileOperationError.sourceMissing(path))
+                    model.report(FileOperationError.sourceMissing(path))
                 }
             })
         }

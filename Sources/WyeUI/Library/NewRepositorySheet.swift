@@ -17,7 +17,7 @@ struct NewRepositorySheet: View {
     @State private var addsReadme = true
     @State private var ignoreTemplate = IgnoreTemplate.none
     @State private var isCreating = false
-    @State private var error: PresentedError?
+    @State private var error: Notice?
 
     var body: some View {
         NavigationStack {
@@ -77,10 +77,10 @@ struct NewRepositorySheet: View {
         .fileImporter(isPresented: $isChoosingFolder, allowedContentTypes: [.folder]) { result in
             switch result {
             case .success(let url): parent = url
-            case .failure(let failure): error = PresentedError(failure)
+            case .failure(let failure): error = Notice(failure)
             }
         }
-        .alert(for: $error)
+        .notice(for: $error)
     }
 
     private var trimmedName: String {
@@ -137,7 +137,7 @@ struct NewRepositorySheet: View {
             } catch {
                 ActivityLog.shared.finish(entry, error: error)
                 isCreating = false
-                self.error = PresentedError(error)
+                self.error = Notice(error)
             }
         }
     }

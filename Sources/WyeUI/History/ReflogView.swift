@@ -49,7 +49,7 @@ struct ReflogView: View {
             do {
                 try await reflog.load()
             } catch {
-                model.error = PresentedError(error)
+                model.report(error)
             }
         }
     }

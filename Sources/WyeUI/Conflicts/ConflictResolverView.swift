@@ -42,7 +42,7 @@ struct ConflictResolverView: View {
         } message: {
             Text("The file stays as it is, still in conflict.")
         }
-        .alert(for: $model.error)
+        .sheetNotices(model)
         .task { await load() }
     }
 
@@ -425,7 +425,7 @@ private struct ResultPane: View {
                 }
                 .onChange(of: session.current, initial: true) {
                     guard let target = segments.first(where: { $0.conflict == session.current }) else { return }
-                    withAnimation { proxy.scrollTo(target.id, anchor: .center) }
+                    withMotion { proxy.scrollTo(target.id, anchor: .center) }
                 }
             }
         }

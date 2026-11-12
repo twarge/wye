@@ -48,6 +48,24 @@ struct WyeShortcuts: AppShortcutsProvider {
             systemImageName: "arrow.triangle.2.circlepath.circle"
         )
         AppShortcut(
+            intent: PullAllRepositoriesIntent(),
+            phrases: [
+                "Pull all repositories in \(.applicationName)",
+                "Pull everything in \(.applicationName)"
+            ],
+            shortTitle: "Pull All",
+            systemImageName: "arrow.down.to.line"
+        )
+        AppShortcut(
+            intent: FindUnpushedRepositoriesIntent(),
+            phrases: [
+                "What is not pushed in \(.applicationName)",
+                "Review unpushed work in \(.applicationName)"
+            ],
+            shortTitle: "Unpushed Work",
+            systemImageName: "tray.full"
+        )
+        AppShortcut(
             intent: GetRepositoryStatusIntent(),
             phrases: [
                 "What’s the status of \(\.$repository) in \(.applicationName)",

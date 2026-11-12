@@ -27,7 +27,7 @@ final class RepositorySettingsModel {
             localEntries = try await repository.configurationEntries(at: .local)
             appEntries = (try? await repository.configurationEntries(at: .global)) ?? []
         } catch {
-            model.error = PresentedError(error)
+            model.report(error)
         }
         isLoaded = true
     }

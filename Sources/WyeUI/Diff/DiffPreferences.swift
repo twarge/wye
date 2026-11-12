@@ -145,3 +145,16 @@ struct DiffTextStyle: Hashable {
         return runs
     }
 }
+
+extension DiffPreferences {
+    /// Takes up values another device changed, once iCloud has written
+    /// them to the defaults.
+    func reloadSynced() {
+        let fresh = DiffPreferences(defaults: defaults)
+        if contextLines != fresh.contextLines { contextLines = fresh.contextLines }
+        if whitespace != fresh.whitespace { whitespace = fresh.whitespace }
+        if showsInvisibles != fresh.showsInvisibles { showsInvisibles = fresh.showsInvisibles }
+        if tabWidth != fresh.tabWidth { tabWidth = fresh.tabWidth }
+        if collapseThreshold != fresh.collapseThreshold { collapseThreshold = fresh.collapseThreshold }
+    }
+}

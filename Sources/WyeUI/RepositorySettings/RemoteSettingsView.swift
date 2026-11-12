@@ -102,7 +102,7 @@ struct RemoteSettingsView: View {
             defaultBranch = head
             saved = Saved(pushURL: push, fetch: fetch, push: pushSpecs, defaultBranch: head)
         } catch {
-            model.error = PresentedError(error)
+            model.report(error)
         }
     }
 
@@ -110,6 +110,7 @@ struct RemoteSettingsView: View {
         guard let saved else { return }
         let remote = remote
         let (name, url, pushURL) = (trimmed(name), trimmed(url), trimmed(pushURL))
+        let failuresBefore = model.notices.failuresPosted
         let fetch = fetchRefspecs.map(\.trimmed).filter { !$0.isEmpty }
         let push = pushRefspecs.map(\.trimmed).filter { !$0.isEmpty }
         let defaultBranch = defaultBranch
@@ -133,7 +134,7 @@ struct RemoteSettingsView: View {
                 await model.editRemote(remote, name: name, url: url, pushURL: pushURL)
                 await settings.reload()
             }
-            if model.error == nil {
+            if model.notices.failuresPosted == failuresBefore {
                 dismiss()
             }
         }

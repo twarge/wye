@@ -1,4 +1,5 @@
 import SwiftUI
+import TipKit
 import UniformTypeIdentifiers
 
 /// The list of repositories, shown when a window has none open.
@@ -13,13 +14,18 @@ struct RepositoryLibraryView: View {
     @State private var naming: GroupNaming?
     @State private var groupName = ""
     @State private var isChoosingFolderToWatch = false
-    @State private var error: PresentedError?
 
     var body: some View {
         NavigationStack {
-            RepositoryList(query: query, order: order, open: open) { naming in
-                groupName = if case .rename(let group) = naming { group.name } else { "" }
-                self.naming = naming
+            Group {
+                if actions.isReviewing {
+                    ReviewView(query: query, open: open)
+                } else {
+                    RepositoryList(query: query, order: order, open: open) { naming in
+                        groupName = if case .rename(let group) = naming { group.name } else { "" }
+                        self.naming = naming
+                    }
+                }
             }
             .overlay {
                 if library.listedBookmarks.isEmpty, library.folders.isEmpty {
@@ -36,9 +42,33 @@ struct RepositoryLibraryView: View {
                     }
                 }
             }
-            .searchable(text: $query, prompt: "Name, folder or branch")
-            .navigationTitle("Repositories")
+            #if !os(macOS)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                modePicker
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+            }
+            // The picker says which of the two is showing, so the bar
+            // keeps a small title rather than a large one above it.
+            .toolbarTitleDisplayMode(.inline)
+            #endif
+            // Inside the stack, so the strip sits under its bar, not over it.
+            .noticeStrip(actions.notices)
+            .searchable(text: $query, prompt: actions.isReviewing ? "Repository, branch, file or commit" : "Name, folder or branch")
+            .navigationTitle(navigationTitle)
             .toolbar {
+                // In the middle of the Mac's toolbar. An iPhone's has no
+                // room beside its buttons, so there it goes under the title.
+                #if os(macOS)
+                ToolbarItem(placement: .principal) {
+                    modePicker.fixedSize()
+                }
+                #endif
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Pull All", systemImage: "arrow.down.to.line") { actions.isPullingAll = true }
+                        .help("Pull every repository and report what did not work")
+                        .disabled(library.listedBookmarks.isEmpty)
+                }
                 // The menu bar gives these their shortcuts, ⌘O and ⌥⌘O.
                 ToolbarItem(placement: .primaryAction) {
                     Button("Add Repository", systemImage: "plus") { actions.isAddingRepository = true }
@@ -86,6 +116,7 @@ struct RepositoryLibraryView: View {
                             actions.isShowingActivity = true
                         }
                     }
+                    .badge(ActivityLog.shared.unseenFailures)
                     .help("Every operation Wye has run this session")
                 }
                 ToolbarItem(placement: .secondaryAction) {
@@ -101,16 +132,41 @@ struct RepositoryLibraryView: View {
                     do {
                         try library.watch(try result.get())
                     } catch {
-                        self.error = PresentedError(error)
+                        actions.notices.post(error, during: "Watch Folder")
                     }
                 }
-                .alert(for: $error)
         }
         .alert(naming.map(alertTitle) ?? "", isPresented: Binding { naming != nil } set: { if !$0 { naming = nil } }) {
             TextField("Name", text: $groupName)
             Button("Cancel", role: .cancel) {}
             Button(naming.map(confirmTitle) ?? "OK") { saveGroup() }
                 .disabled(trimmedGroupName.isEmpty)
+        }
+    }
+
+    /// The window's title on the Mac. On iOS the picker under the bar
+    /// says which of the two is showing, and the bar, short of room beside
+    /// its buttons, names the app.
+    private var navigationTitle: String {
+        #if os(macOS)
+        actions.isReviewing ? "Review" : "Repositories"
+        #else
+        "Wye"
+        #endif
+    }
+
+    /// Chooses between the list of repositories and the Review.
+    private var modePicker: some View {
+        @Bindable var actions = actions
+        return Picker("Show", selection: $actions.isReviewing) {
+            Text("Repositories").tag(false)
+            Text("Review").tag(true)
+        }
+        .pickerStyle(.segmented)
+        .help("Review everything not committed or pushed, in every repository")
+        .popoverTip(library.listedBookmarks.count > 1 ? ReviewTip() : nil)
+        .onChange(of: actions.isReviewing) {
+            if actions.isReviewing { Task { await ReviewTip.reviewed.donate() } }
         }
     }
 

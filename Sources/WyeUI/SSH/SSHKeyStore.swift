@@ -12,6 +12,19 @@ struct StoredSSHKey: Identifiable, Hashable {
     var publicKeyLine: String
     var fingerprint: String
     var created: Date
+    /// Whether iCloud Keychain carries it to the user's other devices.
+    var isSynced = false
+}
+
+/// Whether SSH keys are kept in iCloud Keychain. Off unless the user turns
+/// it on: a private key then leaves this device, end-to-end encrypted, for
+/// the user's others.
+enum SSHKeyPreferences {
+    static let syncsKey = "ssh.syncKeys"
+
+    static var syncsKeys: Bool {
+        UserDefaults.standard.bool(forKey: syncsKey)
+    }
 }
 
 /// SSH private keys, each a generic password item in the Keychain, and the
@@ -24,13 +37,12 @@ final class SSHKeyStore: Sendable {
 
     /// The hosts whose keys the user has trusted, in Wye's own known_hosts,
     /// never the one in `~/.ssh`.
-    let knownHosts = KnownHosts(file: .applicationSupportDirectory.appending(path: "Twig/known_hosts"))
+    let knownHosts = KnownHosts(file: .applicationSupportDirectory.appending(path: "Wye/known_hosts"))
 
     /// Items are generic passwords under this service, with a random
     /// identifier as the account. The key's description rides along as the
     /// item's generic attribute, so that listing keys reads no secret.
-    /// The app's first name, kept so keys saved under it are still found.
-    private let service = "Twig SSH key"
+    private let service = "Wye SSH key"
 
     private struct Description: Codable {
         var kind: SSHKeyKind
@@ -59,7 +71,8 @@ final class SSHKeyStore: Sendable {
                 id: id, kind: description.kind, comment: description.comment,
                 publicKeyLine: description.comment.isEmpty
                     ? publicKey.openSSH : publicKey.openSSH + " " + description.comment,
-                fingerprint: publicKey.fingerprint, created: description.created
+                fingerprint: publicKey.fingerprint, created: description.created,
+                isSynced: Self.isSynchronizable(item)
             )
         }
         .sorted { $0.created < $1.created }
@@ -78,21 +91,44 @@ final class SSHKeyStore: Sendable {
 
     @discardableResult
     func add(_ key: SSHPrivateKey) throws -> StoredSSHKey {
-        let id = UUID().uuidString
+        try add(key, id: UUID().uuidString, created: .now, synced: SSHKeyPreferences.syncsKeys)
+    }
+
+    /// Moves every key into iCloud Keychain, or back to this device alone.
+    /// A key is taken out and put back, the same key under the same
+    /// identifier, so that what refers to it (a signing key, say) still
+    /// does. Stops at the first that cannot be moved, with the rest as
+    /// they were.
+    func setSynced(_ synced: Bool) throws {
+        for stored in try keys() where stored.isSynced != synced {
+            guard let key = try privateKey(id: stored.id) else { continue }
+            try remove(stored)
+            do {
+                try add(key, id: stored.id, created: stored.created, synced: synced)
+            } catch {
+                // Never lose a key to a failed move: back where it was.
+                _ = try? add(key, id: stored.id, created: stored.created, synced: stored.isSynced)
+                throw error
+            }
+        }
+    }
+
+    @discardableResult
+    private func add(_ key: SSHPrivateKey, id: String, created: Date, synced: Bool) throws -> StoredSSHKey {
         let description = Description(
-            kind: key.kind, comment: key.comment, publicKey: key.publicKey.openSSH, created: .now
+            kind: key.kind, comment: key.comment, publicKey: key.publicKey.openSSH, created: created
         )
         var item = baseQuery(id: id)
         item[kSecValueData as String] = key.rawRepresentation
         item[kSecAttrGeneric as String] = try JSONEncoder().encode(description)
         item[kSecAttrLabel as String] = key.comment.isEmpty ? "Wye SSH key" : "Wye SSH key: \(key.comment)"
         item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        item[kSecAttrSynchronizable as String] = false
+        item[kSecAttrSynchronizable as String] = synced
         let status = SecItemAdd(item as CFDictionary, nil)
         guard status == errSecSuccess else { throw KeychainError(status: status) }
         return try keys().first { $0.id == id } ?? StoredSSHKey(
             id: id, kind: key.kind, comment: key.comment, publicKeyLine: key.openSSHPublicKey,
-            fingerprint: key.publicKey.fingerprint, created: description.created
+            fingerprint: key.publicKey.fingerprint, created: description.created, isSynced: synced
         )
     }
 
@@ -118,10 +154,17 @@ final class SSHKeyStore: Sendable {
         return try SSHPrivateKey(kind: description.kind, rawRepresentation: secret, comment: description.comment)
     }
 
+    private static func isSynchronizable(_ item: [String: Any]) -> Bool {
+        if let flag = item[kSecAttrSynchronizable as String] as? Bool { return flag }
+        return (item[kSecAttrSynchronizable as String] as? NSNumber)?.boolValue ?? false
+    }
+
     private func baseQuery(id: String?) -> [String: Any] {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service
+            kSecAttrService as String: service,
+            // Keys on this device alone and keys in iCloud Keychain alike.
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
         ]
         if let id {
             query[kSecAttrAccount as String] = id

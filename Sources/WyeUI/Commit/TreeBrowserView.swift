@@ -28,7 +28,7 @@ struct TreeBrowserView: View {
                 guard !Task.isCancelled else { return }
                 root = entries
             } catch {
-                model.error = PresentedError(error)
+                model.report(error)
             }
         }
     }
@@ -46,6 +46,9 @@ private struct TreeLevel: View {
                 TreeFolderRow(model: model, commitID: commitID, entry: entry)
             } else {
                 TreeFileRow(commitID: commitID, entry: entry)
+                    .fileDrag(entry.kind == .submodule ? nil : FileDrag(
+                        repository: model.repository, path: entry.path, commit: commitID
+                    ))
             }
         }
     }
@@ -83,7 +86,7 @@ private struct TreeFolderRow: View {
         do {
             children = try await model.repository.treeEntries(in: commitID, at: entry.path)
         } catch {
-            model.error = PresentedError(error)
+            model.report(error)
         }
     }
 }

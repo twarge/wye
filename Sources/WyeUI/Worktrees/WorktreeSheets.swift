@@ -28,7 +28,7 @@ struct AddWorktreeSheet: View {
     @State private var parent: URL?
     @State private var isChoosingFolder = false
     @State private var opensAfterwards = true
-    @State private var error: PresentedError?
+    @State private var error: Notice?
 
     var body: some View {
         BranchingSheetForm(title: "Add Worktree", confirmTitle: "Add", canConfirm: target != nil && location != nil, confirm: add) {
@@ -84,11 +84,11 @@ struct AddWorktreeSheet: View {
         .fileImporter(isPresented: $isChoosingFolder, allowedContentTypes: [.folder]) { result in
             switch result {
             case .success(let url): parent = url
-            case .failure(let failure): error = PresentedError(failure)
+            case .failure(let failure): error = Notice(failure)
             }
         }
         .fileDialogDefaultDirectory(model.repository.url.deletingLastPathComponent())
-        .alert(for: $error)
+        .notice(for: $error)
         .onAppear(perform: start)
         .onChange(of: suggestedFolder) {
             if !hasEditedFolder { folderName = suggestedFolder }
@@ -192,7 +192,7 @@ struct MoveWorktreeSheet: View {
     @State private var folderName = ""
     @State private var parent: URL?
     @State private var isChoosingFolder = false
-    @State private var error: PresentedError?
+    @State private var error: Notice?
 
     var body: some View {
         BranchingSheetForm(title: "Move Worktree", confirmTitle: "Move", canConfirm: destinationParent != nil, confirm: move) {
@@ -218,10 +218,10 @@ struct MoveWorktreeSheet: View {
         .fileImporter(isPresented: $isChoosingFolder, allowedContentTypes: [.folder]) { result in
             switch result {
             case .success(let url): parent = url
-            case .failure(let failure): error = PresentedError(failure)
+            case .failure(let failure): error = Notice(failure)
             }
         }
-        .alert(for: $error)
+        .notice(for: $error)
         .onAppear {
             folderName = model.worktree(named: name)?.displayName ?? name
         }

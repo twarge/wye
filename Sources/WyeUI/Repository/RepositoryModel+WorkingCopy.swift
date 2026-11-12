@@ -88,7 +88,7 @@ extension RepositoryModel {
                 workingCopy.amend = AmendDraft(subject: workingCopy.subject, details: workingCopy.details)
                 (workingCopy.subject, workingCopy.details) = Self.split(message)
             } catch {
-                self.error = PresentedError(error)
+                report(error)
             }
         } else if let draft = workingCopy.amend {
             workingCopy.amend = nil
@@ -112,7 +112,7 @@ extension RepositoryModel {
             workingCopy.subject = draft.subject
             workingCopy.details = draft.details
         } catch {
-            self.error = PresentedError(error)
+            report(error)
         }
         await refresh()
     }

@@ -25,6 +25,48 @@
 	     where repositories cloned by earlier versions live. New ones go in
 	     the Files extension's storage instead (Extensions/Files), shown as
 	     the Wye location with .git hidden. -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<!-- Patch files, so one can be opened in Wye from the Finder, the
+		     Files app or a message, to apply to the repository on screen.
+		     Alternate: a text editor stays the default. -->
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Patch</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.patch-file</string>
+				<string>com.twarge.app.wye.patch</string>
+			</array>
+		</dict>
+	</array>
+	<!-- `.patch` and `.diff` have no type every system declares, so Wye
+	     imports one for the document type above to name. -->
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.twarge.app.wye.patch</string>
+			<key>UTTypeDescription</key>
+			<string>Patch</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>patch</string>
+					<string>diff</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>UIFileSharingEnabled</key>
@@ -36,7 +78,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.twarge.app.twig</string>
+			<string>com.twarge.app.wye</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>wye</string>
@@ -47,11 +89,16 @@
 	     registers this identifier, and does nothing without it here. -->
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.twarge.app.twig.fetch</string>
+		<string>com.twarge.app.wye.fetch</string>
+		<!-- A clone, fetch, pull or push carried on in the background, with
+		     its progress on the Lock Screen: one task each, named under
+		     this (Sources/WyeUI/Activity/ContinuedWork.swift). -->
+		<string>com.twarge.app.wye.transfer.*</string>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
+		<string>processing</string>
 	</array>
 	<!-- Signing in to hosting services with the OAuth device flow, by host.
 	     Each value is the client id of an OAuth application the app's
@@ -61,6 +108,13 @@
 	     "api" and "write_repository" scopes). Empty means Wye offers only
 	     personal access tokens for that host. A key per GitHub Enterprise
 	     or self-managed GitLab host offers it there too. -->
+	<!-- Settings ▸ iCloud ▸ Sync Settings. Off until the app is signed
+	     with the iCloud key-value store entitlement, which needs the
+	     iCloud capability on the App ID: see docs/app-store.md, "iCloud".
+	     Until then the setting is not shown, rather than shown and doing
+	     nothing. -->
+	<key>WyeSyncsSettingsWithICloud</key>
+	<true/>
 	<key>WyeOAuthClientIDs</key>
 	<dict>
 		<key>github.com</key>

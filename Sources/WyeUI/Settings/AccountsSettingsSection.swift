@@ -8,7 +8,7 @@ struct AccountsSection: View {
     @State private var isAdding = false
     @State private var signingInAgain: HostingAccount?
     @State private var removing: HostingAccount?
-    @State private var error: PresentedError?
+    @State private var error: Notice?
     private var changes = AccountChangeCounter.shared
 
     var body: some View {
@@ -28,6 +28,7 @@ struct AccountsSection: View {
                     .foregroundStyle(.secondary)
             }
             Button("Add Account…", systemImage: "plus") { isAdding = true }
+            NoticeRow(notice: $error)
         } header: {
             Text("Accounts")
         } footer: {
@@ -54,7 +55,6 @@ struct AccountsSection: View {
             Text("Wye forgets the token for \(account.login). Remotes on \(account.host) use another account, "
                  + "or ask for a token. The token itself stays valid on the service until you revoke it there.")
         }
-        .alert(for: $error)
     }
 
     private func reload() {
@@ -66,7 +66,7 @@ struct AccountsSection: View {
             }
             self.defaults = defaults
         } catch {
-            self.error = PresentedError(error)
+            self.error = Notice(error)
         }
     }
 
@@ -75,7 +75,7 @@ struct AccountsSection: View {
             try AccountStore.shared.remove(account.id)
             CredentialStore.shared.forgetUnsaved(host: account.host)
         } catch {
-            self.error = PresentedError(error)
+            self.error = Notice(error)
         }
         reload()
     }

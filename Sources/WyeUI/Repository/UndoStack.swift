@@ -51,7 +51,7 @@ final class UndoStack {
 
     /// The history kept for a repository in the app's own folder.
     convenience init(repositoryID: UUID) {
-        self.init(storage: .applicationSupportDirectory.appending(path: "Twig/Undo/\(repositoryID.uuidString).json"))
+        self.init(storage: .applicationSupportDirectory.appending(path: "Wye/Undo/\(repositoryID.uuidString).json"))
     }
 
     var nextUndo: UndoRecord? { undoRecords.last }

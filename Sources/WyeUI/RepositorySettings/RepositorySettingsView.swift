@@ -49,8 +49,8 @@ struct RepositorySettingsView: View {
         }
         .frame(minWidth: 480, idealWidth: 540, minHeight: 480, idealHeight: 640)
         .task { await settings.reload() }
-        // The repository window's alert cannot show while this sheet is up.
-        .alert(for: $model.error)
+        // The repository window's notices are behind this sheet.
+        .sheetNotices(model)
     }
 
     private var remotesSection: some View {

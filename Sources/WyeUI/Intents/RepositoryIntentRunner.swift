@@ -44,7 +44,7 @@ enum RepositoryIntentRunner {
         defer { running[id] = nil }
         // The app may have been launched just for this intent, before any
         // window set up the app's own git configuration.
-        try? GitEnvironment.useGlobalConfiguration(in: .applicationSupportDirectory.appending(path: "Twig/git"))
+        try? GitEnvironment.useGlobalConfiguration(in: .applicationSupportDirectory.appending(path: "Wye/git"))
         do {
             let access = try library.access(to: bookmark)
             defer { withExtendedLifetime(access) {} }

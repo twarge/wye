@@ -103,3 +103,14 @@ final class CommitPreferences {
         SubjectLength.classify(subject, soft: softLimit, hard: hardLimit)
     }
 }
+
+extension CommitPreferences {
+    /// Takes up values another device changed, once iCloud has written
+    /// them to the defaults.
+    func reloadSynced() {
+        let fresh = CommitPreferences(defaults: defaults)
+        if softLimit != fresh.softLimit { softLimit = fresh.softLimit }
+        if hardLimit != fresh.hardLimit { hardLimit = fresh.hardLimit }
+        if templates != fresh.templates { templates = fresh.templates }
+    }
+}

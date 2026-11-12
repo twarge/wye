@@ -28,6 +28,8 @@ struct StashListView: View {
                 }
                 .padding(.vertical, 2)
                 .tag(stash.id)
+                // Out of the window, as a patch of its changes.
+                .draggable(StashDrag(repository: model.repository, stash: stash))
                 .contextMenu {
                     StashMenu(model: model, stash: stash) { pendingDrop = stash }
                 }

@@ -1,5 +1,6 @@
 import GitKit
 import SwiftUI
+import TipKit
 
 /// The changed files in the working copy, and the commit being written.
 struct WorkingCopyView: View {
@@ -91,6 +92,7 @@ struct WorkingCopyView: View {
             }
         }
         .listStyle(.plain)
+        .workingCopyDrops(model)
         .overlay {
             if model.workingCopy.entries.isEmpty && ignored.isEmpty && assumed.isEmpty {
                 ContentUnavailableView(
@@ -290,7 +292,7 @@ struct WorkingCopyView: View {
                 files.assumeUnchanged = try await model.repository.assumeUnchangedPaths()
             }
         } catch {
-            model.error = PresentedError(error)
+            model.report(error)
         }
         guard !Task.isCancelled else { return }
         hidden = files
@@ -302,6 +304,7 @@ struct WorkingCopyView: View {
         }
         .padding(.leading, CGFloat(depth) * FolderRow.indent)
         .tag(entry.path)
+        .fileDrag(model.fileExists(entry.path) ? FileDrag(repository: model.repository, path: entry.path) : nil)
         .contextMenu {
             Button(entry.unstaged == nil ? "Unstage" : "Stage", systemImage: entry.unstaged == nil ? "minus.square" : "plus.square") {
                 Task { await model.toggleStaging(of: entry) }
@@ -802,6 +805,11 @@ struct WorkingCopyDetailView: View {
             if let loaded, loaded.path == model.workingCopy.selection {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
+                        if DiffPreferences.shared.options.isExact, loaded.unstaged != nil {
+                            TipView(StageLinesTip())
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                        }
                         if !DiffPreferences.shared.options.isExact, loaded.staged != nil || loaded.unstaged != nil {
                             Label(
                                 "Whitespace changes are hidden, so hunks and lines cannot be staged one by one. Stage the whole file, or show whitespace changes in Settings.",
@@ -915,7 +923,7 @@ struct WorkingCopyDetailView: View {
             }
             loaded = Loaded(path: path, staged: staged, unstaged: unstaged)
         } catch {
-            model.error = PresentedError(error)
+            model.report(error)
         }
     }
 

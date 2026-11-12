@@ -57,7 +57,7 @@ extension RepositoryModel {
             remotes.pushedNewTags[created] = PushedNewTag(target: target, remotes: outcome.pushed)
         }
         if let message = Self.newTagPushFailureMessage(tag: name, outcome) {
-            error = PresentedError(NewTagPushFailure(message: message))
+            report(NewTagPushFailure(message: message))
         }
     }
 

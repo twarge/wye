@@ -161,6 +161,16 @@ enum Platform {
         #endif
     }
 
+    /// Whether the user has asked for less movement on screen, read where
+    /// no view's environment is at hand.
+    @MainActor static var reducesMotion: Bool {
+        #if os(macOS)
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        #else
+        UIAccessibility.isReduceMotionEnabled
+        #endif
+    }
+
     /// The device's name, for the comment of a new SSH key, so that the
     /// key can be told apart on the hosting service. iOS gives only the
     /// model's name to apps.
@@ -247,6 +257,18 @@ extension View {
             }
         }
         .accessibilityValue(count > 0 ? "\(count)" : "")
+        #endif
+    }
+
+    /// Highlights a row under the iPad's pointer, for rows that are plain
+    /// buttons and so get no highlight of their own. The Mac's lists do
+    /// without.
+    @ViewBuilder
+    func pointerHover() -> some View {
+        #if os(iOS)
+        hoverEffect(.highlight)
+        #else
+        self
         #endif
     }
 
@@ -605,3 +627,10 @@ extension View {
     }
 }
 #endif
+
+/// Runs `body` animated, unless the user has asked for reduced motion:
+/// then the change simply happens.
+@MainActor
+func withMotion<Result>(_ animation: Animation? = .default, _ body: () throws -> Result) rethrows -> Result {
+    try withAnimation(Platform.reducesMotion ? nil : animation, body)
+}

@@ -22,7 +22,8 @@ Each item is marked:
 | Reveal in Finder / Files for the repository and for a file | Done on macOS: a changed file from its menu, the repository from the Working Copy row's menu, a worktree from its menu. iOS has no public way to open Files at a file. |
 | Open in Terminal | Not planned (sandbox) |
 | Quick actions: one palette that runs any command, not only navigation | Done. Quick open (⇧⌘O) jumps to repositories, branches and tags and runs commands. |
-| Activity window: a log of every operation with its output and errors | Done. Window ▸ Activity on macOS, a sheet on iOS; kept for the session. |
+| Activity window: a log of every operation with its output and errors | Done. Window ▸ Activity on macOS, a sheet on iOS; kept for the session. Network operations keep what the server said (a hook's refusal, a link). The library's Activity button counts failures not yet looked at. |
+| Errors that do not stop the window | Done. A failure shows as a notice in a strip at the top of the window, named after what failed, with a button for what would fix it (Pull, Fetch, Show Working Copy, Open Settings) and the server's own words behind Show Details. Sheets and settings show theirs in place. Alerts remain only where something must be typed or confirmed. After a push, a link the server sends becomes a Create Pull Request button. |
 | Customizable toolbar | Missing |
 | Copy file path, copy commit info (hash, author, date, subject) | Done. File paths (relative and full) from the working copy and commit detail; the repository's and a worktree's folder; a commit's hash or its info, for one commit or several; a branch's, remote branch's or tag's name. |
 
@@ -30,6 +31,8 @@ Each item is marked:
 
 | Feature | Status |
 | --- | --- |
+| See what is uncommitted or unpushed in every repository at once | Done. Review, beside Repositories in the list's toolbar: each repository's changed files and unpushed commits, with Push. |
+| Pull every repository | Done. Pull All, a few at a time, with a report that lists what failed or stopped on conflicts first. |
 | Find repositories by scanning folders on disk | Done. A watched folder lists every repository in it and follows as they come and go. |
 | Create a new empty repository | Done. New Repository… (⌃⌘N), with an optional README and .gitignore. |
 | Publish a local repository to a hosting service | Done. Publish to a signed-in service from the Working Copy row's menu when there is no remote. |
@@ -160,7 +163,12 @@ Each item is marked:
 | Global git configuration editor (default branch name, pull mode, pruning) | Partial. Pull mode and autostash are app settings, not git configuration. |
 | Fetch in the background on a schedule | Done. While the app runs, and by background refresh on iOS. |
 | Notifications when a background fetch finds new commits | Done. |
-| iOS: Shortcuts actions, widgets, Files provider, share sheet "clone this URL" | Partial. App Intents for Siri and Shortcuts, an Unpushed Changes widget (also on the Mac desktop), and a share extension that hands a URL to the clone sheet. A File Provider extension makes Wye a location in the Files app, with `.git` hidden. |
+| iOS: Shortcuts actions, widgets, Files provider, share sheet "clone this URL" | Done. App Intents for Siri and Shortcuts (pull, push, fetch, status, commit, check out, stash, pull all, find unpushed work, clone); the Unpushed Changes widget and a Repository widget with Fetch and Pull buttons (also on the Mac desktop), Lock Screen widgets and a Fetch All control; a share extension that hands a URL to the clone sheet. A File Provider extension makes Wye a location in the Files app, with `.git` hidden. |
+| Transfers that finish in the background, with progress on the Lock Screen | Done on iOS, through continued processing tasks: a clone, fetch, pull, push or Pull All carries on when the app leaves the screen, and can be stopped from its Live Activity. |
+| Pull from the notification about new commits | Done. Pull and Open actions on it. |
+| Draft a commit message from the changes | Done where Apple Intelligence is available, on the device. Messages ▸ Draft from Changes. |
+| macOS: menu bar item, Finder badges and Open in Wye | Done. Both off until turned on: the menu bar item in Settings, the Finder extension in System Settings. |
+| Settings the same on every device | Partial. Sync through iCloud is built and stays hidden until the app is signed for it (docs/app-store.md, "iCloud"). SSH keys can be kept in iCloud Keychain, off unless turned on. |
 | Handoff of the open repository between devices | Not planned for now |
 
 ## Not planned, and why

@@ -119,7 +119,7 @@ struct InteractiveRebaseSheet: View {
 
     private func moveSelection(by delta: Int) {
         guard let selection else { return }
-        withAnimation { draft?.move(selection, by: delta) }
+        withMotion { draft?.move(selection, by: delta) }
     }
 
     private func run() {
@@ -151,11 +151,11 @@ private struct PlanList: View {
                     .tag(row.id)
                     .contextMenu { menu(for: row) }
                     .swipeActions(edge: .leading) {
-                        Button("Move Up", systemImage: "arrow.up") { withAnimation { draft.move(row.id, by: -1) } }
+                        Button("Move Up", systemImage: "arrow.up") { withMotion { draft.move(row.id, by: -1) } }
                             .disabled(!draft.canMove(row.id, by: -1))
                     }
                     .swipeActions(edge: .trailing) {
-                        Button("Move Down", systemImage: "arrow.down") { withAnimation { draft.move(row.id, by: 1) } }
+                        Button("Move Down", systemImage: "arrow.down") { withMotion { draft.move(row.id, by: 1) } }
                             .disabled(!draft.canMove(row.id, by: 1))
                     }
             }
@@ -171,9 +171,9 @@ private struct PlanList: View {
             }
         }
         Section {
-            Button("Move Up", systemImage: "arrow.up") { withAnimation { draft.move(row.id, by: -1) } }
+            Button("Move Up", systemImage: "arrow.up") { withMotion { draft.move(row.id, by: -1) } }
                 .disabled(!draft.canMove(row.id, by: -1))
-            Button("Move Down", systemImage: "arrow.down") { withAnimation { draft.move(row.id, by: 1) } }
+            Button("Move Down", systemImage: "arrow.down") { withMotion { draft.move(row.id, by: 1) } }
                 .disabled(!draft.canMove(row.id, by: 1))
         }
         if draft.asksForMessage(row) {

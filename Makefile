@@ -10,9 +10,10 @@
 #   make run        build it, then launch it
 #   make release    Release build
 #   make ios        build for the iOS Simulator
-#   make test       run the GitKit tests
+#   make test       run the tests
 #   make deps       fetch the libgit2 submodule
 #   make icon       regenerate the app icon from scripts/make-app-icon.swift
+#   make strings    bring the string catalogs up to date with the sources
 #   make archive    Release .xcarchive for the App Store (PLATFORM=macOS or iOS)
 #   make upload     export that archive to App Store Connect
 #   make clean      remove build products
@@ -30,7 +31,7 @@ XCODEBUILD := xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(
 
 LIBGIT2 := Vendor/libgit2/include/git2.h
 
-.PHONY: all build run release ios test deps clean help icon archive upload
+.PHONY: all build run release ios test deps clean help icon strings archive upload
 
 all: build
 
@@ -56,13 +57,17 @@ release:
 ios: deps
 	$(XCODEBUILD) -destination 'generic/platform=iOS Simulator' $(XCODE_FLAGS) build
 
-## test: run the GitKit tests
+## test: run the tests
 test: deps
 	swift test
 
 ## icon: regenerate App/Resources/AppIcon.icon from scripts/make-app-icon.swift
 icon:
 	swift scripts/make-app-icon.swift
+
+## strings: bring the string catalogs up to date with the sources
+strings: deps
+	scripts/sync-strings.sh
 
 # ---------------------------------------------------------------------------
 # App Store distribution

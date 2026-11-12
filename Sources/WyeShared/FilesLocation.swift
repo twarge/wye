@@ -34,7 +34,7 @@ public enum FilesLocation {
     /// to, created, renamed or deleted something through the location, so
     /// an open repository refreshes without waiting to come to the front.
     /// It keeps the app's original identifier, as the app group does.
-    public static let changeNotification = "com.twarge.app.twig.files.changed"
+    public static let changeNotification = "com.twarge.app.wye.files.changed"
 
     /// Tells the app that something in the location changed.
     public static func postChange() {

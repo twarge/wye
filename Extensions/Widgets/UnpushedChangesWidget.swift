@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WyeShared
 import WidgetKit
@@ -13,7 +14,16 @@ struct UnpushedChangesWidget: Widget {
         }
         .configurationDisplayName("Unpushed Changes")
         .description("Repositories with commits to push or changes to commit.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies(Self.families)
+    }
+
+    /// The Lock Screen's families exist only on iOS.
+    private static var families: [WidgetFamily] {
+        #if os(iOS)
+        [.systemSmall, .systemMedium, .systemLarge, .accessoryCircular, .accessoryRectangular, .accessoryInline]
+        #else
+        [.systemSmall, .systemMedium, .systemLarge]
+        #endif
     }
 }
 
@@ -58,12 +68,72 @@ struct UnpushedChangesView: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
-        if entry.changes.isEmpty {
+        if isAccessory {
+            AccessoryView(changes: entry.changes, family: family)
+        } else if entry.changes.isEmpty {
             EmptyStateView()
         } else if family == .systemSmall {
             SmallView(changes: entry.changes)
         } else {
             ListView(changes: entry.changes, limit: family == .systemLarge ? UnpushedChanges.limit : 2)
+        }
+    }
+}
+
+extension UnpushedChangesView {
+    fileprivate var isAccessory: Bool {
+        #if os(iOS)
+        [.accessoryCircular, .accessoryRectangular, .accessoryInline].contains(family)
+        #else
+        false
+        #endif
+    }
+}
+
+/// The Lock Screen's widgets: how many repositories have work to push,
+/// in a circle, a line, or with the first names.
+private struct AccessoryView: View {
+    var changes: UnpushedChanges
+    var family: WidgetFamily
+
+    var body: some View {
+        Group {
+            switch family {
+            case .accessoryInline:
+                Label(inlineText, systemImage: changes.isEmpty ? "checkmark.circle" : "arrow.up.circle")
+            case .accessoryCircular:
+                ZStack {
+                    AccessoryWidgetBackground()
+                    VStack(spacing: 0) {
+                        Image(systemName: changes.isEmpty ? "checkmark" : "arrow.up")
+                            .font(.caption.weight(.semibold))
+                        Text("\(changes.total)")
+                            .font(.title3.weight(.semibold).monospacedDigit())
+                    }
+                }
+            default:
+                VStack(alignment: .leading, spacing: 1) {
+                    Label(inlineText, systemImage: "arrow.up.circle")
+                        .font(.headline)
+                    ForEach(changes.repositories.prefix(2)) { summary in
+                        Text("\(summary.name): \(summary.unpushedDescription)")
+                            .font(.caption)
+                            .lineLimit(1)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .widgetURL(changes.repositories.first.map { WyeLink.openRepository($0.id).url })
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(inlineText)
+    }
+
+    private var inlineText: String {
+        switch changes.total {
+        case 0: "Everything is pushed"
+        case 1: "1 repository to push"
+        default: "\(changes.total) repositories to push"
         }
     }
 }
@@ -120,6 +190,11 @@ private struct ListView: View {
                 Text("\(changes.total)")
                     .font(.headline)
                     .foregroundStyle(.secondary)
+                Button(intent: WidgetFetchAllIntent()) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .accessibilityLabel("Fetch All")
+                }
+                .buttonStyle(.borderless)
             }
             ForEach(changes.repositories.prefix(limit)) { summary in
                 Link(destination: WyeLink.openRepository(summary.id).url) {

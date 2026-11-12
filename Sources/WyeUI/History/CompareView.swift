@@ -12,7 +12,7 @@ struct CompareView: View {
     @State private var comparison: Comparison?
     @State private var isComparing = false
     @State private var collapsed: Set<String> = []
-    /// Shown in the sheet, which would cover the window's own alert.
+    /// Shown in the sheet, which would cover the window's own notices.
     @State private var failure: String?
 
     /// Starts from `base` against `HEAD`.

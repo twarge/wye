@@ -33,6 +33,10 @@ enum SidebarDropTarget: Hashable {
     /// A local branch, by full reference name.
     case branch(String)
     case workingCopy
+    /// The Branches section's heading: a new branch from what is dropped.
+    case branches
+    /// The Tags section's heading: a new tag on what is dropped.
+    case tags
 }
 
 /// What a drop offers: never done on the drop itself, but asked about, each
@@ -56,6 +60,10 @@ struct SidebarDropProposal: Identifiable, Hashable {
         /// Check out a remote branch as a local branch that tracks it.
         case trackRemoteBranch(String)
         case checkOutCommit(OID)
+        /// The sheet that names a new branch at a commit.
+        case newBranch(at: OID)
+        /// The sheet that names a new tag on a commit.
+        case newTag(at: OID)
     }
 
     struct Choice: Hashable, Identifiable {
@@ -133,6 +141,38 @@ struct SidebarDropProposal: Identifiable, Hashable {
             }
             return SidebarDropProposal(title: "Check out \(name)?", choices: [Choice(title: "Check Out \(name)", action: action)])
 
+        case (.commits(let ids), .branches):
+            guard ids.count == 1, let id = ids.first else { return nil }
+            let name = "“\(id.abbreviated())”"
+            return SidebarDropProposal(title: "Start a branch at \(name)?", choices: [
+                Choice(title: "New Branch from \(name)…", action: .newBranch(at: id))
+            ])
+
+        case (.commits(let ids), .tags):
+            guard ids.count == 1, let id = ids.first else { return nil }
+            let name = "“\(id.abbreviated())”"
+            return SidebarDropProposal(title: "Tag \(name)?", choices: [
+                Choice(title: "New Tag on \(name)…", action: .newTag(at: id))
+            ])
+
+        case (.reference(let dragged), .branches):
+            // A remote branch dropped among the local ones is checked out
+            // as a local branch that tracks it.
+            guard dragged.hasPrefix("refs/remotes/") else { return nil }
+            let name = quoted(dragged)
+            return SidebarDropProposal(title: "Check out \(name)?", choices: [
+                Choice(title: "Check Out \(name) as a Local Branch", action: .trackRemoteBranch(dragged))
+            ])
+
+        case (.reference(let dragged), .tags):
+            // A branch dropped on Tags is tagged where it points.
+            guard !dragged.hasPrefix("refs/tags/"),
+                  let target = (snapshot.branches + snapshot.remotes.flatMap(\.branches))
+                      .first(where: { $0.id == dragged })?.target else { return nil }
+            return SidebarDropProposal(title: "Tag \(quoted(dragged))?", choices: [
+                Choice(title: "New Tag on \(quoted(dragged))…", action: .newTag(at: target))
+            ])
+
         case (.commits(let ids), .workingCopy):
             guard ids.count == 1, let id = ids.first, id != snapshot.head.target else { return nil }
             let name = "“\(id.abbreviated())”"
@@ -181,6 +221,10 @@ extension RepositoryModel {
             await trackRemoteBranch(branch)
         case .checkOutCommit(let id):
             await checkOutCommit(id)
+        case .newBranch(let id):
+            present(.newBranch(at: id))
+        case .newTag(let id):
+            present(.newTag(at: id))
         }
     }
 }

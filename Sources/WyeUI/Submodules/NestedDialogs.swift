@@ -96,7 +96,7 @@ private struct NestedDialogs: ViewModifier {
         case .submodule(let name):
             guard let submodule = model.submodule(named: name) else { return }
             guard submodule.status.isCloned else {
-                model.error = PresentedError(SubmoduleError.notCloned(submodule.path))
+                model.report(SubmoduleError.notCloned(submodule.path))
                 return
             }
             let url = model.repository.url.appending(path: submodule.path, directoryHint: .isDirectory)
@@ -107,7 +107,7 @@ private struct NestedDialogs: ViewModifier {
         case .worktree(let name):
             guard let worktree = model.worktree(named: name), !worktree.isCurrent else { return }
             guard !worktree.isMissing else {
-                model.error = PresentedError(WorktreeError.notFound(worktree.displayName))
+                model.report(WorktreeError.notFound(worktree.displayName))
                 return
             }
             let url = URL(filePath: worktree.path, directoryHint: .isDirectory)
@@ -131,7 +131,7 @@ private struct NestedDialogs: ViewModifier {
             )
             show(bookmark)
         } catch {
-            model.error = PresentedError(error)
+            model.report(error)
         }
     }
 

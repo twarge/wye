@@ -8,7 +8,7 @@ struct FilesLocationOffer: View {
     @Environment(RepositoryLibrary.self) private var library
     @AppStorage("filesLocation.offerDismissed") private var isDismissed = false
     @State private var isConfirming = false
-    @State private var error: PresentedError?
+    @Environment(WindowActions.self) private var actions
 
     var body: some View {
         let waiting = library.repositoriesInDocuments
@@ -39,7 +39,6 @@ struct FilesLocationOffer: View {
             } message: {
                 Text("Their folders move, with their history and changes, and stay in Wye’s list as they are. Repositories open in a window or busy with an operation are left where they are.")
             }
-            .alert(for: $error)
         }
     }
 
@@ -50,7 +49,11 @@ struct FilesLocationOffer: View {
             return
         }
         let lines = failures.map { "\($0.name): \($0.error.localizedDescription)" }
-        error = PresentedError(FilesLocationMoveSummary(lines: lines))
+        // In the window's strip: the offer itself goes once nothing waits.
+        actions.notices.post(Notice(
+            .warning, title: "Some Repositories Weren’t Moved",
+            message: FilesLocationMoveSummary(lines: lines).localizedDescription
+        ))
     }
 }
 

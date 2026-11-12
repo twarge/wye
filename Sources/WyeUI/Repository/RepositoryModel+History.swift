@@ -22,7 +22,7 @@ extension RepositoryModel {
             await history.show(scope)
         }
         if await !history.reveal(id) {
-            error = PresentedError(NotInHistory())
+            report(NotInHistory())
         }
     }
 

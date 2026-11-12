@@ -1,5 +1,6 @@
 import GitKit
 import SwiftUI
+import Synchronization
 
 /// Clones a repository from a URL, then adds it to the library and opens it.
 struct CloneSheet: View {
@@ -19,7 +20,7 @@ struct CloneSheet: View {
     @State private var isChoosingFolder = false
     @State private var activity: RemoteOperations.Activity?
     @State private var credentials = CredentialBroker()
-    @State private var error: PresentedError?
+    @State private var error: Notice?
     @State private var isBrowsingAccounts = false
 
     var body: some View {
@@ -88,14 +89,14 @@ struct CloneSheet: View {
         .fileImporter(isPresented: $isChoosingFolder, allowedContentTypes: [.folder]) { result in
             switch result {
             case .success(let url): parent = url
-            case .failure(let failure): error = PresentedError(failure)
+            case .failure(let failure): error = Notice(failure)
             }
         }
         .credentialPrompts(credentials)
         .sheet(isPresented: $isBrowsingAccounts) {
             CloneFromAccountSheet { url = $0 }
         }
-        .alert(for: $error)
+        .notice(for: $error)
         .interactiveDismissDisabled(activity != nil)
         .onAppear {
             if url.isEmpty { url = initialAddress }
@@ -135,13 +136,20 @@ struct CloneSheet: View {
                 if isScoped { parent?.stopAccessingSecurityScopedResource() }
             }
             let logged = ActivityLog.shared.begin("Clone", repository: destination.lastPathComponent)
+            // So a large clone finishes even if the app leaves the screen.
+            let cancelled = CloneCancellation()
+            let continued = ContinuedWork.begin(
+                "Cloning \(destination.lastPathComponent)", subtitle: "Connecting"
+            ) { cancelled.cancel() }
             do {
                 try await credentials.run {
                     let transfer = Transfer()
+                    cancelled.follow(transfer)
                     activity = RemoteOperations.Activity(title: "Cloning", transfer: transfer)
                     Task {
                         for await progress in transfer.progress where activity?.transfer === transfer {
                             activity?.progress = progress
+                            continued.report(progress)
                         }
                     }
                     _ = try await Repository.clone(
@@ -150,17 +158,35 @@ struct CloneSheet: View {
                 }
                 let bookmark = try library.add(destination)
                 ActivityLog.shared.finish(logged, error: nil, transfer: activity?.progress)
+                continued.finish(success: true)
                 activity = nil
                 dismiss()
                 open(bookmark)
             } catch is CancellationError {
                 ActivityLog.shared.finish(logged, .cancelled)
+                continued.finish(success: false)
                 activity = nil
             } catch {
                 ActivityLog.shared.finish(logged, error: error, transfer: activity?.progress)
+                continued.finish(success: false)
                 activity = nil
-                self.error = PresentedError(error)
+                self.error = Notice(error)
             }
         }
+    }
+}
+
+/// Stops a clone from outside the sheet: the system, when the user stops
+/// the task that keeps it going in the background. Each attempt has its own
+/// transfer; this cancels the one under way.
+private final class CloneCancellation: Sendable {
+    private let transfer = Mutex<Transfer?>(nil)
+
+    func follow(_ transfer: Transfer) {
+        self.transfer.withLock { $0 = transfer }
+    }
+
+    func cancel() {
+        transfer.withLock { $0 }?.cancel()
     }
 }

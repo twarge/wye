@@ -37,6 +37,7 @@ final class RepositoryStatusBoard {
     /// Forgets repositories no longer listed.
     func retain(_ ids: Set<UUID>) {
         let gone = summaries.keys.filter { !ids.contains($0) }
+        if publishes { FinderStatusPublisher.retain(ids) }
         guard !gone.isEmpty else { return }
         for id in gone { summaries[id] = nil }
         scheduleSave()
@@ -60,8 +61,12 @@ extension RepositoryStatusSummary {
     /// upstream, and whether anything is uncommitted.
     static func read(from repository: Repository, id: UUID, name: String) async throws -> RepositoryStatusSummary {
         let snapshot = try await repository.snapshot()
-        let hasChanges = try await !repository.status().isEmpty
-        return RepositoryStatusSummary(snapshot: snapshot, hasUncommittedChanges: hasChanges, id: id, name: name)
+        let entries = try await repository.status()
+        let summary = RepositoryStatusSummary(snapshot: snapshot, hasUncommittedChanges: !entries.isEmpty, id: id, name: name)
+        await FinderStatusPublisher.publish(
+            id: id, name: name, root: repository.url, branch: summary.branch, entries: entries
+        )
+        return summary
     }
 
     init(snapshot: RepositorySnapshot, hasUncommittedChanges: Bool, id: UUID, name: String, updated: Date = .now) {
@@ -81,8 +86,12 @@ extension RepositoryModel {
     /// Tells the board what this open repository shows now.
     func publishStatus() {
         guard let snapshot else { return }
-        RepositoryStatusBoard.shared.record(RepositoryStatusSummary(
+        let summary = RepositoryStatusSummary(
             snapshot: snapshot, hasUncommittedChanges: !workingCopy.entries.isEmpty, id: id, name: name
-        ))
+        )
+        RepositoryStatusBoard.shared.record(summary)
+        FinderStatusPublisher.publish(
+            id: id, name: name, root: repository.url, branch: summary.branch, entries: workingCopy.entries
+        )
     }
 }

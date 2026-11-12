@@ -195,6 +195,28 @@ final class AuthorProfiles {
 
     // MARK: Storage
 
+    /// The key the profiles are kept under, for syncing them.
+    static let storageKey = Key.stored
+
+    /// Takes up what another device changed, once iCloud has written it to
+    /// the defaults: the identities, which is the default, and how commits
+    /// are signed. The default identity goes to git's configuration as it
+    /// does when changed here.
+    func reloadSynced() {
+        guard let data = defaults.data(forKey: Key.stored),
+              let stored = try? JSONDecoder().decode(Stored.self, from: data), stored.version == 1 else { return }
+        isLoading = true
+        profiles = stored.profiles
+        defaultID = stored.defaultID
+        signsCommits = stored.signsCommits
+        signingKeyID = stored.signingKeyID
+        allowedSigners = stored.allowedSigners
+        isLoading = false
+        if let profile = defaultProfile, profile.isComplete {
+            try? writeGlobalIdentity(profile.identity)
+        }
+    }
+
     private func save() {
         guard !isLoading else { return }
         let stored = Stored(

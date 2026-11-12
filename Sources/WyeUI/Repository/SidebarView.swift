@@ -60,7 +60,7 @@ struct SidebarView: View {
                 let listed = listing.listed.filter { matches($0.name) }
                 let branchNodes = BranchFolderNode.tree(of: listed, path: \.name, idPrefix: "local:")
                 if !isFiltering || !pinned.isEmpty || !listed.isEmpty {
-                    Section("Branches", isExpanded: opened($branchesExpanded)) {
+                    Section(isExpanded: opened($branchesExpanded)) {
                         // Pinned branches first, by their full names, outside the folders.
                         ForEach(pinned) { branch in
                             branchRow(branch, title: branch.name, listing: listing)
@@ -72,6 +72,15 @@ struct SidebarView: View {
                         ) { branch, name in
                             branchRow(branch, title: name, listing: listing)
                         }
+                    } header: {
+                        // A commit dropped here starts a branch; a remote
+                        // branch is checked out as a local one.
+                        Text("Branches")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(.rect)
+                            .dropDestination(for: String.self) { items, _ in
+                                propose(items, onto: .branches)
+                            }
                     }
                 }
 
@@ -172,6 +181,11 @@ struct SidebarView: View {
                                 }
                             }
                         }
+                        // A commit or branch dropped here is tagged.
+                        .contentShape(.rect)
+                        .dropDestination(for: String.self) { items, _ in
+                            propose(items, onto: .tags)
+                        }
                     }
                 }
 
@@ -254,6 +268,7 @@ struct SidebarView: View {
         guard let payload = SidebarDragPayload(items), let snapshot = model.snapshot,
               let proposal = SidebarDropProposal.make(payload, onto: target, in: snapshot) else { return false }
         drop = proposal
+        Task { await DragCommitTip.dropped.donate() }
         return true
     }
 

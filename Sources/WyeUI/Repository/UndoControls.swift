@@ -93,26 +93,10 @@ private struct UndoControls: ViewModifier {
             } message: { pending in
                 Text(pending.message)
             }
-            .alert(
-                refusalTitle,
-                isPresented: Binding { undoStack.refusal != nil } set: { if !$0 { undoStack.refusal = nil } },
-                presenting: undoStack.refusal
-            ) { refusal in
-                Button("OK", role: .cancel) {}
-                Button("Forget It") { undoStack.forget(refusal.record) }
-            } message: { refusal in
-                Text("\(refusal.message)\n\nIt stays in the undo history in case things change back; "
-                     + "Forget It removes it and everything \(refusal.direction == .undo ? "before" : "after") it.")
-            }
     }
 
     private var confirmationTitle: String {
         guard let pending = undoStack.pendingConfirmation else { return "" }
         return "\(pending.direction == .undo ? "Undo" : "Redo") “\(pending.record.title)”?"
-    }
-
-    private var refusalTitle: String {
-        guard let refusal = undoStack.refusal else { return "" }
-        return "Can’t \(refusal.direction == .undo ? "Undo" : "Redo") “\(refusal.record.title)”"
     }
 }

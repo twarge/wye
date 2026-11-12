@@ -14,7 +14,7 @@ import BackgroundTasks
 /// crashing as the scheduler would.
 @MainActor
 enum BackgroundRefresh {
-    static let identifier = "com.twarge.app.twig.fetch"
+    static let identifier = "com.twarge.app.wye.fetch"
 
     #if os(iOS)
     private static var isPermitted: Bool {

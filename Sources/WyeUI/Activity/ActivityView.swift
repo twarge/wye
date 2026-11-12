@@ -42,6 +42,8 @@ struct ActivityView: View {
             }
         }
         .frame(minWidth: 420, minHeight: 300)
+        .onAppear { log.markSeen() }
+        .onChange(of: log.unseenFailures) { log.markSeen() }
     }
 
     private var filtered: [ActivityEntry] {
@@ -82,6 +84,13 @@ private struct ActivityRow: View {
                         .font(.callout)
                         .foregroundStyle(.red)
                         .textSelection(.enabled)
+                }
+                if !entry.said.isEmpty {
+                    Text(entry.said.joined(separator: "\n"))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .accessibilityLabel("The server said: \(entry.said.joined(separator: ". "))")
                 }
             }
         } icon: {

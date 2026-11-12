@@ -148,10 +148,10 @@ extension RepositoryModel {
     /// failed push says the repository and remote are there already.
     func pushPublished(_ published: PublishedRemote) async {
         guard let branch = currentBranch else {
-            remotes.notice = OperationNotice(
+            notices.post(Notice(
                 title: "Published",
                 message: "\(published.path) was made and added as “\(published.remote)”. There are no commits to push yet."
-            )
+            ))
             return
         }
         let includingTags = pushesAllTags
@@ -218,7 +218,7 @@ extension RepositoryModel {
             headReference: service.headReference(number: pullRequest.number)
         )
         guard let plan else {
-            error = PresentedError(HostingError.unsupported(
+            report(HostingError.unsupported(
                 "The repository this \(target.kind.pullRequestTerm.lowercased()) comes from cannot be reached, "
                     + "and \(target.kind.title) has no reference for its head on \(target.path)."
             ))

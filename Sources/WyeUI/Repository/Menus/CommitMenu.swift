@@ -78,6 +78,13 @@ struct CommitActionsMenu: View {
                 Task { await requests.export(commit, from: model) }
             }
             .disabled(commit.isMerge)
+            if !commit.isMerge {
+                ShareLink(
+                    "Share Patch…",
+                    item: CommitDrag(repository: model.repository, commits: [commit]),
+                    preview: SharePreview(commit.summary, icon: Image(systemName: "doc.badge.gearshape"))
+                )
+            }
             Button("Export Files from \(hash)…", systemImage: "archivebox") {
                 Task { await model.exportFiles(of: commit.id, named: commit.id.abbreviated()) }
             }
@@ -94,6 +101,7 @@ struct CommitActionsMenu: View {
         if let url = model.webURL(forCommit: commit.id) {
             Section {
                 Button("Open on Web", systemImage: "safari") { openURL(url) }
+                ShareLink("Share Link…", item: url, subject: Text(commit.summary))
             }
         }
     }

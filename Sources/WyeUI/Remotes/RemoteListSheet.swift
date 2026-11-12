@@ -74,8 +74,8 @@ struct RemoteListSheet: View {
             }
         }
         .frame(minWidth: 420, minHeight: 300)
-        // The repository window's alert cannot show while this sheet is up.
-        .alert(for: $model.error)
+        // The repository window's notices are behind this sheet.
+        .sheetNotices(model)
     }
 }
 

@@ -19,6 +19,12 @@ final class SettingsFocus {
     /// Whether the settings are on screen where they are a sheet.
     var isPresented = false
 
+    /// Shows the settings, for a notice that says something there is missing.
+    func show() {
+        requests += 1
+        isPresented = true
+    }
+
     /// Shows the settings at the SSH keys, saying why a key is needed.
     func showSSHKeys(for prompt: SSHKeyPrompt) {
         sshKeyNotice = prompt

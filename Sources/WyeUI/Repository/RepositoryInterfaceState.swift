@@ -44,7 +44,7 @@ final class RepositoryInterfaceState {
 
     /// The state kept for a repository in the app's own folder.
     convenience init(repositoryID: UUID) {
-        self.init(storage: .applicationSupportDirectory.appending(path: "Twig/Interface/\(repositoryID.uuidString).json"))
+        self.init(storage: .applicationSupportDirectory.appending(path: "Wye/Interface/\(repositoryID.uuidString).json"))
     }
 
     func isPinned(_ branch: String) -> Bool { stored.pinned.contains(branch) }

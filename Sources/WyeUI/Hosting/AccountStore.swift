@@ -15,8 +15,7 @@ final class AccountStore: Sendable {
     /// Keychain items are generic passwords under this service, with the
     /// account's id as the item's account, the account as JSON in its
     /// generic attribute, and the token as JSON in its data.
-    /// The app's first name, kept so accounts saved under it are still found.
-    static let service = "Twig hosting account"
+    static let service = "Wye hosting account"
     /// Where earlier versions kept one token per host: the host as the
     /// item's account, the username as its generic attribute, the token
     /// as its data.

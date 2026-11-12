@@ -55,7 +55,7 @@ final class CommitActionRequests {
             patchExport = PatchExport(document: PatchDocument(text: text),
                                       fileName: Repository.patchFileName(for: commit))
         } catch {
-            model.error = PresentedError(error)
+            model.report(error)
         }
     }
 }
@@ -110,7 +110,7 @@ private struct CommitActionPresenters: ViewModifier {
                 contentType: .patch,
                 defaultFilename: requests.patchExport?.fileName
             ) { result in
-                if case .failure(let failure) = result { model.error = PresentedError(failure) }
+                if case .failure(let failure) = result { model.report(failure) }
             }
             .background {
                 // On its own view: one view takes only one file exporter.
@@ -123,7 +123,7 @@ private struct CommitActionPresenters: ViewModifier {
                     ) { result in
                         // Once it is written: the export may already be off screen.
                         ArchiveDocument.removeTemporaryFiles()
-                        if case .failure(let failure) = result { model.error = PresentedError(failure) }
+                        if case .failure(let failure) = result { model.report(failure) }
                     }
             }
             .fileImporter(isPresented: $requests.isImportingPatch, allowedContentTypes: [.patch, .diffFile, .plainText]) { result in
@@ -134,10 +134,10 @@ private struct CommitActionPresenters: ViewModifier {
                     do {
                         requests.importedPatch = ImportedPatch(name: url.lastPathComponent, data: try Data(contentsOf: url))
                     } catch {
-                        model.error = PresentedError(error)
+                        model.report(error)
                     }
                 case .failure(let failure):
-                    model.error = PresentedError(failure)
+                    model.report(failure)
                 }
             }
             .confirmationDialog(

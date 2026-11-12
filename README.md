@@ -48,6 +48,20 @@ connections are made in Swift with
   ECDSA keys created in Wye or imported from an OpenSSH key file, kept in
   the Keychain; unknown or changed host keys are shown before connecting.
   RSA keys are not supported.
+- **Every repository at once:** Review lists what is not committed or
+  pushed across the whole list (⇧⌘R), and Pull All (⌥⇧⌘P) brings every
+  repository up to date and reports what could not be pulled.
+- **Drag and drop:** a commit onto a branch to cherry-pick, onto the
+  Branches or Tags heading to name it, or out of the window as a patch
+  file; files out of the working copy or a commit; a patch file or other
+  files onto the working copy; a repository's address onto the list to
+  clone it.
+- **On the system:** Shortcuts and Siri actions (pull, push, fetch, commit,
+  check out, stash, pull all), widgets with Fetch and Pull buttons and for
+  the Lock Screen, a Fetch All control, notifications that can pull,
+  transfers that carry on in the background on iOS with their progress on
+  the Lock Screen; on the Mac a menu bar item and Finder badges, both
+  turned on in Settings.
 - **App:** notices changes other tools make and refreshes; a full menu bar
   and keyboard shortcuts, also on iPad; window tabs on macOS (⌘T); quick open (⇧⌘O) for branches, tags
   and repositories; repository groups, search and sorting.
@@ -70,7 +84,8 @@ make run
 ```
 
 Or open `Wye.xcodeproj` and run the Wye scheme on a Mac, iPhone or iPad.
-`make test` runs the engine's tests and `make ios` builds for the simulator.
+`make test` runs the tests, `make ios` builds for the simulator and
+`make strings` brings the string catalogs up to date with the sources.
 
 ## Layout
 
@@ -79,6 +94,8 @@ Or open `Wye.xcodeproj` and run the Wye scheme on a Mac, iPhone or iPad.
 | `App/` | The app target: an entry point, plists, entitlements and assets. |
 | `Sources/GitKit/` | The git engine: a Swift API over libgit2. No interface code. |
 | `Sources/WyeUI/` | The whole interface, shared by macOS and iOS. |
+| `Sources/WyeShared/` | What the app shares with its extensions: the status files, links and the widgets' intents. |
+| `Extensions/` | The widgets, the share and Files extensions on iOS, and the Finder extension on macOS. |
 | `Tests/GitKitTests/` | Tests that check GitKit against the command line git. |
 | `Vendor/libgit2/` | libgit2, as a git submodule. |
 | `Vendor/Clibgit2/` | The build configuration and module map that let Swift Package Manager compile libgit2, and the C half of the SSH transport. |

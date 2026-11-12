@@ -1,4 +1,5 @@
 import SwiftUI
+import WyeShared
 
 extension View {
     /// Acts on `wye://` links in this window: those routed through
@@ -24,7 +25,10 @@ private struct WyeLinkHandler: ViewModifier {
                 takeWaiting()
             }
             .onChange(of: scenePhase, initial: true) {
-                guard scenePhase == .active, let address = PendingClone.take() else { return }
+                guard scenePhase == .active else { return }
+                // What a widget asked for while the app was not running.
+                WidgetActionRunner.runPending()
+                guard let address = PendingClone.take() else { return }
                 handle(.clone(address))
             }
     }
@@ -39,7 +43,7 @@ private struct WyeLinkHandler: ViewModifier {
         switch link {
         case .openRepository(let id):
             guard let bookmark = library.bookmarks.first(where: { $0.id == id }) else {
-                actions.error = PresentedError(MissingRepository())
+                actions.notices.post(MissingRepository())
                 return
             }
             actions.open(bookmark)

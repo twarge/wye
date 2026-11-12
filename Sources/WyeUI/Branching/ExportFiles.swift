@@ -57,7 +57,7 @@ extension RepositoryModel {
             history.requests.archiveExport = ArchiveExport(document: ArchiveDocument(url: file), fileName: base + ".zip")
         } catch {
             ArchiveDocument.removeTemporaryFiles()
-            self.error = PresentedError(error)
+            report(error, during: "Export Archive")
         }
     }
 

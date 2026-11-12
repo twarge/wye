@@ -11,7 +11,7 @@ struct IdentitySettingsSection: View {
     @State private var removing: AuthorProfile?
     @State private var isAddingSigner = false
     @State private var isImportingSigners = false
-    @State private var error: PresentedError?
+    @State private var error: Notice?
 
     var body: some View {
         Section {
@@ -45,6 +45,7 @@ struct IdentitySettingsSection: View {
             Button("Add Identity…", systemImage: "plus") {
                 editing = AuthorProfile(name: "", email: "")
             }
+            NoticeRow(notice: $error)
         } header: {
             Text("Identities")
         } footer: {
@@ -117,7 +118,6 @@ struct IdentitySettingsSection: View {
         } message: { _ in
             Text("Repositories that commit as it go back to the default identity. Commits already made keep their author.")
         }
-        .alert(for: $error)
     }
 
     private func load() {
@@ -126,7 +126,7 @@ struct IdentitySettingsSection: View {
         do {
             keys = try SSHKeyStore.shared.keys()
         } catch {
-            self.error = PresentedError(error)
+            self.error = Notice(error)
         }
     }
 
@@ -158,7 +158,7 @@ struct IdentitySettingsSection: View {
                 profiles.allowedSigners.append(signer)
             }
         } catch {
-            self.error = PresentedError(error)
+            self.error = Notice(error)
         }
     }
 
@@ -166,7 +166,7 @@ struct IdentitySettingsSection: View {
         do {
             try body()
         } catch {
-            self.error = PresentedError(error)
+            self.error = Notice(error)
         }
     }
 }

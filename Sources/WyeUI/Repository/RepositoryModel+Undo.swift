@@ -69,6 +69,13 @@ extension RepositoryModel {
             }
         } catch {
             undoStack.refusal = .init(record: record, direction: direction, message: error.localizedDescription)
+            let (verb, side) = direction == .undo ? ("Undo", "before") : ("Redo", "after")
+            notices.post(Notice(
+                .failure, title: "Can’t \(verb) “\(record.title)”",
+                message: "\(error.localizedDescription) It stays in the undo history in case things change back; "
+                    + "Forget It removes it and everything \(side) it.",
+                recoveries: [.forgetUndo]
+            ))
         }
         diskChanges.operationEnded()
         await refresh()

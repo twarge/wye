@@ -208,12 +208,12 @@ import Testing
 
     @Test func unknownThenTrustedThenMismatched() throws {
         defer { folder.remove() }
-        let store = KnownHosts(file: folder.url.appending(path: "Twig/known_hosts"), includeBuiltIn: false)
+        let store = KnownHosts(file: folder.url.appending(path: "Wye/known_hosts"), includeBuiltIn: false)
         let key = hostKey("Example.com", port: 2222)
         #expect(store.trust(for: key) == .unknown)
         try store.trust(key)
         #expect(store.trust(for: key) == .trusted)
-        #expect(try folder.read("Twig/known_hosts") == "[example.com]:2222 \(key.openSSH)")
+        #expect(try folder.read("Wye/known_hosts") == "[example.com]:2222 \(key.openSSH)")
         // The same host on another port is another host.
         #expect(store.trust(for: SSHHostKey(host: "example.com", port: 22, publicKey: key.publicKey)) == .unknown)
 

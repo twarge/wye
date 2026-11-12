@@ -70,7 +70,7 @@ private struct FindableModifier<Source: Equatable & Sendable>: ViewModifier {
                 }
                 .onChange(of: find.scrollRequests) {
                     guard let match = find.currentMatch else { return }
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withMotion(.easeInOut(duration: 0.2)) {
                         proxy.scrollTo(match.row, anchor: .center)
                     }
                 }

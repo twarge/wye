@@ -145,7 +145,7 @@ jobs:
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_BUNDLE_ID: com.twarge.app.twig
+          ASC_BUNDLE_ID: com.twarge.app.wye
           ASC_PLATFORM: ${{ matrix.asc_platform }}
           TARGET_VERSION: ${{ steps.version.outputs.version }}
         run: |

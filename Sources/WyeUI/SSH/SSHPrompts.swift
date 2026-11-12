@@ -90,7 +90,7 @@ struct HostKeySheet: View {
     var broker: CredentialBroker
 
     @State private var hasChecked = false
-    @State private var error: PresentedError?
+    @State private var error: Notice?
 
     private var host: String { prompt.hostKey.host }
 
@@ -142,7 +142,7 @@ struct HostKeySheet: View {
             }
         }
         .frame(minWidth: 440)
-        .alert(for: $error)
+        .notice(for: $error)
     }
 
     private func fingerprint(_ key: SSHPublicKey) -> some View {

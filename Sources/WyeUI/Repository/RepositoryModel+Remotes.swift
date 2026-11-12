@@ -15,14 +15,14 @@ final class RemoteOperations {
     }
 
     private(set) var activity: Activity?
+    /// The system's hold on the operation, so it can finish in the background.
+    fileprivate var continued: ContinuedWork.Handle?
     let credentials = CredentialBroker()
     let autostash = AutostashBroker()
     var isConfirmingForcePush = false
     var isManagingRemotes = false
     /// The remote sheet on screen: options, push to, remote branch and tag actions.
     var sheet: RemoteSheet?
-    /// What the last operation wants the user to know.
-    var notice: OperationNotice?
     /// Tags made here and pushed as they were made, by full name, so that
     /// undoing one can say the remotes keep it.
     var pushedNewTags: [String: PushedNewTag] = [:]
@@ -39,12 +39,23 @@ final class RemoteOperations {
             for await progress in transfer.progress {
                 guard let self, self.activity?.transfer === transfer else { return }
                 self.activity?.progress = progress
+                self.continued?.report(progress)
             }
         }
     }
 
-    fileprivate func end() {
+    fileprivate func end(success: Bool) {
         activity = nil
+        continued?.finish(success: success)
+        continued = nil
+    }
+
+    /// Asks the system to keep the operation going if the app leaves the
+    /// screen. Stopping it there cancels whichever transfer is under way.
+    fileprivate func keepAlive(_ title: String, repository: String) {
+        continued = ContinuedWork.begin("\(title) \(repository)", subtitle: "Connecting") { [weak self] in
+            Task { @MainActor in self?.cancel() }
+        }
     }
 
     func cancel() {
@@ -228,7 +239,7 @@ extension RepositoryModel {
     /// branch itself went.
     func reportRejectedTags(of result: PushResult) {
         guard let message = Self.rejectedTagsMessage(result) else { return }
-        remotes.notice = OperationNotice(title: "Some Tags Weren’t Pushed", message: message)
+        notices.post(Notice(.warning, title: "Some Tags Weren’t Pushed", message: message))
     }
 
     /// What to say about the tags a branch push could not send; `nil` when
@@ -348,8 +359,10 @@ extension RepositoryModel {
         // A choice made for this operation stands; there is nothing to ask.
         let policy = autostash == nil ? autostashPolicy : .never
         var stashing = autostashes && (autostash ?? (policy == .always))
-        let logged = ActivityLog.shared.begin(ActivityLog.title(forProgress: title), repository: name)
+        let done = ActivityLog.title(forProgress: title)
+        let logged = ActivityLog.shared.begin(done, repository: name)
         var failure: (any Error)?
+        remotes.keepAlive(title, repository: name)
         do {
             while true {
                 do {
@@ -372,15 +385,44 @@ extension RepositoryModel {
             failure = CancellationError()
         } catch {
             failure = error
+        }
+        // What the server said on the way: a hook's reason for refusing a
+        // push, or where to open a pull request.
+        let said = ServerMessages.lines(in: remotes.activity?.transfer.serverOutput ?? "")
+        switch failure {
+        case nil:
+            notices.resolve(operation: done)
+            if let notice = Self.serverOffer(after: done, said: said) {
+                notices.post(notice)
+            }
+        case is CancellationError:
+            break
+        case let error?:
             if presentsError {
-                self.error = PresentedError(error)
+                notices.post(Notice(error, during: done, detail: said.isEmpty ? nil : said.joined(separator: "\n")))
             }
         }
-        ActivityLog.shared.finish(logged, error: failure, transfer: remotes.activity?.progress)
-        remotes.end()
+        ActivityLog.shared.finish(logged, error: failure, transfer: remotes.activity?.progress, said: said)
+        remotes.end(success: failure == nil)
         await refresh()
         await followRecordedSubmodules(from: recordedSubmodules)
         return failure
+    }
+
+    /// After a push, the page the server asked to be opened, as a notice
+    /// with a button for it; `nil` when it sent no link, or for anything
+    /// but a push.
+    static func serverOffer(after operation: String, said: [String]) -> Notice? {
+        guard operation.hasPrefix("Push") || operation.hasPrefix("Force Push") || operation.hasPrefix("Publish"),
+              let link = ServerMessages.link(in: said) else { return nil }
+        return Notice(
+            .success, title: "Pushed",
+            message: link.opensPullRequest
+                ? "\(link.url.host() ?? "The server") offers to open a pull request for what you pushed."
+                : "\(link.url.host() ?? "The server") sent a link with the push.",
+            detail: said.joined(separator: "\n"),
+            recoveries: [.open(link.url, title: link.opensPullRequest ? "Create Pull Request" : "Open Link")]
+        )
     }
 
     /// "Pull" for "Pulling": the name a question about it uses.

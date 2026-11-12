@@ -82,7 +82,9 @@ final class RepositoryModel: Identifiable {
     var selection: SidebarItem? = .history
     var selectedStash: OID?
     var workingCopy = WorkingCopyState()
-    var error: PresentedError?
+    /// What went wrong and what operations left behind, for the strip at
+    /// the top of the window. Nothing here stops the user working.
+    let notices = NoticeCenter()
     /// The branching sheet on screen: merge, rename, tag, reset, delete.
     var branchingSheet: BranchingSheet?
 
@@ -111,6 +113,8 @@ final class RepositoryModel: Identifiable {
     let hosting = HostingState()
 
     private let access: RepositoryAccess
+    /// What the last refresh failed with, while it keeps failing.
+    @ObservationIgnored private var refreshFailure: String?
 
     nonisolated var id: UUID { bookmark.id }
     var name: String { bookmark.name }
@@ -142,24 +146,53 @@ final class RepositoryModel: Identifiable {
                 await history.reload()
             }
             revision += 1
+            if refreshFailure != nil {
+                refreshFailure = nil
+                notices.resolve(operation: Self.readingTitle)
+            }
         } catch {
-            self.error = PresentedError(error)
+            noteRefreshFailure(error)
         }
         // Every operation and change on disk ends here.
         FilesLocationSignal.repositoryChanged(at: repository.url)
     }
 
-    /// Runs an operation on the repository, shows its error if it fails, and
+    static let readingTitle = "Read Repository"
+
+    /// A refresh the user did not ask for failed: said once, quietly, and
+    /// kept in the activity log. The folder changing again would otherwise
+    /// say the same thing over and over.
+    private func noteRefreshFailure(_ error: any Error) {
+        let message = error.localizedDescription
+        guard message != refreshFailure else { return }
+        refreshFailure = message
+        let entry = ActivityLog.shared.begin(Self.readingTitle, repository: name, isBackground: true)
+        ActivityLog.shared.finish(entry, error: error)
+        notices.post(Notice(
+            .warning, title: "Couldn’t Read the Repository", message: message,
+            recoveries: [.showActivity], operation: Self.readingTitle
+        ))
+    }
+
+    /// Tells the user an operation failed, in the window's notices: named
+    /// after the operation under way unless the caller names it.
+    func report(_ error: any Error, during operation: String? = nil) {
+        notices.post(error, during: operation ?? ActivityContext.operationTitle)
+    }
+
+    /// Runs an operation on the repository, says so if it fails, and
     /// refreshes either way.
     func perform(_ operation: (Repository) async throws -> Void) async {
         diskChanges.operationBegan()
-        let logged = ActivityLog.shared.begin(ActivityContext.operationTitle ?? "Operation", repository: name)
+        let title = ActivityContext.operationTitle
+        let logged = ActivityLog.shared.begin(title ?? "Operation", repository: name)
         var failure: (any Error)?
         do {
             try await operation(repository)
+            if let title { notices.resolve(operation: title) }
         } catch {
             failure = error
-            self.error = PresentedError(error)
+            report(error, during: title)
         }
         ActivityLog.shared.finish(logged, error: failure)
         diskChanges.operationEnded()
@@ -202,9 +235,10 @@ final class RepositoryModel: Identifiable {
             workingCopy.subject = ""
             workingCopy.details = ""
             ActivityLog.shared.finish(logged, error: nil)
+            notices.resolve(operation: "Commit")
         } catch {
             ActivityLog.shared.finish(logged, error: error)
-            self.error = PresentedError(error)
+            report(error, during: "Commit")
         }
         await refresh()
     }

@@ -96,7 +96,7 @@ struct FileHistoryView: View {
         do {
             try await operation()
         } catch {
-            model.error = PresentedError(error)
+            model.report(error)
         }
     }
 }

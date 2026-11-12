@@ -154,7 +154,7 @@ private struct CommitDetailContent: View {
             }
             loaded = Loaded(commit: commit, parentIndex: parentIndex, files: files)
         } catch {
-            model.error = PresentedError(error)
+            model.report(error)
         }
     }
 

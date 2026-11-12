@@ -93,7 +93,7 @@ final class RepositoryLibrary {
     let filesStorage: URL?
 
     init(
-        storage: URL = .applicationSupportDirectory.appending(path: "Twig/Repositories.json"),
+        storage: URL = .applicationSupportDirectory.appending(path: "Wye/Repositories.json"),
         documents: URL = .documentsDirectory,
         filesStorage: URL? = FilesLocation.storageDirectory
     ) {

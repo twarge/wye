@@ -19,7 +19,6 @@ struct RepositoryList: View {
     @State private var heads = RepositoryHeads()
     /// The watched folders folded shut, as their identifiers in one string.
     @AppStorage("repositoryList.collapsedFolders") private var collapsedFolders = ""
-    @State private var moveError: PresentedError?
 
     var body: some View {
         let sections = self.sections
@@ -69,7 +68,6 @@ struct RepositoryList: View {
             }
         }
         .dropDestination(for: URL.self) { urls, _ in drop(urls, into: nil) }
-        .alert(for: $moveError)
         .overlay {
             if !query.isEmpty, sections.allSatisfy(\.bookmarks.isEmpty), folders.isEmpty {
                 ContentUnavailableView.search(text: query)
@@ -177,6 +175,7 @@ struct RepositoryList: View {
             )
         }
         .buttonStyle(.plain)
+        .pointerHover()
         .draggable(RepositoryDragReference.url(for: bookmark.id)) {
             Label(bookmark.name, systemImage: "folder")
                 .padding(6)
@@ -190,7 +189,7 @@ struct RepositoryList: View {
                     do {
                         try library.moveToFilesLocation(bookmark)
                     } catch {
-                        moveError = PresentedError(error)
+                        actions.notices.post(error, during: "Move “\(bookmark.name)”")
                     }
                 }
             }
@@ -242,7 +241,15 @@ struct RepositoryList: View {
                 library.move(added.map(\.id), to: group)
             }
         }
-        return !moved.isEmpty || !folders.isEmpty
+        // A link dragged from a browser or a message: the clone sheet,
+        // filled in, for the user to say where it goes.
+        let address = urls.lazy.filter { !$0.isFileURL && RepositoryDragReference.id(from: $0) == nil }
+            .compactMap { RemoteAddressFinder.firstAddress(in: $0.absoluteString) }.first
+        if let address, moved.isEmpty, folders.isEmpty {
+            actions.cloneAddress = address
+            actions.isCloning = true
+        }
+        return !moved.isEmpty || !folders.isEmpty || address != nil
     }
 }
 

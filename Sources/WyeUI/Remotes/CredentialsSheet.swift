@@ -9,7 +9,7 @@ struct CredentialsSheet: View {
     @State private var username: String
     @State private var token = ""
     @State private var savesInKeychain = true
-    @State private var error: PresentedError?
+    @State private var error: Notice?
 
     init(prompt: CredentialPrompt, broker: CredentialBroker) {
         self.prompt = prompt
@@ -53,7 +53,7 @@ struct CredentialsSheet: View {
             }
         }
         .frame(minWidth: 380)
-        .alert(for: $error)
+        .notice(for: $error)
     }
 
     private var explanation: String {
@@ -74,7 +74,7 @@ struct CredentialsSheet: View {
                 saveInKeychain: savesInKeychain
             )
         } catch {
-            self.error = PresentedError(error)
+            self.error = Notice(error)
         }
     }
 }

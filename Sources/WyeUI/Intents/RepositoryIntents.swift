@@ -1,5 +1,6 @@
 import AppIntents
 import Foundation
+import SwiftUI
 
 // The intents run in the app's process without bringing it forward, except
 // Open Repository. None of them asks for credentials: an operation that
@@ -91,9 +92,15 @@ public struct GetRepositoryStatusIntent: AppIntent {
     public init() {}
 
     @MainActor
-    public func perform() async throws -> some IntentResult & ReturnsValue<RepositoryStatusEntity> & ProvidesDialog {
+    public func perform() async throws -> some IntentResult & ReturnsValue<RepositoryStatusEntity> & ProvidesDialog & ShowsSnippetView {
         let status = try await RepositoryIntentRunner.status(repository.id)
-        return .result(value: status, dialog: "\(status.summary)")
+        return .result(
+            value: status, dialog: "\(status.summary)",
+            view: RepositoryStatusSnippet(
+                name: status.name, branch: status.branch, ahead: status.ahead, behind: status.behind,
+                changedFiles: status.changedFiles
+            )
+        )
     }
 }
 

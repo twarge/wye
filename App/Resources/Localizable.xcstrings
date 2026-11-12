@@ -1,0 +1,3338 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+      "extractionState" : "manual"
+    },
+    " " : {
+      "extractionState" : "manual"
+    },
+    "%@" : {
+      "extractionState" : "manual"
+    },
+    "%@\n%@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@\n%2$@"
+          }
+        }
+      }
+    },
+    "%@ %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "%@ (%@)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "%@ <%@>" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ <%2$@>"
+          }
+        }
+      }
+    },
+    "%@ Actions" : {
+      "extractionState" : "manual"
+    },
+    "%@ Settings" : {
+      "extractionState" : "manual"
+    },
+    "%@ in “%@” are taken out of it. The file is not tracked, so git has no copy of them." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ in “%2$@” are taken out of it. The file is not tracked, so git has no copy of them."
+          }
+        }
+      }
+    },
+    "%@ in “%@” go back to the staged version. The unstaged changes to them are lost." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ in “%2$@” go back to the staged version. The unstaged changes to them are lost."
+          }
+        }
+      }
+    },
+    "%@ on %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ on %2$@"
+          }
+        }
+      }
+    },
+    "%@ the selected lines" : {
+      "extractionState" : "manual"
+    },
+    "%@ this hunk" : {
+      "extractionState" : "manual"
+    },
+    "%@ with %@ and %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ with %2$@ and %3$@"
+          }
+        }
+      }
+    },
+    "%@ · %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %@ · %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@ · %3$@"
+          }
+        }
+      }
+    },
+    "%@ → %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@"
+          }
+        }
+      }
+    },
+    "%@, %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%@: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%@…" : {
+      "extractionState" : "manual"
+    },
+    "%lld" : {
+      "extractionState" : "manual"
+    },
+    "%lld Characters" : {
+      "extractionState" : "manual"
+    },
+    "%lld More" : {
+      "extractionState" : "manual"
+    },
+    "%lld Selected" : {
+      "extractionState" : "manual"
+    },
+    "%lld characters" : {
+      "extractionState" : "manual"
+    },
+    "%lld of %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "%lld repositories" : {
+      "extractionState" : "manual"
+    },
+    "%lld times" : {
+      "extractionState" : "manual"
+    },
+    "%lld." : {
+      "extractionState" : "manual"
+    },
+    "+" : {
+      "extractionState" : "manual"
+    },
+    "+%lld" : {
+      "extractionState" : "manual"
+    },
+    ".gitignore" : {
+      "extractionState" : "manual"
+    },
+    "A README or .gitignore is committed as the first commit when an author is set in Settings." : {
+      "extractionState" : "manual"
+    },
+    "A branch can be checked out in one worktree at a time. Branches checked out elsewhere are not listed." : {
+      "extractionState" : "manual"
+    },
+    "A branch, tag or commit" : {
+      "extractionState" : "manual"
+    },
+    "A draft cannot be merged until it is marked ready" : {
+      "extractionState" : "manual"
+    },
+    "A leading / anchors a rule to the top of the repository, a trailing / matches only folders, and * matches anything but /." : {
+      "extractionState" : "manual"
+    },
+    "A lightweight tag is only a name for the commit." : {
+      "extractionState" : "manual"
+    },
+    "A locked worktree is not pruned while its folder is away, and cannot be moved or removed until unlocked." : {
+      "extractionState" : "manual"
+    },
+    "A name can’t contain a slash." : {
+      "extractionState" : "manual"
+    },
+    "A new path for “%@”, from the top of the repository. A tracked file’s move is staged, as git mv stages it." : {
+      "extractionState" : "manual"
+    },
+    "A push URL only when pushes go somewhere other than fetches, such as your own copy of the project." : {
+      "extractionState" : "manual"
+    },
+    "A snapshot: its changes were left in place when it was made" : {
+      "extractionState" : "manual"
+    },
+    "A work identity can sign with its own key, which you add to that account’s hosting service." : {
+      "extractionState" : "manual"
+    },
+    "API Token" : {
+      "extractionState" : "manual"
+    },
+    "Aa" : {
+      "extractionState" : "manual"
+    },
+    "Abort" : {
+      "extractionState" : "manual"
+    },
+    "Abort %@" : {
+      "extractionState" : "manual"
+    },
+    "Abort the %@?" : {
+      "extractionState" : "manual"
+    },
+    "About" : {
+      "extractionState" : "manual"
+    },
+    "Access Token" : {
+      "extractionState" : "manual"
+    },
+    "Account" : {
+      "extractionState" : "manual"
+    },
+    "Account for %@…" : {
+      "extractionState" : "manual"
+    },
+    "Accounts" : {
+      "extractionState" : "manual"
+    },
+    "Acknowledgements" : {
+      "extractionState" : "manual"
+    },
+    "Act on the selected commits" : {
+      "extractionState" : "manual"
+    },
+    "Action" : {
+      "extractionState" : "manual"
+    },
+    "Actions" : {
+      "extractionState" : "manual"
+    },
+    "Activity" : {
+      "extractionState" : "manual"
+    },
+    "Add" : {
+      "extractionState" : "manual"
+    },
+    "Add Account" : {
+      "extractionState" : "manual"
+    },
+    "Add Account…" : {
+      "extractionState" : "manual"
+    },
+    "Add Another Value" : {
+      "extractionState" : "manual"
+    },
+    "Add Another Value…" : {
+      "extractionState" : "manual"
+    },
+    "Add Entry" : {
+      "extractionState" : "manual"
+    },
+    "Add Identity…" : {
+      "extractionState" : "manual"
+    },
+    "Add Issue Tracker" : {
+      "extractionState" : "manual"
+    },
+    "Add Note" : {
+      "extractionState" : "manual"
+    },
+    "Add Note…" : {
+      "extractionState" : "manual"
+    },
+    "Add Refspec" : {
+      "extractionState" : "manual"
+    },
+    "Add Remote" : {
+      "extractionState" : "manual"
+    },
+    "Add Remote…" : {
+      "extractionState" : "manual"
+    },
+    "Add Repository" : {
+      "extractionState" : "manual"
+    },
+    "Add Repository…" : {
+      "extractionState" : "manual"
+    },
+    "Add Signer" : {
+      "extractionState" : "manual"
+    },
+    "Add Signer…" : {
+      "extractionState" : "manual"
+    },
+    "Add Submodule…" : {
+      "extractionState" : "manual"
+    },
+    "Add Template…" : {
+      "extractionState" : "manual"
+    },
+    "Add Worktree…" : {
+      "extractionState" : "manual"
+    },
+    "Add a README" : {
+      "extractionState" : "manual"
+    },
+    "Add a Rule" : {
+      "extractionState" : "manual"
+    },
+    "Add a folder that holds a git repository, or clone one, to browse its history and commit changes." : {
+      "extractionState" : "manual"
+    },
+    "Add a remote to fetch from and push to." : {
+      "extractionState" : "manual"
+    },
+    "Add a repository to pull it here." : {
+      "extractionState" : "manual"
+    },
+    "Add this to your account on the hosting service, in its SSH key settings." : {
+      "extractionState" : "manual"
+    },
+    "Add to .gitignore" : {
+      "extractionState" : "manual"
+    },
+    "Address" : {
+      "extractionState" : "manual"
+    },
+    "Adds “%@” to %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Adds “%1$@” to %2$@"
+          }
+        }
+      }
+    },
+    "After" : {
+      "extractionState" : "manual"
+    },
+    "After: %@" : {
+      "extractionState" : "manual"
+    },
+    "All Changes…" : {
+      "extractionState" : "manual"
+    },
+    "All Remotes" : {
+      "extractionState" : "manual"
+    },
+    "Allowed Signers" : {
+      "extractionState" : "manual"
+    },
+    "Also %@, at the same commit" : {
+      "extractionState" : "manual"
+    },
+    "Also Delete “%@”" : {
+      "extractionState" : "manual"
+    },
+    "Also on Cellular and Low Data Networks" : {
+      "extractionState" : "manual"
+    },
+    "Always" : {
+      "extractionState" : "manual"
+    },
+    "Amend" : {
+      "extractionState" : "manual"
+    },
+    "Amend Last Commit" : {
+      "extractionState" : "manual"
+    },
+    "Amended Subject" : {
+      "extractionState" : "manual"
+    },
+    "An Ed25519 key. The comment is how the key is named on the hosting service." : {
+      "extractionState" : "manual"
+    },
+    "An HTTPS or SSH address. Wye asks for an access token or an SSH key if the host wants one." : {
+      "extractionState" : "manual"
+    },
+    "An annotated tag records who made it, when, and a message." : {
+      "extractionState" : "manual"
+    },
+    "And %@ more" : {
+      "extractionState" : "manual"
+    },
+    "Annotated" : {
+      "extractionState" : "manual"
+    },
+    "Any Date" : {
+      "extractionState" : "manual"
+    },
+    "Anyone can see it." : {
+      "extractionState" : "manual"
+    },
+    "App Setting (%@)" : {
+      "extractionState" : "manual"
+    },
+    "Applied by Wye to Every Repository" : {
+      "extractionState" : "manual"
+    },
+    "Apply" : {
+      "extractionState" : "manual"
+    },
+    "Apply Patch…" : {
+      "extractionState" : "manual"
+    },
+    "Apply and Stage" : {
+      "extractionState" : "manual"
+    },
+    "Apply the stash’s changes and keep the stash" : {
+      "extractionState" : "manual"
+    },
+    "Apply the stash’s changes, then drop it" : {
+      "extractionState" : "manual"
+    },
+    "Apply their changes on top of HEAD, oldest first" : {
+      "extractionState" : "manual"
+    },
+    "Apply this commit’s changes on top of HEAD" : {
+      "extractionState" : "manual"
+    },
+    "Apply to Working Copy" : {
+      "extractionState" : "manual"
+    },
+    "Apply “%@”?" : {
+      "extractionState" : "manual"
+    },
+    "Approve" : {
+      "extractionState" : "manual"
+    },
+    "Archive %@" : {
+      "extractionState" : "manual"
+    },
+    "Archive Automatically After" : {
+      "extractionState" : "manual"
+    },
+    "Archived Branches" : {
+      "extractionState" : "manual"
+    },
+    "As %@" : {
+      "extractionState" : "manual"
+    },
+    "As %@ lists them. Fetch the commits to see the changes." : {
+      "extractionState" : "manual"
+    },
+    "As Set for All" : {
+      "extractionState" : "manual"
+    },
+    "As Set in Settings" : {
+      "extractionState" : "manual"
+    },
+    "Assume Unchanged" : {
+      "extractionState" : "manual"
+    },
+    "Assumed Unchanged" : {
+      "extractionState" : "manual"
+    },
+    "Atlassian Account Email" : {
+      "extractionState" : "manual"
+    },
+    "Attach a note to this commit without changing it, as git notes does" : {
+      "extractionState" : "manual"
+    },
+    "Author" : {
+      "extractionState" : "manual"
+    },
+    "Author Date" : {
+      "extractionState" : "manual"
+    },
+    "Automatic" : {
+      "extractionState" : "manual"
+    },
+    "Autosquash" : {
+      "extractionState" : "manual"
+    },
+    "Back" : {
+      "extractionState" : "manual"
+    },
+    "Base" : {
+      "extractionState" : "manual"
+    },
+    "Before" : {
+      "extractionState" : "manual"
+    },
+    "Before: %@" : {
+      "extractionState" : "manual"
+    },
+    "Binary File" : {
+      "extractionState" : "manual"
+    },
+    "Bitbucket cannot reopen a declined pull request. Its branch stays." : {
+      "extractionState" : "manual"
+    },
+    "Blame" : {
+      "extractionState" : "manual"
+    },
+    "Blame at %@" : {
+      "extractionState" : "manual"
+    },
+    "Both, %@ First" : {
+      "extractionState" : "manual"
+    },
+    "Branch" : {
+      "extractionState" : "manual"
+    },
+    "Branch Name" : {
+      "extractionState" : "manual"
+    },
+    "Branch, tag or commit" : {
+      "extractionState" : "manual"
+    },
+    "Branch, tag, commit or HEAD~2" : {
+      "extractionState" : "manual"
+    },
+    "Branches" : {
+      "extractionState" : "manual"
+    },
+    "Bring it back to the Branches section" : {
+      "extractionState" : "manual"
+    },
+    "Bring it back to the Branches section and stop archiving it automatically" : {
+      "extractionState" : "manual"
+    },
+    "Browser" : {
+      "extractionState" : "manual"
+    },
+    "Built In" : {
+      "extractionState" : "manual"
+    },
+    "Cancel" : {
+      "extractionState" : "manual"
+    },
+    "Cancel Editing" : {
+      "extractionState" : "manual"
+    },
+    "Cannot Rebase from Here" : {
+      "extractionState" : "manual"
+    },
+    "Can’t Open the Conflict" : {
+      "extractionState" : "manual"
+    },
+    "Can’t be shown as an image" : {
+      "extractionState" : "manual"
+    },
+    "Change URL…" : {
+      "extractionState" : "manual"
+    },
+    "Change its name, URL and push URL" : {
+      "extractionState" : "manual"
+    },
+    "Changed Files" : {
+      "extractionState" : "manual"
+    },
+    "Changes" : {
+      "extractionState" : "manual"
+    },
+    "Changes the URL in .gitmodules, staged, and in this repository’s configuration and the submodule’s remote." : {
+      "extractionState" : "manual"
+    },
+    "Changes you set aside appear here." : {
+      "extractionState" : "manual"
+    },
+    "Check Out" : {
+      "extractionState" : "manual"
+    },
+    "Check Out %@" : {
+      "extractionState" : "manual"
+    },
+    "Check Out %@ in New Worktree…" : {
+      "extractionState" : "manual"
+    },
+    "Check Out Branch" : {
+      "extractionState" : "manual"
+    },
+    "Check Out Revision…" : {
+      "extractionState" : "manual"
+    },
+    "Check Out as Local Branch" : {
+      "extractionState" : "manual"
+    },
+    "Check out ${branch} in ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Check out a local branch of the same name that tracks it, making one if there is none" : {
+      "extractionState" : "manual"
+    },
+    "Check out the tag’s commit with HEAD detached" : {
+      "extractionState" : "manual"
+    },
+    "Check out this commit with HEAD detached" : {
+      "extractionState" : "manual"
+    },
+    "Checked Out" : {
+      "extractionState" : "manual"
+    },
+    "Checked out" : {
+      "extractionState" : "manual"
+    },
+    "Checked out in another worktree" : {
+      "extractionState" : "manual"
+    },
+    "Checked out in the worktree at %@" : {
+      "extractionState" : "manual"
+    },
+    "Checking for conflicts…" : {
+      "extractionState" : "manual"
+    },
+    "Checks out a branch of a repository in Wye. A branch that is only on a remote is checked out as a local branch that tracks it." : {
+      "extractionState" : "manual"
+    },
+    "Cherry-Pick %@" : {
+      "extractionState" : "manual"
+    },
+    "Cherry-Pick %lld Commits" : {
+      "extractionState" : "manual"
+    },
+    "Choose" : {
+      "extractionState" : "manual"
+    },
+    "Choose Dates…" : {
+      "extractionState" : "manual"
+    },
+    "Choose File…" : {
+      "extractionState" : "manual"
+    },
+    "Choose a branch or tag" : {
+      "extractionState" : "manual"
+    },
+    "Choose how the history is shown" : {
+      "extractionState" : "manual"
+    },
+    "Choose the account this remote signs in with" : {
+      "extractionState" : "manual"
+    },
+    "Choose whose reflog to show" : {
+      "extractionState" : "manual"
+    },
+    "Choose…" : {
+      "extractionState" : "manual"
+    },
+    "Chosen" : {
+      "extractionState" : "manual"
+    },
+    "Clear" : {
+      "extractionState" : "manual"
+    },
+    "Clear Menu" : {
+      "extractionState" : "manual"
+    },
+    "Clear Search and Filters" : {
+      "extractionState" : "manual"
+    },
+    "Clear the finished operations from the log" : {
+      "extractionState" : "manual"
+    },
+    "Click to select the line; shift-click to select up to it" : {
+      "extractionState" : "manual"
+    },
+    "Clone" : {
+      "extractionState" : "manual"
+    },
+    "Clone ${address}" : {
+      "extractionState" : "manual"
+    },
+    "Clone Repository" : {
+      "extractionState" : "manual"
+    },
+    "Clone Repository…" : {
+      "extractionState" : "manual"
+    },
+    "Clone With" : {
+      "extractionState" : "manual"
+    },
+    "Clone a repository from a URL" : {
+      "extractionState" : "manual"
+    },
+    "Clone from Account" : {
+      "extractionState" : "manual"
+    },
+    "Clone from Account…" : {
+      "extractionState" : "manual"
+    },
+    "Clones From" : {
+      "extractionState" : "manual"
+    },
+    "Close" : {
+      "extractionState" : "manual"
+    },
+    "Close %@?" : {
+      "extractionState" : "manual"
+    },
+    "Close Repository" : {
+      "extractionState" : "manual"
+    },
+    "Close…" : {
+      "extractionState" : "manual"
+    },
+    "Code" : {
+      "extractionState" : "manual"
+    },
+    "Collapse All" : {
+      "extractionState" : "manual"
+    },
+    "Collapsed" : {
+      "extractionState" : "manual"
+    },
+    "Comment" : {
+      "extractionState" : "manual"
+    },
+    "Commit" : {
+      "extractionState" : "manual"
+    },
+    "Commit Changes" : {
+      "extractionState" : "manual"
+    },
+    "Commit Hash" : {
+      "extractionState" : "manual"
+    },
+    "Commit Signing" : {
+      "extractionState" : "manual"
+    },
+    "Commit Subject" : {
+      "extractionState" : "manual"
+    },
+    "Commit as this identity unless a repository or a commit says otherwise" : {
+      "extractionState" : "manual"
+    },
+    "Commit changes in ${repository} with ${message}" : {
+      "extractionState" : "manual"
+    },
+    "Commit the staged changes as “fixup! %@”, for an autosquash rebase to meld in" : {
+      "extractionState" : "manual"
+    },
+    "Commit the staged changes as “squash! %@”, for an autosquash rebase to meld in" : {
+      "extractionState" : "manual"
+    },
+    "Commit this step and carry on" : {
+      "extractionState" : "manual"
+    },
+    "Commits Ahead" : {
+      "extractionState" : "manual"
+    },
+    "Commits Behind" : {
+      "extractionState" : "manual"
+    },
+    "Commits a repository’s changes in Wye with a message. Stages every change first unless told to commit only what is already staged. The commit is not signed." : {
+      "extractionState" : "manual"
+    },
+    "Commits are signed with an SSH key from below, as git does with gpg.format=ssh. Add the key’s public half to your hosting service as a signing key for it to show as verified there. An identity or a repository can turn signing on or off for itself." : {
+      "extractionState" : "manual"
+    },
+    "Commits to pull and to push, as of the last fetch" : {
+      "extractionState" : "manual"
+    },
+    "Committer" : {
+      "extractionState" : "manual"
+    },
+    "Committer Date" : {
+      "extractionState" : "manual"
+    },
+    "Committing" : {
+      "extractionState" : "manual"
+    },
+    "Compare" : {
+      "extractionState" : "manual"
+    },
+    "Compare %@ With…" : {
+      "extractionState" : "manual"
+    },
+    "Compare First and Last" : {
+      "extractionState" : "manual"
+    },
+    "Compare the oldest selected commit with the newest" : {
+      "extractionState" : "manual"
+    },
+    "Compare the selected commit with another commit, branch or tag" : {
+      "extractionState" : "manual"
+    },
+    "Compared with" : {
+      "extractionState" : "manual"
+    },
+    "Completions" : {
+      "extractionState" : "manual"
+    },
+    "Conflict" : {
+      "extractionState" : "manual"
+    },
+    "Conflict %lld of %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Conflict %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Conflicts" : {
+      "extractionState" : "manual"
+    },
+    "Connect only if this is the fingerprint the host publishes. The hosting services list theirs in their documentation." : {
+      "extractionState" : "manual"
+    },
+    "Context Lines" : {
+      "extractionState" : "manual"
+    },
+    "Continue" : {
+      "extractionState" : "manual"
+    },
+    "Copy" : {
+      "extractionState" : "manual"
+    },
+    "Copy %lld Items into Repository" : {
+      "extractionState" : "manual"
+    },
+    "Copy Commit Info" : {
+      "extractionState" : "manual"
+    },
+    "Copy Hash" : {
+      "extractionState" : "manual"
+    },
+    "Copy Hashes" : {
+      "extractionState" : "manual"
+    },
+    "Copy Link" : {
+      "extractionState" : "manual"
+    },
+    "Copy Message" : {
+      "extractionState" : "manual"
+    },
+    "Copy Path" : {
+      "extractionState" : "manual"
+    },
+    "Copy Public Key" : {
+      "extractionState" : "manual"
+    },
+    "Copy into Repository" : {
+      "extractionState" : "manual"
+    },
+    "Copy the path of the repository’s folder" : {
+      "extractionState" : "manual"
+    },
+    "Copy the public key, to add to a hosting service" : {
+      "extractionState" : "manual"
+    },
+    "Could not check: %@" : {
+      "extractionState" : "manual"
+    },
+    "Couldn’t Load" : {
+      "extractionState" : "manual"
+    },
+    "Create" : {
+      "extractionState" : "manual"
+    },
+    "Create Key…" : {
+      "extractionState" : "manual"
+    },
+    "Create Snapshot…" : {
+      "extractionState" : "manual"
+    },
+    "Create a branch at the selected commit" : {
+      "extractionState" : "manual"
+    },
+    "Create a new, empty repository" : {
+      "extractionState" : "manual"
+    },
+    "Current branch" : {
+      "extractionState" : "manual"
+    },
+    "Custom Pattern…" : {
+      "extractionState" : "manual"
+    },
+    "Date" : {
+      "extractionState" : "manual"
+    },
+    "Dates" : {
+      "extractionState" : "manual"
+    },
+    "Decline" : {
+      "extractionState" : "manual"
+    },
+    "Decline…" : {
+      "extractionState" : "manual"
+    },
+    "Default" : {
+      "extractionState" : "manual"
+    },
+    "Default Branch" : {
+      "extractionState" : "manual"
+    },
+    "Default Branch Name" : {
+      "extractionState" : "manual"
+    },
+    "Default Remote" : {
+      "extractionState" : "manual"
+    },
+    "Delete" : {
+      "extractionState" : "manual"
+    },
+    "Delete %@ from Remote…" : {
+      "extractionState" : "manual"
+    },
+    "Delete %@…" : {
+      "extractionState" : "manual"
+    },
+    "Delete Group" : {
+      "extractionState" : "manual"
+    },
+    "Delete Key" : {
+      "extractionState" : "manual"
+    },
+    "Delete from Remote…" : {
+      "extractionState" : "manual"
+    },
+    "Delete the key “%@”?" : {
+      "extractionState" : "manual"
+    },
+    "Delete the stash" : {
+      "extractionState" : "manual"
+    },
+    "Delete this key" : {
+      "extractionState" : "manual"
+    },
+    "Delete…" : {
+      "extractionState" : "manual"
+    },
+    "Description" : {
+      "extractionState" : "manual"
+    },
+    "Deselect" : {
+      "extractionState" : "manual"
+    },
+    "Deselect this hunk’s lines" : {
+      "extractionState" : "manual"
+    },
+    "Detached HEAD" : {
+      "extractionState" : "manual"
+    },
+    "Diffs" : {
+      "extractionState" : "manual"
+    },
+    "Discard" : {
+      "extractionState" : "manual"
+    },
+    "Discard %@" : {
+      "extractionState" : "manual"
+    },
+    "Discard %@…" : {
+      "extractionState" : "manual"
+    },
+    "Discard All Changes…" : {
+      "extractionState" : "manual"
+    },
+    "Discard Changes…" : {
+      "extractionState" : "manual"
+    },
+    "Discard Choices" : {
+      "extractionState" : "manual"
+    },
+    "Discard This Hunk?" : {
+      "extractionState" : "manual"
+    },
+    "Discard Your Choices?" : {
+      "extractionState" : "manual"
+    },
+    "Discard the Selected Lines?" : {
+      "extractionState" : "manual"
+    },
+    "Dismiss" : {
+      "extractionState" : "manual"
+    },
+    "Dismiss All" : {
+      "extractionState" : "manual"
+    },
+    "Done" : {
+      "extractionState" : "manual"
+    },
+    "Draft" : {
+      "extractionState" : "manual"
+    },
+    "Draft from Changes" : {
+      "extractionState" : "manual"
+    },
+    "Drafting a message" : {
+      "extractionState" : "manual"
+    },
+    "Drag Commits to Use Them" : {
+      "extractionState" : "manual"
+    },
+    "Drop Stash" : {
+      "extractionState" : "manual"
+    },
+    "Drop This Stash?" : {
+      "extractionState" : "manual"
+    },
+    "Drop a commit on a branch to cherry-pick it, on Branches or Tags to name it, or outside Wye to get it as a patch file." : {
+      "extractionState" : "manual"
+    },
+    "Drop…" : {
+      "extractionState" : "manual"
+    },
+    "Each remote’s URLs, the references it fetches and pushes, and its default branch." : {
+      "extractionState" : "manual"
+    },
+    "Edit" : {
+      "extractionState" : "manual"
+    },
+    "Edit %@…" : {
+      "extractionState" : "manual"
+    },
+    "Edit Author" : {
+      "extractionState" : "manual"
+    },
+    "Edit Author…" : {
+      "extractionState" : "manual"
+    },
+    "Edit Entry" : {
+      "extractionState" : "manual"
+    },
+    "Edit Identities…" : {
+      "extractionState" : "manual"
+    },
+    "Edit Message" : {
+      "extractionState" : "manual"
+    },
+    "Edit Message…" : {
+      "extractionState" : "manual"
+    },
+    "Edit Note" : {
+      "extractionState" : "manual"
+    },
+    "Edit Note…" : {
+      "extractionState" : "manual"
+    },
+    "Edit Remote" : {
+      "extractionState" : "manual"
+    },
+    "Edit the Result" : {
+      "extractionState" : "manual"
+    },
+    "Edit the message the commit gets" : {
+      "extractionState" : "manual"
+    },
+    "Edit this identity" : {
+      "extractionState" : "manual"
+    },
+    "Edit this template" : {
+      "extractionState" : "manual"
+    },
+    "Edit…" : {
+      "extractionState" : "manual"
+    },
+    "Email" : {
+      "extractionState" : "manual"
+    },
+    "Every operation Wye has run this session" : {
+      "extractionState" : "manual"
+    },
+    "Every setting in this repository’s .git/config, to add to, change and remove." : {
+      "extractionState" : "manual"
+    },
+    "Everything Is Pushed and Up to Date" : {
+      "extractionState" : "manual"
+    },
+    "Everything in every repository is committed and pushed." : {
+      "extractionState" : "manual"
+    },
+    "Expand All" : {
+      "extractionState" : "manual"
+    },
+    "Expanded" : {
+      "extractionState" : "manual"
+    },
+    "Export Files from %@…" : {
+      "extractionState" : "manual"
+    },
+    "Extensions Settings…" : {
+      "extractionState" : "manual"
+    },
+    "Fetch" : {
+      "extractionState" : "manual"
+    },
+    "Fetch ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Fetch %@" : {
+      "extractionState" : "manual"
+    },
+    "Fetch All" : {
+      "extractionState" : "manual"
+    },
+    "Fetch All Repositories" : {
+      "extractionState" : "manual"
+    },
+    "Fetch All Submodules" : {
+      "extractionState" : "manual"
+    },
+    "Fetch Automatically" : {
+      "extractionState" : "manual"
+    },
+    "Fetch Commits" : {
+      "extractionState" : "manual"
+    },
+    "Fetch Repository" : {
+      "extractionState" : "manual"
+    },
+    "Fetch and Pull" : {
+      "extractionState" : "manual"
+    },
+    "Fetch from every remote, removing remote branches that were deleted. Option-click for options." : {
+      "extractionState" : "manual"
+    },
+    "Fetch its head into a local branch that tracks it, and check that out" : {
+      "extractionState" : "manual"
+    },
+    "Fetch new commits, and remove remote branches that are gone from the remote" : {
+      "extractionState" : "manual"
+    },
+    "Fetch “%@”" : {
+      "extractionState" : "manual"
+    },
+    "Fetches every remote of a repository in Wye, without changing its branches." : {
+      "extractionState" : "manual"
+    },
+    "Fetches every repository in Wye." : {
+      "extractionState" : "manual"
+    },
+    "Fetches every repository in Wye’s list that has a remote." : {
+      "extractionState" : "manual"
+    },
+    "Fetches, pulls, pushes, commits and every other operation Wye runs this session are listed here." : {
+      "extractionState" : "manual"
+    },
+    "Fetch…" : {
+      "extractionState" : "manual"
+    },
+    "File Too Large to Show" : {
+      "extractionState" : "manual"
+    },
+    "Files" : {
+      "extractionState" : "manual"
+    },
+    "Files App" : {
+      "extractionState" : "manual"
+    },
+    "Filter" : {
+      "extractionState" : "manual"
+    },
+    "Filter the history by date, author or branch" : {
+      "extractionState" : "manual"
+    },
+    "Find" : {
+      "extractionState" : "manual"
+    },
+    "Find Next" : {
+      "extractionState" : "manual"
+    },
+    "Find Previous" : {
+      "extractionState" : "manual"
+    },
+    "Find Repositories with Unpushed Work" : {
+      "extractionState" : "manual"
+    },
+    "Find in History" : {
+      "extractionState" : "manual"
+    },
+    "Finder Extension" : {
+      "extractionState" : "manual"
+    },
+    "Find…" : {
+      "extractionState" : "manual"
+    },
+    "Fingerprint" : {
+      "extractionState" : "manual"
+    },
+    "First Day" : {
+      "extractionState" : "manual"
+    },
+    "First Key (%@)" : {
+      "extractionState" : "manual"
+    },
+    "First Parent Only" : {
+      "extractionState" : "manual"
+    },
+    "Fixup into This Commit" : {
+      "extractionState" : "manual"
+    },
+    "Fold Files in a Commit" : {
+      "extractionState" : "manual"
+    },
+    "Folder Name" : {
+      "extractionState" : "manual"
+    },
+    "Font" : {
+      "extractionState" : "manual"
+    },
+    "Force Push" : {
+      "extractionState" : "manual"
+    },
+    "Force Push with Lease…" : {
+      "extractionState" : "manual"
+    },
+    "Force Push…" : {
+      "extractionState" : "manual"
+    },
+    "Forward" : {
+      "extractionState" : "manual"
+    },
+    "From" : {
+      "extractionState" : "manual"
+    },
+    "From Settings" : {
+      "extractionState" : "manual"
+    },
+    "From Settings (%@)" : {
+      "extractionState" : "manual"
+    },
+    "From the fetched commits, against where the branch left %@." : {
+      "extractionState" : "manual"
+    },
+    "From the key" : {
+      "extractionState" : "manual"
+    },
+    "Full Path" : {
+      "extractionState" : "manual"
+    },
+    "Get Repository Status" : {
+      "extractionState" : "manual"
+    },
+    "Get a Code" : {
+      "extractionState" : "manual"
+    },
+    "Get the status of ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Git Configuration" : {
+      "extractionState" : "manual"
+    },
+    "Give up the %@ and return to where it started" : {
+      "extractionState" : "manual"
+    },
+    "Go back to what this window showed before" : {
+      "extractionState" : "manual"
+    },
+    "Go forward again" : {
+      "extractionState" : "manual"
+    },
+    "Group By" : {
+      "extractionState" : "manual"
+    },
+    "HEAD" : {
+      "extractionState" : "manual"
+    },
+    "HTTPS" : {
+      "extractionState" : "manual"
+    },
+    "Has a note" : {
+      "extractionState" : "manual"
+    },
+    "Has conflicts" : {
+      "extractionState" : "manual"
+    },
+    "Head" : {
+      "extractionState" : "manual"
+    },
+    "Hide Branches" : {
+      "extractionState" : "manual"
+    },
+    "Hide Details" : {
+      "extractionState" : "manual"
+    },
+    "Hide Merged Commits" : {
+      "extractionState" : "manual"
+    },
+    "Hide the commits this merge brought in" : {
+      "extractionState" : "manual"
+    },
+    "Hide “Merged” Mark" : {
+      "extractionState" : "manual"
+    },
+    "Hides the files in this folder" : {
+      "extractionState" : "manual"
+    },
+    "History" : {
+      "extractionState" : "manual"
+    },
+    "Host" : {
+      "extractionState" : "manual"
+    },
+    "Host Key Changed" : {
+      "extractionState" : "manual"
+    },
+    "I have checked the new fingerprint with the host’s owners" : {
+      "extractionState" : "manual"
+    },
+    "Identities" : {
+      "extractionState" : "manual"
+    },
+    "Ignore Files" : {
+      "extractionState" : "manual"
+    },
+    "Ignore Privately" : {
+      "extractionState" : "manual"
+    },
+    "Ignore Rules" : {
+      "extractionState" : "manual"
+    },
+    "Ignore Rules…" : {
+      "extractionState" : "manual"
+    },
+    "Ignored" : {
+      "extractionState" : "manual"
+    },
+    "Import" : {
+      "extractionState" : "manual"
+    },
+    "Import Key…" : {
+      "extractionState" : "manual"
+    },
+    "Import SSH Key" : {
+      "extractionState" : "manual"
+    },
+    "Import allowed_signers File…" : {
+      "extractionState" : "manual"
+    },
+    "In iCloud Keychain" : {
+      "extractionState" : "manual"
+    },
+    "Include untracked files" : {
+      "extractionState" : "manual"
+    },
+    "Initial Branch" : {
+      "extractionState" : "manual"
+    },
+    "Initialize" : {
+      "extractionState" : "manual"
+    },
+    "Interactive Rebase" : {
+      "extractionState" : "manual"
+    },
+    "Into" : {
+      "extractionState" : "manual"
+    },
+    "Issue Trackers" : {
+      "extractionState" : "manual"
+    },
+    "It can be reopened later. Its branch stays." : {
+      "extractionState" : "manual"
+    },
+    "Its changes are made to the files only if every file takes them. Undo reverses it." : {
+      "extractionState" : "manual"
+    },
+    "Its fingerprint is %@. Hosts that know only this key will refuse Wye. A deleted key can’t be recovered, unless you have a copy elsewhere." : {
+      "extractionState" : "manual"
+    },
+    "Its remote branches, and the local branches that follow them, move to the new name." : {
+      "extractionState" : "manual"
+    },
+    "Keep a copy of the changes in a stash and leave them in place" : {
+      "extractionState" : "manual"
+    },
+    "Keep staged changes" : {
+      "extractionState" : "manual"
+    },
+    "Keep the Original Date" : {
+      "extractionState" : "manual"
+    },
+    "Keep this branch at the top of the Branches section" : {
+      "extractionState" : "manual"
+    },
+    "Keeping staged changes stashes them too, but also leaves them in place." : {
+      "extractionState" : "manual"
+    },
+    "Keeps repository groups, author profiles and these settings the same on your devices. What iCloud already has replaces what is set here. Repositories themselves, accounts and keys are not included." : {
+      "extractionState" : "manual"
+    },
+    "Kept in .git/info/exclude, which is never committed." : {
+      "extractionState" : "manual"
+    },
+    "Kept in iCloud Keychain, end-to-end encrypted, on every device signed in to your Apple Account. Wye offers each key in turn to SSH remotes; add a key’s public half to your account on the host. Ed25519 and ECDSA keys work; RSA keys don’t." : {
+      "extractionState" : "manual"
+    },
+    "Kept in the Keychain on this device. Wye offers each key in turn to SSH remotes; add a key’s public half to your account on the host. Ed25519 and ECDSA keys work; RSA keys don’t." : {
+      "extractionState" : "manual"
+    },
+    "Key" : {
+      "extractionState" : "manual"
+    },
+    "Key or value" : {
+      "extractionState" : "manual"
+    },
+    "Keys look like section.name or section.subsection.name: letters, digits and hyphens, the name starting with a letter." : {
+      "extractionState" : "manual"
+    },
+    "Kind" : {
+      "extractionState" : "manual"
+    },
+    "Known Hosts" : {
+      "extractionState" : "manual"
+    },
+    "Known Hosts…" : {
+      "extractionState" : "manual"
+    },
+    "Last Day" : {
+      "extractionState" : "manual"
+    },
+    "Layout" : {
+      "extractionState" : "manual"
+    },
+    "Leave Unresolved" : {
+      "extractionState" : "manual"
+    },
+    "Leave out the commits these branches lead to" : {
+      "extractionState" : "manual"
+    },
+    "Leave out this commit and carry on with the rest" : {
+      "extractionState" : "manual"
+    },
+    "License" : {
+      "extractionState" : "manual"
+    },
+    "List every repository in a folder, as they come and go" : {
+      "extractionState" : "manual"
+    },
+    "List only the commits these branches lead to" : {
+      "extractionState" : "manual"
+    },
+    "Lists the repositories in Wye with commits not pushed or changes not committed, as of when Wye last read them. Does not fetch." : {
+      "extractionState" : "manual"
+    },
+    "Local Name" : {
+      "extractionState" : "manual"
+    },
+    "Location" : {
+      "extractionState" : "manual"
+    },
+    "Locked" : {
+      "extractionState" : "manual"
+    },
+    "Lock…" : {
+      "extractionState" : "manual"
+    },
+    "Make Default" : {
+      "extractionState" : "manual"
+    },
+    "Make a Token on %@…" : {
+      "extractionState" : "manual"
+    },
+    "Make a branch where the stash was made, with its changes applied" : {
+      "extractionState" : "manual"
+    },
+    "Make a group to sort repositories into" : {
+      "extractionState" : "manual"
+    },
+    "Make a local branch that tracks it, with a name you choose" : {
+      "extractionState" : "manual"
+    },
+    "Make a new commit that undoes this one’s changes" : {
+      "extractionState" : "manual"
+    },
+    "Make a repository for this one on %@, add it as a remote and push the current branch" : {
+      "extractionState" : "manual"
+    },
+    "Make a repository for this one on GitHub, GitLab, Bitbucket, Gitea or Forgejo and push to it" : {
+      "extractionState" : "manual"
+    },
+    "Mark Resolved" : {
+      "extractionState" : "manual"
+    },
+    "Mark Subjects Longer Than" : {
+      "extractionState" : "manual"
+    },
+    "Mark as Stale After" : {
+      "extractionState" : "manual"
+    },
+    "Markdown" : {
+      "extractionState" : "manual"
+    },
+    "Match Case" : {
+      "extractionState" : "manual"
+    },
+    "Match upper and lower case exactly" : {
+      "extractionState" : "manual"
+    },
+    "Menu Bar and Finder" : {
+      "extractionState" : "manual"
+    },
+    "Merge" : {
+      "extractionState" : "manual"
+    },
+    "Merge %@ into %@…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Merge %1$@ into %2$@…"
+          }
+        }
+      }
+    },
+    "Merge With Revision…" : {
+      "extractionState" : "manual"
+    },
+    "Merge it on %@" : {
+      "extractionState" : "manual"
+    },
+    "Merge…" : {
+      "extractionState" : "manual"
+    },
+    "Message" : {
+      "extractionState" : "manual"
+    },
+    "Messages" : {
+      "extractionState" : "manual"
+    },
+    "Message…" : {
+      "extractionState" : "manual"
+    },
+    "Missing" : {
+      "extractionState" : "manual"
+    },
+    "Mode" : {
+      "extractionState" : "manual"
+    },
+    "More" : {
+      "extractionState" : "manual"
+    },
+    "More Remote Actions" : {
+      "extractionState" : "manual"
+    },
+    "Move" : {
+      "extractionState" : "manual"
+    },
+    "Move Down" : {
+      "extractionState" : "manual"
+    },
+    "Move Up" : {
+      "extractionState" : "manual"
+    },
+    "Move ^[%lld repository](inflect: true) to the Files location?" : {
+      "extractionState" : "manual"
+    },
+    "Move fixup!, squash! and amend! commits after the commits they name, and mark them" : {
+      "extractionState" : "manual"
+    },
+    "Move it to Archived Branches. The branch itself is not changed." : {
+      "extractionState" : "manual"
+    },
+    "Move the commits after a chosen upstream onto this branch" : {
+      "extractionState" : "manual"
+    },
+    "Move to Files Location" : {
+      "extractionState" : "manual"
+    },
+    "Move to Group" : {
+      "extractionState" : "manual"
+    },
+    "Move…" : {
+      "extractionState" : "manual"
+    },
+    "Name" : {
+      "extractionState" : "manual"
+    },
+    "Name, folder or branch" : {
+      "extractionState" : "manual"
+    },
+    "Needs Attention" : {
+      "extractionState" : "manual"
+    },
+    "Neither side of this image can be read" : {
+      "extractionState" : "manual"
+    },
+    "Never" : {
+      "extractionState" : "manual"
+    },
+    "Never Archive Automatically" : {
+      "extractionState" : "manual"
+    },
+    "New %@" : {
+      "extractionState" : "manual"
+    },
+    "New %@…" : {
+      "extractionState" : "manual"
+    },
+    "New Branch" : {
+      "extractionState" : "manual"
+    },
+    "New Branch from %@…" : {
+      "extractionState" : "manual"
+    },
+    "New Branch from Stash…" : {
+      "extractionState" : "manual"
+    },
+    "New Branch…" : {
+      "extractionState" : "manual"
+    },
+    "New Entry" : {
+      "extractionState" : "manual"
+    },
+    "New Group" : {
+      "extractionState" : "manual"
+    },
+    "New Group…" : {
+      "extractionState" : "manual"
+    },
+    "New Path" : {
+      "extractionState" : "manual"
+    },
+    "New Remote" : {
+      "extractionState" : "manual"
+    },
+    "New Repositories" : {
+      "extractionState" : "manual"
+    },
+    "New Repository" : {
+      "extractionState" : "manual"
+    },
+    "New Repository…" : {
+      "extractionState" : "manual"
+    },
+    "New SSH Key" : {
+      "extractionState" : "manual"
+    },
+    "New Tab" : {
+      "extractionState" : "manual"
+    },
+    "New Tag on %@…" : {
+      "extractionState" : "manual"
+    },
+    "Next" : {
+      "extractionState" : "manual"
+    },
+    "Next Conflict" : {
+      "extractionState" : "manual"
+    },
+    "No %@ %@s" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No %1$@ %2$@s"
+          }
+        }
+      }
+    },
+    "No %@ Selected" : {
+      "extractionState" : "manual"
+    },
+    "No Account" : {
+      "extractionState" : "manual"
+    },
+    "No Accounts" : {
+      "extractionState" : "manual"
+    },
+    "No Activity" : {
+      "extractionState" : "manual"
+    },
+    "No Authors Yet" : {
+      "extractionState" : "manual"
+    },
+    "No Commit Selected" : {
+      "extractionState" : "manual"
+    },
+    "No Commits" : {
+      "extractionState" : "manual"
+    },
+    "No Commits Yet" : {
+      "extractionState" : "manual"
+    },
+    "No Commits on These Branches" : {
+      "extractionState" : "manual"
+    },
+    "No Conflicting Lines" : {
+      "extractionState" : "manual"
+    },
+    "No Earlier Messages" : {
+      "extractionState" : "manual"
+    },
+    "No Entry Selected" : {
+      "extractionState" : "manual"
+    },
+    "No File Selected" : {
+      "extractionState" : "manual"
+    },
+    "No Files" : {
+      "extractionState" : "manual"
+    },
+    "No Group" : {
+      "extractionState" : "manual"
+    },
+    "No Hosted Remote" : {
+      "extractionState" : "manual"
+    },
+    "No Keys" : {
+      "extractionState" : "manual"
+    },
+    "No Local Changes" : {
+      "extractionState" : "manual"
+    },
+    "No Reflog" : {
+      "extractionState" : "manual"
+    },
+    "No Remotes" : {
+      "extractionState" : "manual"
+    },
+    "No Repositories" : {
+      "extractionState" : "manual"
+    },
+    "No SSH keys" : {
+      "extractionState" : "manual"
+    },
+    "No Stash Selected" : {
+      "extractionState" : "manual"
+    },
+    "No Stashes" : {
+      "extractionState" : "manual"
+    },
+    "No Submodule" : {
+      "extractionState" : "manual"
+    },
+    "No Worktree" : {
+      "extractionState" : "manual"
+    },
+    "No accounts" : {
+      "extractionState" : "manual"
+    },
+    "No comments yet" : {
+      "extractionState" : "manual"
+    },
+    "No commits" : {
+      "extractionState" : "manual"
+    },
+    "No conflicts" : {
+      "extractionState" : "manual"
+    },
+    "No differences" : {
+      "extractionState" : "manual"
+    },
+    "No differences in files" : {
+      "extractionState" : "manual"
+    },
+    "No entries" : {
+      "extractionState" : "manual"
+    },
+    "No identities yet" : {
+      "extractionState" : "manual"
+    },
+    "No lines" : {
+      "extractionState" : "manual"
+    },
+    "No other signers" : {
+      "extractionState" : "manual"
+    },
+    "No rules yet" : {
+      "extractionState" : "manual"
+    },
+    "None" : {
+      "extractionState" : "manual"
+    },
+    "Not Now" : {
+      "extractionState" : "manual"
+    },
+    "Not a refspec git can read" : {
+      "extractionState" : "manual"
+    },
+    "Not a valid refspec" : {
+      "extractionState" : "manual"
+    },
+    "Not valid" : {
+      "extractionState" : "manual"
+    },
+    "Note" : {
+      "extractionState" : "manual"
+    },
+    "Nothing Selected" : {
+      "extractionState" : "manual"
+    },
+    "Nothing has recorded moves of this reference." : {
+      "extractionState" : "manual"
+    },
+    "Nothing to Choose" : {
+      "extractionState" : "manual"
+    },
+    "Nothing to Review" : {
+      "extractionState" : "manual"
+    },
+    "Nothing: these lines are removed" : {
+      "extractionState" : "manual"
+    },
+    "Off" : {
+      "extractionState" : "manual"
+    },
+    "On" : {
+      "extractionState" : "manual"
+    },
+    "On %@" : {
+      "extractionState" : "manual"
+    },
+    "Once made, the tag is pushed to each remote in turn. Undo deletes it here but not on a remote." : {
+      "extractionState" : "manual"
+    },
+    "Only people you give access can see it." : {
+      "extractionState" : "manual"
+    },
+    "Only the message changes. Staged changes stay staged." : {
+      "extractionState" : "manual"
+    },
+    "Only these files’ changes, staged and unstaged, go into the stash. The other changes stay." : {
+      "extractionState" : "manual"
+    },
+    "Only when pushes go somewhere other than fetches, such as your own copy of the project." : {
+      "extractionState" : "manual"
+    },
+    "Onto" : {
+      "extractionState" : "manual"
+    },
+    "Opacity" : {
+      "extractionState" : "manual"
+    },
+    "Open" : {
+      "extractionState" : "manual"
+    },
+    "Open ${target}" : {
+      "extractionState" : "manual"
+    },
+    "Open %@" : {
+      "extractionState" : "manual"
+    },
+    "Open %@ on Web" : {
+      "extractionState" : "manual"
+    },
+    "Open %@’s SSH Key Settings" : {
+      "extractionState" : "manual"
+    },
+    "Open %@…" : {
+      "extractionState" : "manual"
+    },
+    "Open After Adding" : {
+      "extractionState" : "manual"
+    },
+    "Open Recent" : {
+      "extractionState" : "manual"
+    },
+    "Open Repositories in Other Apps" : {
+      "extractionState" : "manual"
+    },
+    "Open Repository" : {
+      "extractionState" : "manual"
+    },
+    "Open Settings" : {
+      "extractionState" : "manual"
+    },
+    "Open Worktree" : {
+      "extractionState" : "manual"
+    },
+    "Open Wye" : {
+      "extractionState" : "manual"
+    },
+    "Open a %@ from a branch" : {
+      "extractionState" : "manual"
+    },
+    "Open a pull request from this branch" : {
+      "extractionState" : "manual"
+    },
+    "Open in Browser" : {
+      "extractionState" : "manual"
+    },
+    "Open in Browser Instead" : {
+      "extractionState" : "manual"
+    },
+    "Open it on %@" : {
+      "extractionState" : "manual"
+    },
+    "Open on Web" : {
+      "extractionState" : "manual"
+    },
+    "Open the file in the app the system uses for it" : {
+      "extractionState" : "manual"
+    },
+    "Open this repository" : {
+      "extractionState" : "manual"
+    },
+    "Open “%@” on Web" : {
+      "extractionState" : "manual"
+    },
+    "Opens Wye’s clone sheet with an address filled in, to choose where the clone goes." : {
+      "extractionState" : "manual"
+    },
+    "Opens a repository in Wye." : {
+      "extractionState" : "manual"
+    },
+    "Operation, repository or error" : {
+      "extractionState" : "manual"
+    },
+    "Optional" : {
+      "extractionState" : "manual"
+    },
+    "Optional, such as “On an external disk”" : {
+      "extractionState" : "manual"
+    },
+    "Other people’s SSH keys, trusted to sign as them. A commit signed by one of these, or by one of your own keys, shows as verified." : {
+      "extractionState" : "manual"
+    },
+    "Owner" : {
+      "extractionState" : "manual"
+    },
+    "Parent %lld (%@)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Parent %1$lld (%2$@)"
+          }
+        }
+      }
+    },
+    "Parent Hash" : {
+      "extractionState" : "manual"
+    },
+    "Parent Hashes" : {
+      "extractionState" : "manual"
+    },
+    "Passphrase" : {
+      "extractionState" : "manual"
+    },
+    "Paste a key that begins “-----BEGIN OPENSSH PRIVATE KEY-----”, or choose its file, such as id_ed25519. Wye keeps a copy in the Keychain." : {
+      "extractionState" : "manual"
+    },
+    "Path" : {
+      "extractionState" : "manual"
+    },
+    "Pattern" : {
+      "extractionState" : "manual"
+    },
+    "Pattern, such as *.log or /build/" : {
+      "extractionState" : "manual"
+    },
+    "Personal Access Token" : {
+      "extractionState" : "manual"
+    },
+    "Pin %@" : {
+      "extractionState" : "manual"
+    },
+    "Pop" : {
+      "extractionState" : "manual"
+    },
+    "Presented Now" : {
+      "extractionState" : "manual"
+    },
+    "Previous" : {
+      "extractionState" : "manual"
+    },
+    "Previous Conflict" : {
+      "extractionState" : "manual"
+    },
+    "Private" : {
+      "extractionState" : "manual"
+    },
+    "Private Key" : {
+      "extractionState" : "manual"
+    },
+    "Prune Remote Branches" : {
+      "extractionState" : "manual"
+    },
+    "Prune Worktrees" : {
+      "extractionState" : "manual"
+    },
+    "Public" : {
+      "extractionState" : "manual"
+    },
+    "Public Key" : {
+      "extractionState" : "manual"
+    },
+    "Publish" : {
+      "extractionState" : "manual"
+    },
+    "Publish %@…" : {
+      "extractionState" : "manual"
+    },
+    "Publish this branch to its remote" : {
+      "extractionState" : "manual"
+    },
+    "Publish to %@" : {
+      "extractionState" : "manual"
+    },
+    "Publish to %@…" : {
+      "extractionState" : "manual"
+    },
+    "Publish to Hosting Service…" : {
+      "extractionState" : "manual"
+    },
+    "Pull" : {
+      "extractionState" : "manual"
+    },
+    "Pull ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Pull %@ into %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pull %1$@ into %2$@"
+          }
+        }
+      }
+    },
+    "Pull All" : {
+      "extractionState" : "manual"
+    },
+    "Pull All Repositories" : {
+      "extractionState" : "manual"
+    },
+    "Pull By" : {
+      "extractionState" : "manual"
+    },
+    "Pull Repository" : {
+      "extractionState" : "manual"
+    },
+    "Pull Requests" : {
+      "extractionState" : "manual"
+    },
+    "Pull and fetch with options, sync, push elsewhere, force push, tags and remotes" : {
+      "extractionState" : "manual"
+    },
+    "Pull by %@" : {
+      "extractionState" : "manual"
+    },
+    "Pull every repository and report what did not work" : {
+      "extractionState" : "manual"
+    },
+    "Pull, then push" : {
+      "extractionState" : "manual"
+    },
+    "Pulling %lld of %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pulling %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Pulling %lld of %lld…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pulling %1$lld of %2$lld…"
+          }
+        }
+      }
+    },
+    "Pulls every repository in Wye’s list that has an upstream, and says which could not be pulled." : {
+      "extractionState" : "manual"
+    },
+    "Pulls the current branch of a repository in Wye from its upstream branch." : {
+      "extractionState" : "manual"
+    },
+    "Pull…" : {
+      "extractionState" : "manual"
+    },
+    "Push" : {
+      "extractionState" : "manual"
+    },
+    "Push ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Push %@ To" : {
+      "extractionState" : "manual"
+    },
+    "Push %@ To…" : {
+      "extractionState" : "manual"
+    },
+    "Push %@ to %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Push %1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "Push %lld" : {
+      "extractionState" : "manual"
+    },
+    "Push All Tags" : {
+      "extractionState" : "manual"
+    },
+    "Push All Tags to %@" : {
+      "extractionState" : "manual"
+    },
+    "Push All Tags to “%@”" : {
+      "extractionState" : "manual"
+    },
+    "Push Repository" : {
+      "extractionState" : "manual"
+    },
+    "Push Revision To…" : {
+      "extractionState" : "manual"
+    },
+    "Push URL" : {
+      "extractionState" : "manual"
+    },
+    "Push even if commits on the remote branch are lost, unless it moved since the last fetch" : {
+      "extractionState" : "manual"
+    },
+    "Push these commits to %@" : {
+      "extractionState" : "manual"
+    },
+    "Push to…" : {
+      "extractionState" : "manual"
+    },
+    "Pushes the current branch of a repository in Wye to its upstream branch, publishing it if it has none. Never forces." : {
+      "extractionState" : "manual"
+    },
+    "Quick Look" : {
+      "extractionState" : "manual"
+    },
+    "Quick Open…" : {
+      "extractionState" : "manual"
+    },
+    "Quit Wye" : {
+      "extractionState" : "manual"
+    },
+    "Read the repository again" : {
+      "extractionState" : "manual"
+    },
+    "Reading repositories…" : {
+      "extractionState" : "manual"
+    },
+    "Reason" : {
+      "extractionState" : "manual"
+    },
+    "Rebase" : {
+      "extractionState" : "manual"
+    },
+    "Rebase %@ Onto %@ From…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rebase %1$@ Onto %2$@ From…"
+          }
+        }
+      }
+    },
+    "Rebase %@ onto %@…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rebase %1$@ onto %2$@…"
+          }
+        }
+      }
+    },
+    "Rebase Interactively from Here…" : {
+      "extractionState" : "manual"
+    },
+    "Rebase Interactively…" : {
+      "extractionState" : "manual"
+    },
+    "Rebase On Revision…" : {
+      "extractionState" : "manual"
+    },
+    "Rebase Onto…" : {
+      "extractionState" : "manual"
+    },
+    "Rebase…" : {
+      "extractionState" : "manual"
+    },
+    "Recent Messages" : {
+      "extractionState" : "manual"
+    },
+    "Redo Anyway" : {
+      "extractionState" : "manual"
+    },
+    "Reference" : {
+      "extractionState" : "manual"
+    },
+    "References" : {
+      "extractionState" : "manual"
+    },
+    "References in commit messages that match a pattern become links. In the address, $0 stands for the whole reference and $1, $2… for the pattern’s groups." : {
+      "extractionState" : "manual"
+    },
+    "Reflog" : {
+      "extractionState" : "manual"
+    },
+    "Refresh" : {
+      "extractionState" : "manual"
+    },
+    "Refs" : {
+      "extractionState" : "manual"
+    },
+    "Refspec" : {
+      "extractionState" : "manual"
+    },
+    "Relative Path" : {
+      "extractionState" : "manual"
+    },
+    "Reload" : {
+      "extractionState" : "manual"
+    },
+    "Remote" : {
+      "extractionState" : "manual"
+    },
+    "Remote Branch" : {
+      "extractionState" : "manual"
+    },
+    "Remote Branches" : {
+      "extractionState" : "manual"
+    },
+    "Remotes" : {
+      "extractionState" : "manual"
+    },
+    "Remotes…" : {
+      "extractionState" : "manual"
+    },
+    "Remove" : {
+      "extractionState" : "manual"
+    },
+    "Remove %@?" : {
+      "extractionState" : "manual"
+    },
+    "Remove %@…" : {
+      "extractionState" : "manual"
+    },
+    "Remove Account" : {
+      "extractionState" : "manual"
+    },
+    "Remove Deleted Remote Branches" : {
+      "extractionState" : "manual"
+    },
+    "Remove Entry" : {
+      "extractionState" : "manual"
+    },
+    "Remove Identity" : {
+      "extractionState" : "manual"
+    },
+    "Remove Note" : {
+      "extractionState" : "manual"
+    },
+    "Remove Note…" : {
+      "extractionState" : "manual"
+    },
+    "Remove Remote" : {
+      "extractionState" : "manual"
+    },
+    "Remove from Wye" : {
+      "extractionState" : "manual"
+    },
+    "Remove the note on %@?" : {
+      "extractionState" : "manual"
+    },
+    "Remove the remote branches that are gone from the remote, without fetching anything" : {
+      "extractionState" : "manual"
+    },
+    "Remove this identity" : {
+      "extractionState" : "manual"
+    },
+    "Remove this rule" : {
+      "extractionState" : "manual"
+    },
+    "Remove this template" : {
+      "extractionState" : "manual"
+    },
+    "Remove “%@”?" : {
+      "extractionState" : "manual"
+    },
+    "Removes the setting from this repository’s configuration. git then uses the default, or the value Wye applies." : {
+      "extractionState" : "manual"
+    },
+    "Removes the value “%@”. The key’s other %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Removes the value “%1$@”. The key’s other %2$@."
+          }
+        }
+      }
+    },
+    "Remove…" : {
+      "extractionState" : "manual"
+    },
+    "Rename %@…" : {
+      "extractionState" : "manual"
+    },
+    "Rename Group…" : {
+      "extractionState" : "manual"
+    },
+    "Rename on Remote…" : {
+      "extractionState" : "manual"
+    },
+    "Rename or Move" : {
+      "extractionState" : "manual"
+    },
+    "Rename or Move…" : {
+      "extractionState" : "manual"
+    },
+    "Renamed from %@" : {
+      "extractionState" : "manual"
+    },
+    "Reopen" : {
+      "extractionState" : "manual"
+    },
+    "Reorder, reword, squash, fix up or drop this commit and the ones after it" : {
+      "extractionState" : "manual"
+    },
+    "Replace Message" : {
+      "extractionState" : "manual"
+    },
+    "Replace Them" : {
+      "extractionState" : "manual"
+    },
+    "Replace the Message You Are Writing?" : {
+      "extractionState" : "manual"
+    },
+    "Replace the last commit with the staged changes and this message" : {
+      "extractionState" : "manual"
+    },
+    "Repositories" : {
+      "extractionState" : "manual"
+    },
+    "Repositories cloned or created in Wye are in the Files app, under Wye in the sidebar, where other apps can open a repository’s folder or files and edit them in place. Each repository’s .git folder is hidden there, so git’s own data cannot be changed by mistake." : {
+      "extractionState" : "manual"
+    },
+    "Repositories in the Wye location of the Files app can be opened and edited by other apps. ^[%lld repository](inflect: true) %@ still in Wye’s Documents folder, where the Files app shows %@ too. %@ menu can also move it later." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Repositories in the Wye location of the Files app can be opened and edited by other apps. ^[%1$lld repository](inflect: true) %2$@ still in Wye’s Documents folder, where the Files app shows %3$@ too. %4$@ menu can also move it later."
+          }
+        }
+      }
+    },
+    "Repositories that commit as it go back to the default identity. Commits already made keep their author." : {
+      "extractionState" : "manual"
+    },
+    "Repository" : {
+      "extractionState" : "manual"
+    },
+    "Repository Settings…" : {
+      "extractionState" : "manual"
+    },
+    "Repository Status" : {
+      "extractionState" : "manual"
+    },
+    "Repository Template" : {
+      "extractionState" : "manual"
+    },
+    "Repository, branch, file or commit" : {
+      "extractionState" : "manual"
+    },
+    "Repository’s Author" : {
+      "extractionState" : "manual"
+    },
+    "Request Changes" : {
+      "extractionState" : "manual"
+    },
+    "Reset %@ to %@…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reset %1$@ to %2$@…"
+          }
+        }
+      }
+    },
+    "Reset to Revision…" : {
+      "extractionState" : "manual"
+    },
+    "Resolve" : {
+      "extractionState" : "manual"
+    },
+    "Resolve the conflicts first" : {
+      "extractionState" : "manual"
+    },
+    "Resolve this conflict" : {
+      "extractionState" : "manual"
+    },
+    "Resolve…" : {
+      "extractionState" : "manual"
+    },
+    "Restore" : {
+      "extractionState" : "manual"
+    },
+    "Result" : {
+      "extractionState" : "manual"
+    },
+    "Reveal in History" : {
+      "extractionState" : "manual"
+    },
+    "Revert %@" : {
+      "extractionState" : "manual"
+    },
+    "Revert %lld Commits" : {
+      "extractionState" : "manual"
+    },
+    "Review" : {
+      "extractionState" : "manual"
+    },
+    "Review Everything at Once" : {
+      "extractionState" : "manual"
+    },
+    "Review Uncommitted and Unpushed" : {
+      "extractionState" : "manual"
+    },
+    "Review everything not committed or pushed, in every repository" : {
+      "extractionState" : "manual"
+    },
+    "Review lists what is not committed or pushed in every repository, so nothing is left only on this device." : {
+      "extractionState" : "manual"
+    },
+    "Revision" : {
+      "extractionState" : "manual"
+    },
+    "Revision…" : {
+      "extractionState" : "manual"
+    },
+    "Row Size" : {
+      "extractionState" : "manual"
+    },
+    "Rules" : {
+      "extractionState" : "manual"
+    },
+    "Rules In" : {
+      "extractionState" : "manual"
+    },
+    "Rules kept in .git/info/exclude, which is never committed" : {
+      "extractionState" : "manual"
+    },
+    "SSH" : {
+      "extractionState" : "manual"
+    },
+    "SSH Keys" : {
+      "extractionState" : "manual"
+    },
+    "Same as the URL" : {
+      "extractionState" : "manual"
+    },
+    "Save" : {
+      "extractionState" : "manual"
+    },
+    "Save %@ Files as Patch…" : {
+      "extractionState" : "manual"
+    },
+    "Save Changes" : {
+      "extractionState" : "manual"
+    },
+    "Save Folder as Patch…" : {
+      "extractionState" : "manual"
+    },
+    "Save as Patch" : {
+      "extractionState" : "manual"
+    },
+    "Save as Patch…" : {
+      "extractionState" : "manual"
+    },
+    "Save in Keychain" : {
+      "extractionState" : "manual"
+    },
+    "Save the changes to tracked files as a patch file" : {
+      "extractionState" : "manual"
+    },
+    "Save the files at this commit as a zip archive" : {
+      "extractionState" : "manual"
+    },
+    "Save the files at this revision as a zip archive" : {
+      "extractionState" : "manual"
+    },
+    "Say what needs changing in the comment first" : {
+      "extractionState" : "manual"
+    },
+    "Searched %@ commits" : {
+      "extractionState" : "manual"
+    },
+    "Select changed lines in a diff, then stage or discard only those from the menu of any of them." : {
+      "extractionState" : "manual"
+    },
+    "Selected Files…" : {
+      "extractionState" : "manual"
+    },
+    "Selects the line for staging on its own" : {
+      "extractionState" : "manual"
+    },
+    "Service" : {
+      "extractionState" : "manual"
+    },
+    "Set your name and email to commit" : {
+      "extractionState" : "manual"
+    },
+    "Sets a repository’s uncommitted changes aside in a stash, untracked files included." : {
+      "extractionState" : "manual"
+    },
+    "Settings" : {
+      "extractionState" : "manual"
+    },
+    "Share Link…" : {
+      "extractionState" : "manual"
+    },
+    "Share Patch…" : {
+      "extractionState" : "manual"
+    },
+    "Show" : {
+      "extractionState" : "manual"
+    },
+    "Show All (%@)" : {
+      "extractionState" : "manual"
+    },
+    "Show Assumed-Unchanged Files" : {
+      "extractionState" : "manual"
+    },
+    "Show Commit" : {
+      "extractionState" : "manual"
+    },
+    "Show Details" : {
+      "extractionState" : "manual"
+    },
+    "Show First %lld Only" : {
+      "extractionState" : "manual"
+    },
+    "Show Graph" : {
+      "extractionState" : "manual"
+    },
+    "Show HEAD" : {
+      "extractionState" : "manual"
+    },
+    "Show History" : {
+      "extractionState" : "manual"
+    },
+    "Show Ignored Files" : {
+      "extractionState" : "manual"
+    },
+    "Show Invisible Characters" : {
+      "extractionState" : "manual"
+    },
+    "Show Latest Only" : {
+      "extractionState" : "manual"
+    },
+    "Show Merged Commits" : {
+      "extractionState" : "manual"
+    },
+    "Show Only Branches" : {
+      "extractionState" : "manual"
+    },
+    "Show Wye in the Menu Bar" : {
+      "extractionState" : "manual"
+    },
+    "Show all repositories" : {
+      "extractionState" : "manual"
+    },
+    "Show the commits that changed this file" : {
+      "extractionState" : "manual"
+    },
+    "Show the commits this merge brought in" : {
+      "extractionState" : "manual"
+    },
+    "Show the files as a list or under their folders" : {
+      "extractionState" : "manual"
+    },
+    "Show the next match (⌘G)" : {
+      "extractionState" : "manual"
+    },
+    "Show the previous match (⇧⌘G)" : {
+      "extractionState" : "manual"
+    },
+    "Show this commit" : {
+      "extractionState" : "manual"
+    },
+    "Show this commit in the history" : {
+      "extractionState" : "manual"
+    },
+    "Show who last changed each line" : {
+      "extractionState" : "manual"
+    },
+    "Shows one repository’s branch and what it has to push, pull and commit." : {
+      "extractionState" : "manual"
+    },
+    "Shows the files in this folder" : {
+      "extractionState" : "manual"
+    },
+    "Sign Commits" : {
+      "extractionState" : "manual"
+    },
+    "Sign In" : {
+      "extractionState" : "manual"
+    },
+    "Sign In Again…" : {
+      "extractionState" : "manual"
+    },
+    "Sign In With" : {
+      "extractionState" : "manual"
+    },
+    "Sign This Repository’s Commits" : {
+      "extractionState" : "manual"
+    },
+    "Sign in to %@ to publish this repository there." : {
+      "extractionState" : "manual"
+    },
+    "Sign in to GitHub, GitLab, Bitbucket, Gitea or Forgejo to list your repositories." : {
+      "extractionState" : "manual"
+    },
+    "Signed" : {
+      "extractionState" : "manual"
+    },
+    "Signed in as %@" : {
+      "extractionState" : "manual"
+    },
+    "Signing Key" : {
+      "extractionState" : "manual"
+    },
+    "Size" : {
+      "extractionState" : "manual"
+    },
+    "Skip" : {
+      "extractionState" : "manual"
+    },
+    "Snapshot" : {
+      "extractionState" : "manual"
+    },
+    "Some keys, such as remote fetch refspecs, take several values; most use only the last." : {
+      "extractionState" : "manual"
+    },
+    "Someone may be intercepting the connection to read or change what you send, or the host’s key may have been replaced. Don’t continue unless the host’s owners have announced a new key and its fingerprint matches." : {
+      "extractionState" : "manual"
+    },
+    "Sort" : {
+      "extractionState" : "manual"
+    },
+    "Sort By" : {
+      "extractionState" : "manual"
+    },
+    "Sort the files" : {
+      "extractionState" : "manual"
+    },
+    "Squash into This Commit" : {
+      "extractionState" : "manual"
+    },
+    "Stage" : {
+      "extractionState" : "manual"
+    },
+    "Stage All" : {
+      "extractionState" : "manual"
+    },
+    "Stage All Changes" : {
+      "extractionState" : "manual"
+    },
+    "Stage Folder" : {
+      "extractionState" : "manual"
+    },
+    "Stage Line by Line" : {
+      "extractionState" : "manual"
+    },
+    "Stage every change" : {
+      "extractionState" : "manual"
+    },
+    "Stage the submodule in the working copy to record the checked-out commit." : {
+      "extractionState" : "manual"
+    },
+    "Staged Changes…" : {
+      "extractionState" : "manual"
+    },
+    "Start from a template, an earlier message or a draft" : {
+      "extractionState" : "manual"
+    },
+    "Starting Point" : {
+      "extractionState" : "manual"
+    },
+    "Starts At" : {
+      "extractionState" : "manual"
+    },
+    "Stash" : {
+      "extractionState" : "manual"
+    },
+    "Stash %@ Files…" : {
+      "extractionState" : "manual"
+    },
+    "Stash %@…" : {
+      "extractionState" : "manual"
+    },
+    "Stash Changes" : {
+      "extractionState" : "manual"
+    },
+    "Stash Changes…" : {
+      "extractionState" : "manual"
+    },
+    "Stash Folder…" : {
+      "extractionState" : "manual"
+    },
+    "Stash Local Changes" : {
+      "extractionState" : "manual"
+    },
+    "Stash Local Changes First" : {
+      "extractionState" : "manual"
+    },
+    "Stash Selected Files…" : {
+      "extractionState" : "manual"
+    },
+    "Stash Your Local Changes?" : {
+      "extractionState" : "manual"
+    },
+    "Stash and %@" : {
+      "extractionState" : "manual"
+    },
+    "Stash changes in ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Stash or discard the local changes, and choose which files show" : {
+      "extractionState" : "manual"
+    },
+    "Stash the Selected Lines?" : {
+      "extractionState" : "manual"
+    },
+    "Stashes" : {
+      "extractionState" : "manual"
+    },
+    "Stash…" : {
+      "extractionState" : "manual"
+    },
+    "Status" : {
+      "extractionState" : "manual"
+    },
+    "Stop" : {
+      "extractionState" : "manual"
+    },
+    "Stop %@" : {
+      "extractionState" : "manual"
+    },
+    "Stop Assuming Unchanged" : {
+      "extractionState" : "manual"
+    },
+    "Stop Tracking" : {
+      "extractionState" : "manual"
+    },
+    "Stop Tracking Folder…" : {
+      "extractionState" : "manual"
+    },
+    "Stop Tracking the %@ Tracked Files the Rule Matches?" : {
+      "extractionState" : "manual"
+    },
+    "Stop Tracking…" : {
+      "extractionState" : "manual"
+    },
+    "Stop Trusting" : {
+      "extractionState" : "manual"
+    },
+    "Stop Watching" : {
+      "extractionState" : "manual"
+    },
+    "Stop looking for changes to this file until this is undone" : {
+      "extractionState" : "manual"
+    },
+    "Stop trusting this key" : {
+      "extractionState" : "manual"
+    },
+    "Submodule" : {
+      "extractionState" : "manual"
+    },
+    "Submodule: %@" : {
+      "extractionState" : "manual"
+    },
+    "Submodules" : {
+      "extractionState" : "manual"
+    },
+    "Summary" : {
+      "extractionState" : "manual"
+    },
+    "Swap" : {
+      "extractionState" : "manual"
+    },
+    "Swipe" : {
+      "extractionState" : "manual"
+    },
+    "Sync" : {
+      "extractionState" : "manual"
+    },
+    "Sync Keys with iCloud Keychain" : {
+      "extractionState" : "manual"
+    },
+    "Sync Settings with iCloud" : {
+      "extractionState" : "manual"
+    },
+    "Synchronize URL" : {
+      "extractionState" : "manual"
+    },
+    "Syntax Colors" : {
+      "extractionState" : "manual"
+    },
+    "System Monospaced" : {
+      "extractionState" : "manual"
+    },
+    "Tab Width" : {
+      "extractionState" : "manual"
+    },
+    "Tag" : {
+      "extractionState" : "manual"
+    },
+    "Tags" : {
+      "extractionState" : "manual"
+    },
+    "Take Base" : {
+      "extractionState" : "manual"
+    },
+    "Tells the branch a repository in Wye is on, how far it is ahead of and behind its upstream, and how many files have changes. Does not fetch." : {
+      "extractionState" : "manual"
+    },
+    "Template" : {
+      "extractionState" : "manual"
+    },
+    "Templates" : {
+      "extractionState" : "manual"
+    },
+    "Templates show in the composer’s message menu, with the repository’s own commit.template when it is inside the repository. Lines starting with # are left out." : {
+      "extractionState" : "manual"
+    },
+    "The .gitignore at the top of the repository. Committing it shares the rules with everyone." : {
+      "extractionState" : "manual"
+    },
+    "The Usual Key" : {
+      "extractionState" : "manual"
+    },
+    "The account git uses over HTTPS for this repository, and the one its pull requests are read and written with." : {
+      "extractionState" : "manual"
+    },
+    "The authenticity of host “%@” can’t be established." : {
+      "extractionState" : "manual"
+    },
+    "The branch a repository created in Wye starts on." : {
+      "extractionState" : "manual"
+    },
+    "The description is Markdown. Wye wrote these from the branch’s commits." : {
+      "extractionState" : "manual"
+    },
+    "The file stays as it is, still in conflict." : {
+      "extractionState" : "manual"
+    },
+    "The key %@ presents is not the one Wye trusted for it." : {
+      "extractionState" : "manual"
+    },
+    "The lines are set aside in a new stash and taken out of “%@”. The rest of its changes stay." : {
+      "extractionState" : "manual"
+    },
+    "The menu bar item lists the repositories with something to push, pull or commit. The Finder extension, once turned on in System Settings, badges changed files in the repositories Wye lists and adds Open in Wye to Finder’s menus." : {
+      "extractionState" : "manual"
+    },
+    "The names and emails you commit as. The default is used everywhere unless a repository picks another, or you pick one for a single commit from the composer’s “As” menu." : {
+      "extractionState" : "manual"
+    },
+    "The note’s text is lost. The commit itself does not change." : {
+      "extractionState" : "manual"
+    },
+    "The pattern must be a regular expression and the address must contain $0 or a group such as $1" : {
+      "extractionState" : "manual"
+    },
+    "The remote whose %@s are listed" : {
+      "extractionState" : "manual"
+    },
+    "The remote’s default" : {
+      "extractionState" : "manual"
+    },
+    "The server said: %@" : {
+      "extractionState" : "manual"
+    },
+    "The subject and description written so far are replaced." : {
+      "extractionState" : "manual"
+    },
+    "The two sides merged by themselves. Save to take the result." : {
+      "extractionState" : "manual"
+    },
+    "The working copy matches the last commit." : {
+      "extractionState" : "manual"
+    },
+    "The worktree’s folder moves there, and the repository is told where it went." : {
+      "extractionState" : "manual"
+    },
+    "Their folders move, with their history and changes, and stay in Wye’s list as they are. Repositories open in a window or busy with an operation are left where they are." : {
+      "extractionState" : "manual"
+    },
+    "There is no base: both sides added this file, so every line of it is a change." : {
+      "extractionState" : "manual"
+    },
+    "They are copied to the top of “%@” and show as untracked files. Nothing already there is replaced." : {
+      "extractionState" : "manual"
+    },
+    "This" : {
+      "extractionState" : "manual"
+    },
+    "This Clone Only" : {
+      "extractionState" : "manual"
+    },
+    "This Commit As" : {
+      "extractionState" : "manual"
+    },
+    "This Key Has Values" : {
+      "extractionState" : "manual"
+    },
+    "This Repository" : {
+      "extractionState" : "manual"
+    },
+    "This Repository’s Author" : {
+      "extractionState" : "manual"
+    },
+    "This commit has a note" : {
+      "extractionState" : "manual"
+    },
+    "This is not an Ed25519 or ECDSA public key." : {
+      "extractionState" : "manual"
+    },
+    "This key has several values; git uses all of them, or the last" : {
+      "extractionState" : "manual"
+    },
+    "Throw away the selected lines’ changes" : {
+      "extractionState" : "manual"
+    },
+    "Throw away this hunk’s changes" : {
+      "extractionState" : "manual"
+    },
+    "Title" : {
+      "extractionState" : "manual"
+    },
+    "To" : {
+      "extractionState" : "manual"
+    },
+    "Token" : {
+      "extractionState" : "manual"
+    },
+    "Too large to show" : {
+      "extractionState" : "manual"
+    },
+    "Topology" : {
+      "extractionState" : "manual"
+    },
+    "Track %@…" : {
+      "extractionState" : "manual"
+    },
+    "Track the Remote Branch" : {
+      "extractionState" : "manual"
+    },
+    "Tree Hash" : {
+      "extractionState" : "manual"
+    },
+    "Trust New Key" : {
+      "extractionState" : "manual"
+    },
+    "Trust and Connect" : {
+      "extractionState" : "manual"
+    },
+    "Trusted Before" : {
+      "extractionState" : "manual"
+    },
+    "URL" : {
+      "extractionState" : "manual"
+    },
+    "Unarchive %@" : {
+      "extractionState" : "manual"
+    },
+    "Uncommitted Changes That Will Be Lost" : {
+      "extractionState" : "manual"
+    },
+    "Undo Anyway" : {
+      "extractionState" : "manual"
+    },
+    "Undo the choice for this conflict" : {
+      "extractionState" : "manual"
+    },
+    "Undo their changes, newest first, one commit each" : {
+      "extractionState" : "manual"
+    },
+    "Unknown Host" : {
+      "extractionState" : "manual"
+    },
+    "Unlock" : {
+      "extractionState" : "manual"
+    },
+    "Unpin %@" : {
+      "extractionState" : "manual"
+    },
+    "Unpushed Work" : {
+      "extractionState" : "manual"
+    },
+    "Unstage" : {
+      "extractionState" : "manual"
+    },
+    "Unstage All" : {
+      "extractionState" : "manual"
+    },
+    "Unstage Folder" : {
+      "extractionState" : "manual"
+    },
+    "Unstage every change" : {
+      "extractionState" : "manual"
+    },
+    "Until" : {
+      "extractionState" : "manual"
+    },
+    "Update" : {
+      "extractionState" : "manual"
+    },
+    "Update After Changes" : {
+      "extractionState" : "manual"
+    },
+    "Update All Submodules" : {
+      "extractionState" : "manual"
+    },
+    "Updated %@" : {
+      "extractionState" : "manual"
+    },
+    "Upstream Branch" : {
+      "extractionState" : "manual"
+    },
+    "Use Ours" : {
+      "extractionState" : "manual"
+    },
+    "Use Theirs" : {
+      "extractionState" : "manual"
+    },
+    "Use This Text" : {
+      "extractionState" : "manual"
+    },
+    "Use by Default for %@" : {
+      "extractionState" : "manual"
+    },
+    "Used by diffs, blame and the file viewer. Every theme follows the system’s light or dark appearance." : {
+      "extractionState" : "manual"
+    },
+    "Used when the merge makes a commit. Leave it empty for the usual message." : {
+      "extractionState" : "manual"
+    },
+    "Username" : {
+      "extractionState" : "manual"
+    },
+    "Value" : {
+      "extractionState" : "manual"
+    },
+    "View Options" : {
+      "extractionState" : "manual"
+    },
+    "Waiting for you to enter the code…" : {
+      "extractionState" : "manual"
+    },
+    "Warn Past" : {
+      "extractionState" : "manual"
+    },
+    "Watch Folder…" : {
+      "extractionState" : "manual"
+    },
+    "Watch a Folder of Repositories…" : {
+      "extractionState" : "manual"
+    },
+    "Watched Folders" : {
+      "extractionState" : "manual"
+    },
+    "What a plain push sends when no branch is named. With none, Wye pushes the current branch to its upstream." : {
+      "extractionState" : "manual"
+    },
+    "Whatever the other side did to the file, and any edits made to it while resolving, are lost." : {
+      "extractionState" : "manual"
+    },
+    "When More Than %@ Change" : {
+      "extractionState" : "manual"
+    },
+    "Whether pushing a branch also sends every tag in this repository to the same remote." : {
+      "extractionState" : "manual"
+    },
+    "Which %@s to list" : {
+      "extractionState" : "manual"
+    },
+    "Which of the remote’s references a fetch brings, and where they go here. A + updates them even when they don’t move forward." : {
+      "extractionState" : "manual"
+    },
+    "While whitespace changes are hidden, files are staged whole: single hunks and lines need the exact diff." : {
+      "extractionState" : "manual"
+    },
+    "Whitespace" : {
+      "extractionState" : "manual"
+    },
+    "Whitespace changes are hidden, so hunks and lines cannot be staged one by one. Stage the whole file, or show whitespace changes in Settings." : {
+      "extractionState" : "manual"
+    },
+    "Who this commit is by%@" : {
+      "extractionState" : "manual"
+    },
+    "Window" : {
+      "extractionState" : "manual"
+    },
+    "Without a message, the stash is named after the branch and its last commit." : {
+      "extractionState" : "manual"
+    },
+    "Working Copy" : {
+      "extractionState" : "manual"
+    },
+    "Workspace" : {
+      "extractionState" : "manual"
+    },
+    "Worktree" : {
+      "extractionState" : "manual"
+    },
+    "Write a message for what is staged, on this device" : {
+      "extractionState" : "manual"
+    },
+    "Write the result to the file and mark it resolved" : {
+      "extractionState" : "manual"
+    },
+    "Wye" : {
+      "extractionState" : "manual"
+    },
+    "Wye forgets it when it quits." : {
+      "extractionState" : "manual"
+    },
+    "Wye is free software under the Apache License 2.0. It includes the following software, used unmodified." : {
+      "extractionState" : "manual"
+    },
+    "Wye lists every repository in this folder" : {
+      "extractionState" : "manual"
+    },
+    "Wye makes a new folder of that name in the location, and checks the worktree out there." : {
+      "extractionState" : "manual"
+    },
+    "Wye uses it for every repository on %@. Remove it in Settings." : {
+      "extractionState" : "manual"
+    },
+    "Wye, %lld repositories need attention" : {
+      "extractionState" : "manual"
+    },
+    "^[%lld commit](inflect: true) to pull" : {
+      "extractionState" : "manual"
+    },
+    "^[%lld commit](inflect: true) to pull, ^[%lld commit](inflect: true) to push" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "^[%1$lld commit](inflect: true) to pull, ^[%2$lld commit](inflect: true) to push"
+          }
+        }
+      }
+    },
+    "^[%lld entry](inflect: true)" : {
+      "extractionState" : "manual"
+    },
+    "^[%lld repository](inflect: true)" : {
+      "extractionState" : "manual"
+    },
+    "and %@ more" : {
+      "extractionState" : "manual"
+    },
+    "and %lld more" : {
+      "extractionState" : "manual"
+    },
+    "and %lld more unpushed commits" : {
+      "extractionState" : "manual"
+    },
+    "approved" : {
+      "extractionState" : "manual"
+    },
+    "as it will be saved" : {
+      "extractionState" : "manual"
+    },
+    "from %@" : {
+      "extractionState" : "manual"
+    },
+    "git keeps showing changes to tracked files, even ignored ones. They stay on disk as they are, but leave the index: the next commit removes them from the repository, and from other working copies when they pull it." : {
+      "extractionState" : "manual"
+    },
+    "https://example.atlassian.net/browse/$0" : {
+      "extractionState" : "manual"
+    },
+    "https://example.com/owner/library.git or ../library.git" : {
+      "extractionState" : "manual"
+    },
+    "https://example.com/owner/project.git" : {
+      "extractionState" : "manual"
+    },
+    "https://example.com/owner/project.git or git@example.com:owner/project.git" : {
+      "extractionState" : "manual"
+    },
+    "iCloud" : {
+      "extractionState" : "manual"
+    },
+    "into" : {
+      "extractionState" : "manual"
+    },
+    "libgit2" : {
+      "extractionState" : "manual"
+    },
+    "on %@%@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "on %1$@%2$@"
+          }
+        }
+      }
+    },
+    "project" : {
+      "extractionState" : "manual"
+    },
+    "requested changes" : {
+      "extractionState" : "manual"
+    },
+    "reviewed" : {
+      "extractionState" : "manual"
+    },
+    "section.name" : {
+      "extractionState" : "manual"
+    },
+    "someone@example.com" : {
+      "extractionState" : "manual"
+    },
+    "ssh-ed25519 AAAA…" : {
+      "extractionState" : "manual"
+    },
+    "wants to merge" : {
+      "extractionState" : "manual"
+    },
+    "×%lld" : {
+      "extractionState" : "manual"
+    },
+    "“%@” has no upstream to force push to. Publish it first." : {
+      "extractionState" : "manual"
+    },
+    "“%@” is deleted, and the changes it holds are lost." : {
+      "extractionState" : "manual"
+    },
+    "“%@” is not a valid branch name." : {
+      "extractionState" : "manual"
+    },
+    "“%@” is not published to a remote" : {
+      "extractionState" : "manual"
+    },
+    "“%@” on %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "“%1$@” on %2$@"
+          }
+        }
+      }
+    },
+    "•" : {
+      "extractionState" : "manual"
+    },
+    "↑%lld" : {
+      "extractionState" : "manual"
+    },
+    "↓%lld" : {
+      "extractionState" : "manual"
+    },
+    "−" : {
+      "extractionState" : "manual"
+    },
+    "−%lld" : {
+      "extractionState" : "manual"
+    },
+    "⌘↩ opens a repository in a new tab" : {
+      "extractionState" : "manual"
+    }
+  },
+  "version" : "1.0"
+}

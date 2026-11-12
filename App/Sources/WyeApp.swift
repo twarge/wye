@@ -1,5 +1,6 @@
 import AppIntents
 import SwiftUI
+import WyeShared
 import WyeUI
 
 @main
@@ -21,6 +22,6 @@ struct WyeApp: App {
 /// which is where Siri, Shortcuts and Spotlight look for them.
 struct WyeAppIntents: AppIntentsPackage {
     static var includedPackages: [any AppIntentsPackage.Type] {
-        [WyeUIIntentsPackage.self]
+        [WyeUIIntentsPackage.self, WyeSharedIntentsPackage.self]
     }
 }

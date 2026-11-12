@@ -13,10 +13,16 @@ public struct WyeScene: Scene {
     public init() {
         // Wye keeps its own git configuration: inside the sandbox it cannot
         // read the one in the user's home folder.
-        try? GitEnvironment.useGlobalConfiguration(in: .applicationSupportDirectory.appending(path: "Twig/git"))
+        try? GitEnvironment.useGlobalConfiguration(in: .applicationSupportDirectory.appending(path: "Wye/git"))
+        // Files written for drags and shares in an earlier run.
+        DragFiles.removeAll()
         // Before launch finishes, as the system wants both.
         FetchNotifications.install()
         BackgroundRefresh.register(library: RepositoryLibrary.shared)
+        ContinuedWork.register()
+        WidgetActionRunner.install()
+        WyeTips.configure()
+        SettingsSync.shared.start(library: RepositoryLibrary.shared)
     }
 
     public var body: some Scene {
@@ -42,6 +48,8 @@ public struct WyeScene: Scene {
                 .frame(minHeight: 320, idealHeight: 640, maxHeight: .infinity)
         }
         .windowResizability(.contentSize)
+
+        MenuBarStatus(library: library)
         #endif
     }
 }
@@ -52,7 +60,6 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @SceneStorage("openRepository") private var openRepositoryID: String?
     @State private var model: RepositoryModel?
-    @State private var error: PresentedError?
     @State private var actions = WindowActions()
 
     var body: some View {
@@ -64,7 +71,10 @@ struct RootView: View {
                 RepositoryLibraryView { open($0) }
             }
         }
-        .alert(for: $error)
+        // A tap when a commit or a transfer is done, another when
+        // something fails: felt on iPhone, and on a trackpad on the Mac.
+        .sensoryFeedback(.success, trigger: ActivityLog.shared.completions)
+        .sensoryFeedback(.error, trigger: ActivityLog.shared.failures)
         .windowActions(actions, model: model)
         .handlesWyeLinks(actions)
         .settingsOpener()
@@ -88,10 +98,14 @@ struct RootView: View {
                 LinkRouter.shared.request(link)
                 return
             }
+            if PatchFileOpening.isPatch(url) {
+                openPatch(url)
+                return
+            }
             do {
                 open(try library.add(url))
             } catch {
-                self.error = PresentedError(error)
+                actions.notices.post(error, during: "Add Repository")
             }
         }
         .task {
@@ -118,7 +132,23 @@ struct RootView: View {
             openRepositoryID = bookmark.id.uuidString
             library.recordOpened(bookmark)
         } catch {
-            self.error = PresentedError(error)
+            actions.notices.post(error, during: "Open “\(bookmark.name)”")
+        }
+    }
+
+    /// A patch file opened from outside: offered to the repository this
+    /// window shows, as Apply Patch… offers one.
+    private func openPatch(_ url: URL) {
+        guard let model else {
+            actions.notices.post(PatchFileOpening.NoRepository(name: url.lastPathComponent))
+            return
+        }
+        let isScoped = url.startAccessingSecurityScopedResource()
+        defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            model.history.requests.importedPatch = ImportedPatch(name: url.lastPathComponent, data: try Data(contentsOf: url))
+        } catch {
+            model.report(error, during: "Open Patch")
         }
     }
 

@@ -123,6 +123,10 @@ struct FileDiffView: View {
         .buttonStyle(.plain)
         .fileActionsMenu(fileActions)
         .background(.fill.tertiary)
+        // A heading too, so the same rotor steps from file to file.
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityLabel(DiffAccessibility.label(forFile: file, caption: caption))
+        .accessibilityValue(isCollapsed ? "Collapsed" : "Expanded")
         .padding(.top, 10)
         .onAppear { decorations.load(file) }
         .onChange(of: file) { decorations.load(file) }
@@ -149,6 +153,9 @@ struct FileDiffView: View {
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.fill.quaternary)
+        // A heading, so VoiceOver's Headings rotor steps from hunk to hunk.
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityLabel(DiffAccessibility.label(forHunk: hunk))
     }
 
     private func note(_ text: String) -> some View {
@@ -168,6 +175,7 @@ struct FileDiffView: View {
     /// adds every changed line from the last one selected to this one.
     private func toggle(_ line: FileDiff.Line) {
         guard let selection = actions?.selection else { return }
+        Task { await StageLinesTip.selected.donate() }
         if Platform.isExtendingSelection, let anchor, anchor != line.id {
             let range = min(anchor, line.id)...max(anchor, line.id)
             let lines = file.hunks.lazy.flatMap(\.lines).filter { $0.isChange && range.contains($0.id) }
@@ -235,6 +243,7 @@ private struct DiffLineView: View {
 
     @Environment(FindModel.self) private var find: FindModel?
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         if let toggle {
@@ -270,6 +279,10 @@ private struct DiffLineView: View {
         .font(AppearancePreferences.shared.codeFont)
         .padding(.vertical, 1)
         .background(background)
+        // One element a line, said as what it is: the numbers and the sign
+        // read out one by one tell a listener little.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(DiffAccessibility.label(for: line))
     }
 
     /// The line's text in its syntax colours, with tabs laid out and, when
@@ -307,9 +320,11 @@ private struct DiffLineView: View {
         if isSelected {
             return .accentColor.opacity(0.3)
         }
+        // Increase Contrast asks for backgrounds that stand further apart.
+        let strong = contrast == .increased
         return switch line.kind {
-        case .addition: DiffColors.added
-        case .deletion: DiffColors.removed
+        case .addition: strong ? DiffColors.addedChange : DiffColors.added
+        case .deletion: strong ? DiffColors.removedChange : DiffColors.removed
         case .context, .noNewline: .clear
         }
     }
@@ -407,5 +422,39 @@ private struct SubmoduleDiffRows: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// What VoiceOver says for the parts of a diff.
+enum DiffAccessibility {
+    /// "Added, line 12: let x = 1".
+    static func label(for line: FileDiff.Line) -> String {
+        let text = line.text.trimmingCharacters(in: .whitespaces)
+        let said = text.isEmpty ? "blank" : text
+        switch line.kind {
+        case .addition: return "Added, line \(line.newNumber ?? 0): \(said)"
+        case .deletion: return "Removed, line \(line.oldNumber ?? 0): \(said)"
+        case .context: return "Line \(line.newNumber ?? line.oldNumber ?? 0): \(said)"
+        case .noNewline: return text
+        }
+    }
+
+    /// "Changes at line 40: 3 added, 1 removed".
+    static func label(forHunk hunk: FileDiff.Hunk) -> String {
+        let added = hunk.lines.count { $0.kind == .addition }
+        let removed = hunk.lines.count { $0.kind == .deletion }
+        let start = hunk.lines.lazy.compactMap { $0.newNumber ?? $0.oldNumber }.first ?? 0
+        return "Changes at line \(start): \(added) added, \(removed) removed"
+    }
+
+    /// "Staged, Sources/main.swift, Modified, 3 added, 1 removed".
+    static func label(forFile file: FileDiff, caption: String?) -> String {
+        var parts: [String] = []
+        if let caption { parts.append(caption) }
+        parts.append(file.change == .renamed ? "\(file.oldPath) renamed to \(file.path)" : file.path)
+        parts.append(file.change.title)
+        if file.additions > 0 { parts.append("\(file.additions) added") }
+        if file.deletions > 0 { parts.append("\(file.deletions) removed") }
+        return parts.joined(separator: ", ")
     }
 }

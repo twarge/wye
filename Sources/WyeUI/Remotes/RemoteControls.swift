@@ -63,15 +63,6 @@ private struct RemoteDialogs: ViewModifier {
                 Text("Local changes are in the way. Wye can set them aside in a stash, "
                      + "\(autostash.pendingAction?.lowercased() ?? "go ahead"), and put them back afterwards.")
             }
-            .alert(
-                remotes.notice?.title ?? "",
-                isPresented: Binding { remotes.notice != nil } set: { if !$0 { remotes.notice = nil } },
-                presenting: remotes.notice
-            ) { _ in
-                Button("OK", role: .cancel) {}
-            } message: { notice in
-                Text(notice.message)
-            }
     }
 
     private var forcePushTitle: String {

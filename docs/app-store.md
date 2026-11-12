@@ -32,11 +32,11 @@ One app record serves both platforms (Universal Purchase), keyed on the
 bundle ID both builds share.
 
 1. Certificates, Identifiers & Profiles ▸ Identifiers: register the explicit
-   App ID `com.twarge.app.twig`, and the identifiers its extensions need
+   App ID `com.twarge.app.wye`, and the identifiers its extensions need
    (next section). Cloud signing makes the profiles.
 2. App Store Connect ▸ Apps ▸ New App: platforms **iOS** and **macOS**, name
    **Wye** (have a fallback such as "Wye Git" if the name is taken),
-   primary language English (U.S.), bundle ID `com.twarge.app.twig`, a SKU
+   primary language English (U.S.), bundle ID `com.twarge.app.wye`, a SKU
    such as `wye`, full access.
 3. Pricing and Availability: free, all territories.
 4. App Information: category **Developer Tools**, secondary
@@ -46,27 +46,29 @@ bundle ID both builds share.
 
 ## Once: extensions and the app group
 
-The app carries three extensions, each with its own bundle ID under the app's:
+The app carries four extensions, each with its own bundle ID under the app's:
 
 | Target | Bundle ID | Platforms | What it is |
 | --- | --- | --- | --- |
-| WyeWidgets | `com.twarge.app.twig.widgets` | iOS, macOS | The Unpushed Changes widget. |
-| WyeShare | `com.twarge.app.twig.share` | iOS | Share sheet ▸ Clone in Wye. |
-| WyeFiles | `com.twarge.app.twig.files` | iOS | The Wye location in the Files app (a File Provider extension). |
+| WyeWidgets | `com.twarge.app.wye.widgets` | iOS, macOS | The Unpushed Changes and Repository widgets and the Fetch All control. |
+| WyeShare | `com.twarge.app.wye.share` | iOS | Share sheet ▸ Clone in Wye. |
+| WyeFiles | `com.twarge.app.wye.files` | iOS | The Wye location in the Files app (a File Provider extension). |
+| WyeFinder | `com.twarge.app.wye.finder` | macOS | Badges on changed files and Open in Wye in the Finder (a Finder Sync extension). |
 
 The app writes the repositories' status where the widget reads it, the
 share extension leaves an address for the app, and the repositories shown
 in the Files app live in the File Provider's storage, all through an app
 group:
 
-- iOS: `group.com.twarge.app.twig`, in `App/Wye-iOS.entitlements`,
+- iOS: `group.com.twarge.app.wye`, in `App/Wye-iOS.entitlements`,
   `Extensions/Widgets/Widgets-iOS.entitlements`,
   `Extensions/Share/Share.entitlements` and
   `Extensions/Files/Files.entitlements`. The Files extension also names it
   as `NSExtensionFileProviderDocumentGroup` in `Extensions/Files/Info.plist`:
   its storage is the group container's `File Provider Storage` folder.
-- macOS: `257KW9ZJFP.com.twarge.app.twig`, the team-prefixed form, in
-  `App/Wye.entitlements` and `Extensions/Widgets/Widgets-macOS.entitlements`.
+- macOS: `257KW9ZJFP.com.twarge.app.wye`, the team-prefixed form, in
+  `App/Wye.entitlements`, `Extensions/Widgets/Widgets-macOS.entitlements`
+  and `Extensions/Finder/Finder.entitlements`.
   A sandboxed Mac app may use a group named after its team without a
   provisioning profile, which is what keeps `make build` working with no
   profile installed. (The `group.` form on the Mac needs a profile for every
@@ -75,15 +77,17 @@ group:
 
 What the owner has to do once, in Certificates, Identifiers & Profiles:
 
-1. Identifiers ▸ App Groups ▸ +: register `group.com.twarge.app.twig`
+1. Identifiers ▸ App Groups ▸ +: register `group.com.twarge.app.wye`
    (description "Wye").
-2. Identifiers ▸ App IDs: register `com.twarge.app.twig.widgets`,
-   `com.twarge.app.twig.share` and `com.twarge.app.twig.files` as explicit
-   App IDs (platform iOS, macOS checked too for the widgets one; for the
-   share and files ones iOS is enough).
-3. On each of the four App IDs (`com.twarge.app.twig`, `.widgets`,
+2. Identifiers ▸ App IDs: register `com.twarge.app.wye.widgets`,
+   `com.twarge.app.wye.share`, `com.twarge.app.wye.files` and
+   `com.twarge.app.wye.finder` as explicit App IDs (platform iOS, macOS
+   checked too for the widgets one; for the share and files ones iOS is
+   enough; the finder one is macOS only and needs no capability, since
+   the Mac's group needs no registration).
+3. On each of the four App IDs (`com.twarge.app.wye`, `.widgets`,
    `.share`, `.files`), enable **App Groups** and choose
-   `group.com.twarge.app.twig`. The files one needs no other capability:
+   `group.com.twarge.app.wye`. The files one needs no other capability:
    a File Provider extension is an ordinary app extension.
    The Mac's team-prefixed group needs no registration.
 4. Nothing else changes: the extensions are embedded in the app, ship in
@@ -102,9 +106,47 @@ above (Xcode's automatic signing can register them itself when signed in
 to the team).
 
 Siri, Shortcuts and Spotlight need no setup: the App Intents (Pull, Fetch,
-Push, Open, Get Status of a repository, and Fetch All) are in WyeUI and
-reach the app's `Metadata.appintents` through `AppIntentsPackage`, with the
-App Shortcuts phrases ("Pull Horizontal in Wye").
+Push, Open, Get Status, Commit, Check Out, Stash for a repository, and
+Fetch All, Pull All, Find Unpushed, Clone) are in WyeUI and reach the app's
+`Metadata.appintents` through `AppIntentsPackage`, with the App Shortcuts
+phrases ("Pull Horizontal in Wye"). The intents behind the widgets' buttons
+and the control are in WyeShared, which the app and the widget extension
+both take in the same way.
+
+Background work on iOS needs only what `App/Info-iOS.plist` already has:
+`com.twarge.app.wye.transfer.*` under `BGTaskSchedulerPermittedIdentifiers`
+for the continued processing tasks that carry a clone, fetch, pull or push
+on in the background, and `processing` under `UIBackgroundModes`.
+
+## iCloud
+
+Two things use the user's iCloud, both off until the user turns them on.
+
+- **SSH keys in iCloud Keychain** (Settings ▸ SSH Keys). Needs nothing
+  from the developer account: the keys are ordinary Keychain items marked
+  to sync.
+- **Settings sync** (Settings ▸ iCloud), through iCloud's key-value
+  store. It is switched on in the build by three things, which go
+  together:
+
+  1. Certificates, Identifiers & Profiles ▸ Identifiers ▸
+     `com.twarge.app.wye`: **iCloud** enabled (no container is needed for
+     the key-value store).
+  2. `App/Wye.entitlements` and `App/Wye-iOS.entitlements` carry
+
+     ```xml
+     <key>com.apple.developer.ubiquity-kvstore-identifier</key>
+     <string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
+     ```
+
+  3. `WyeSyncsSettingsWithICloud` is true in `App/Info-iOS.plist` and
+     `App/Info-macOS.plist`, which is what shows the setting.
+
+  A signed build therefore needs a provisioning profile that includes
+  iCloud: `make build` fails with "doesn't include the iCloud capability"
+  until Xcode, signed in to the team, has made one (or pass
+  `-allowProvisioningUpdates` through `XCODE_FLAGS`). Unsigned builds
+  (`CODE_SIGNING_ALLOWED=NO`) are unaffected.
 
 ## Each release
 
@@ -230,6 +272,13 @@ between users, or messaging. The result is 4+ (and the equivalent on every
 platform).
 
 ## Still needed
+
+- **App Privacy**: with settings sync or SSH keys in iCloud Keychain
+  turned on, the user's own data goes to the user's own iCloud. Neither
+  reaches the developer, so the answers above stand; say so in the review
+  notes if asked.
+- **Apple Intelligence**: drafting a commit message runs on the device
+  with the system's model and sends nothing anywhere.
 
 - **Screenshots**, made from the app:
   - iPhone 6.9" display: 1320 × 2868 (or 1290 × 2796), portrait, 1–10.

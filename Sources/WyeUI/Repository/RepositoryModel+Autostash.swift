@@ -2,14 +2,6 @@ import Foundation
 import GitKit
 import Observation
 
-/// Something an operation wants the user to know that is not a failure:
-/// where their stashed changes went, or why a pull stopped.
-struct OperationNotice: Identifiable {
-    let id = UUID()
-    let title: String
-    let message: String
-}
-
 /// Asks whether to stash local changes that are in an operation's way.
 @MainActor
 @Observable
@@ -88,9 +80,11 @@ extension RepositoryModel {
         }
         let message = [stoppedReason, note].compactMap { $0 }.joined(separator: "\n\n")
         guard !message.isEmpty else { return }
-        remotes.notice = OperationNotice(
-            title: stoppedReason == nil ? "Local Changes Stashed" : "\(action) Stopped", message: message
-        )
+        // Not a failure, but something is left to do: the stash, or the conflicts.
+        notices.post(Notice(
+            .warning, title: stoppedReason == nil ? "Local Changes Stashed" : "\(action) Stopped", message: message,
+            recoveries: [.showWorkingCopy]
+        ))
     }
 
     static func describe(_ paths: [String]) -> String {

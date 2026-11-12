@@ -13,11 +13,17 @@ final class WindowActions {
     var isCreatingRepository = false
     /// The activity log, as a sheet where there are no other windows.
     var isShowingActivity = false
+    /// Pull All's sheet, which starts pulling as it appears.
+    var isPullingAll = false
+    /// Whether the repository list shows the Review instead: everything
+    /// not committed or pushed, in every repository.
+    var isReviewing = false
     /// The address the clone sheet starts with, from a `wye://clone` link.
     var cloneAddress = ""
     /// Quick open on screen, and what it is choosing for.
     var quickOpen: QuickOpenPurpose?
-    var error: PresentedError?
+    /// What went wrong in the window apart from its repository.
+    let notices = NoticeCenter()
 
     /// Set by the window: open a repository in it, and go back to the list.
     var open: (RepositoryBookmark) -> Void = { _ in }
@@ -39,7 +45,7 @@ final class WindowActions {
                 added.append(try library.add(url))
             }
         } catch {
-            self.error = PresentedError(error)
+            notices.post(error, during: "Add Repository")
         }
         if opening, urls.count == 1, let bookmark = added.first {
             open(bookmark)
@@ -62,6 +68,7 @@ private struct WindowActionsPresenter: ViewModifier {
 
     @Environment(RepositoryLibrary.self) private var library
     @Environment(\.openWindow) private var openWindow
+    @State private var pullAll = PullAllModel()
 
     func body(content: Content) -> some View {
         content
@@ -80,11 +87,17 @@ private struct WindowActionsPresenter: ViewModifier {
                     .sheet(isPresented: $actions.isShowingActivity) {
                         ActivityView(showsDone: true)
                     }
+                Color.clear
+                    .sheet(isPresented: $actions.isPullingAll) {
+                        PullAllSheet(model: pullAll) { actions.open($0) }
+                            .environment(library)
+                            .onAppear { pullAll.start(library.listedBookmarks) }
+                    }
             }
             .fileImporter(isPresented: $actions.isAddingRepository, allowedContentTypes: [.folder]) { result in
                 switch result {
                 case .success(let url): actions.add([url], to: library)
-                case .failure(let failure): actions.error = PresentedError(failure)
+                case .failure(let failure): actions.notices.post(failure)
                 }
             }
             .sheet(item: $actions.quickOpen, onDismiss: goToChosen) { purpose in
@@ -99,10 +112,6 @@ private struct WindowActionsPresenter: ViewModifier {
                     actions.chosen = (item, purpose, inNewTab)
                     actions.quickOpen = nil
                 }
-            }
-            .background {
-                // On its own view, so it does not take the place of the window's alert.
-                Color.clear.alert(for: $actions.error)
             }
     }
 

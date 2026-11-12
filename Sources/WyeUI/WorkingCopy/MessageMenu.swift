@@ -49,6 +49,7 @@ struct MessageMenu: View {
     @State private var recent: [String] = []
     @State private var repositoryTemplate: String?
     @State private var pending: Pending?
+    @State private var isDrafting = false
 
     /// A message waiting to replace what the composer holds.
     private struct Pending: Identifiable {
@@ -60,6 +61,13 @@ struct MessageMenu: View {
     var body: some View {
         let templates = CommitPreferences.shared.templates
         Menu {
+            if CommitMessageDrafter.isSupported {
+                Section {
+                    Button("Draft from Changes", systemImage: "sparkles") { draft() }
+                        .disabled(isDrafting || model.workingCopy.entries.isEmpty)
+                        .help("Write a message for what is staged, on this device")
+                }
+            }
             if repositoryTemplate != nil || !templates.isEmpty {
                 Section("Templates") {
                     if let repositoryTemplate {
@@ -81,13 +89,19 @@ struct MessageMenu: View {
                 }
             }
         } label: {
-            Label("Messages", systemImage: "text.badge.plus")
-                .labelStyle(.iconOnly)
+            if isDrafting {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel("Drafting a message")
+            } else {
+                Label("Messages", systemImage: "text.badge.plus")
+                    .labelStyle(.iconOnly)
+            }
         }
         .menuIndicator(.hidden)
         .buttonStyle(.borderless)
         .fixedSize()
-        .help("Start from a template or an earlier message")
+        .help("Start from a template, an earlier message or a draft")
         .task(id: model.snapshot?.head) {
             recent = await model.recentCommitMessages()
             repositoryTemplate = await model.repositoryCommitTemplate()
@@ -103,6 +117,22 @@ struct MessageMenu: View {
             }
         } message: { _ in
             Text("The subject and description written so far are replaced.")
+        }
+    }
+
+    /// Drafts a message from the changes with the on-device model, then
+    /// offers it as any other message is: never over what is being written
+    /// without asking.
+    private func draft() {
+        isDrafting = true
+        Task {
+            defer { isDrafting = false }
+            do {
+                let message = try await CommitMessageDrafter.draft(for: model.repository)
+                use(message.body.isEmpty ? message.subject : message.subject + "\n\n" + message.body, isTemplate: false)
+            } catch {
+                model.report(error)
+            }
         }
     }
 

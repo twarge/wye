@@ -1,0 +1,75 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@" : {
+      "extractionState" : "manual"
+    },
+    "Cancel" : {
+      "extractionState" : "manual"
+    },
+    "Check out ${branch} in ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Clone" : {
+      "extractionState" : "manual"
+    },
+    "Clone ${address}" : {
+      "extractionState" : "manual"
+    },
+    "Clone in Wye" : {
+      "extractionState" : "manual"
+    },
+    "Commit changes in ${repository} with ${message}" : {
+      "extractionState" : "manual"
+    },
+    "Done" : {
+      "extractionState" : "manual"
+    },
+    "Fetch" : {
+      "extractionState" : "manual"
+    },
+    "Fetch ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Fetch All Repositories" : {
+      "extractionState" : "manual"
+    },
+    "Fetches every repository in Wye." : {
+      "extractionState" : "manual"
+    },
+    "Get the status of ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Open ${target}" : {
+      "extractionState" : "manual"
+    },
+    "Open Wye to finish cloning." : {
+      "extractionState" : "manual"
+    },
+    "Pull" : {
+      "extractionState" : "manual"
+    },
+    "Pull ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Push ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Repository" : {
+      "extractionState" : "manual"
+    },
+    "Shows one repository’s branch and what it has to push, pull and commit." : {
+      "extractionState" : "manual"
+    },
+    "Stash changes in ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "There is no git repository address in what was shared." : {
+      "extractionState" : "manual"
+    },
+    "Wye shows its clone sheet with this address the next time you open it." : {
+      "extractionState" : "manual"
+    }
+  },
+  "version" : "1.0"
+}

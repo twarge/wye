@@ -73,7 +73,10 @@ Tick an item when it lands on main.
 ## App
 
 - [ ] App icon.
-- [ ] Localisation with string catalogs.
+- [ ] Localisation. The string catalogs are in place and `make strings`
+      keeps them current; there are no translations yet, and sentences
+      built in code (the intents' answers, counts with plurals) are not
+      yet looked up in them.
 - [x] Repository groups and search in the repository list.
 - [x] Quick open; a full menu bar and keyboard shortcuts on macOS.
 - [ ] Commit signing.

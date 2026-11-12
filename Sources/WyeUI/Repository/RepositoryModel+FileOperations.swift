@@ -93,7 +93,7 @@ extension RepositoryModel {
                 return
             }
         } catch {
-            self.error = PresentedError(error)
+            report(error)
             return
         }
         await restore(path, from: commit)
@@ -110,7 +110,7 @@ extension RepositoryModel {
         do {
             return try await repository.recentCommitMessages()
         } catch {
-            self.error = PresentedError(error)
+            report(error)
             return []
         }
     }

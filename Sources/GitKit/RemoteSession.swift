@@ -130,8 +130,17 @@ final class RemoteSession {
             )
         }
 
-        callbacks.sideband_progress = { _, _, payload in
-            RemoteSession.from(payload)?.isCancelled == true ? GIT_EUSER.rawValue : 0
+        callbacks.sideband_progress = { text, length, payload in
+            guard let session = RemoteSession.from(payload) else { return 0 }
+            if session.isCancelled { return GIT_EUSER.rawValue }
+            // What the server says alongside the data: kept for whoever
+            // started the operation to read afterwards.
+            if let text, length > 0, let transfer = session.transfer {
+                text.withMemoryRebound(to: UInt8.self, capacity: Int(length)) {
+                    transfer.hear(UnsafeBufferPointer(start: $0, count: Int(length)))
+                }
+            }
+            return 0
         }
 
         callbacks.transfer_progress = { stats, payload in

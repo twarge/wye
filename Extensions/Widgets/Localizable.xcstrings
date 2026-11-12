@@ -1,0 +1,104 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@" : {
+      "extractionState" : "manual"
+    },
+    "%@: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+      "extractionState" : "manual"
+    },
+    "Changes" : {
+      "extractionState" : "manual"
+    },
+    "Check out ${branch} in ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Clone ${address}" : {
+      "extractionState" : "manual"
+    },
+    "Commit changes in ${repository} with ${message}" : {
+      "extractionState" : "manual"
+    },
+    "Edit the widget to choose a repository" : {
+      "extractionState" : "manual"
+    },
+    "Everything is pushed" : {
+      "extractionState" : "manual"
+    },
+    "Fetch" : {
+      "extractionState" : "manual"
+    },
+    "Fetch ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Fetch All" : {
+      "extractionState" : "manual"
+    },
+    "Fetch All Repositories" : {
+      "extractionState" : "manual"
+    },
+    "Fetches every repository in Wye." : {
+      "extractionState" : "manual"
+    },
+    "Get the status of ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "One repository’s branch and status, with Fetch and Pull." : {
+      "extractionState" : "manual"
+    },
+    "Open ${target}" : {
+      "extractionState" : "manual"
+    },
+    "Pull" : {
+      "extractionState" : "manual"
+    },
+    "Pull ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Push ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Repositories with commits to push or changes to commit." : {
+      "extractionState" : "manual"
+    },
+    "Repository" : {
+      "extractionState" : "manual"
+    },
+    "Repository not found" : {
+      "extractionState" : "manual"
+    },
+    "Shows one repository’s branch and what it has to push, pull and commit." : {
+      "extractionState" : "manual"
+    },
+    "Stash changes in ${repository}" : {
+      "extractionState" : "manual"
+    },
+    "Uncommitted changes" : {
+      "extractionState" : "manual"
+    },
+    "Unpushed Changes" : {
+      "extractionState" : "manual"
+    },
+    "Up to date" : {
+      "extractionState" : "manual"
+    },
+    "repositories to push" : {
+      "extractionState" : "manual"
+    },
+    "repository to push" : {
+      "extractionState" : "manual"
+    }
+  },
+  "version" : "1.0"
+}

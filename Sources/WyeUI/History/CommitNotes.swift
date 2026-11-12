@@ -47,7 +47,7 @@ final class CommitNotes {
             let text = try await repository.note(for: commit)
             draft = Draft(commit: commit, text: text?.trimmingCharacters(in: .newlines) ?? "", isEditing: text != nil)
         } catch {
-            model.error = PresentedError(error)
+            model.report(error)
         }
     }
 
