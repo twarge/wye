@@ -15,7 +15,7 @@
 		2B0000000000000000000020 /* WyeShared in Frameworks */ = {isa = PBXBuildFile; productRef = 2B0000000000000000000060 /* WyeShared */; };
 		2B0000000000000000000021 /* WyeWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2B0000000000000000000011 /* WyeWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3C0000000000000000000020 /* WyeShared in Frameworks */ = {isa = PBXBuildFile; productRef = 3C0000000000000000000060 /* WyeShared */; };
-		3C0000000000000000000021 /* WyeShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3C0000000000000000000011 /* WyeShare.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3C0000000000000000000021 /* WyeShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3C0000000000000000000011 /* WyeShare.appex */; platformFilters = (ios, xros, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4D0000000000000000000020 /* WyeShared in Frameworks */ = {isa = PBXBuildFile; productRef = 4D0000000000000000000060 /* WyeShared */; };
 		4D0000000000000000000021 /* WyeFiles.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4D0000000000000000000011 /* WyeFiles.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -449,7 +449,10 @@
 		};
 		3C0000000000000000000400 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			platformFilter = ios;
+			platformFilters = (
+				ios,
+				xros,
+			);
 			target = 3C0000000000000000000200 /* WyeShare */;
 			targetProxy = 3C0000000000000000000401 /* PBXContainerItemProxy */;
 		};
@@ -471,6 +474,8 @@
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "App/Wye-iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "App/Wye-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=xros*]" = "App/Wye-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=xrsimulator*]" = "App/Wye-iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = App/Wye.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = YES;
@@ -484,6 +489,8 @@
 				INFOPLIST_FILE = "App/Info-macOS.plist";
 				"INFOPLIST_FILE[sdk=iphoneos*]" = "App/Info-iOS.plist";
 				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "App/Info-iOS.plist";
+				"INFOPLIST_FILE[sdk=xros*]" = "App/Info-iOS.plist";
+				"INFOPLIST_FILE[sdk=xrsimulator*]" = "App/Info-iOS.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Wye;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -504,15 +511,24 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=xros*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=xrsimulator*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.twarge.app.twig;
 				PRODUCT_NAME = Wye;
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -525,6 +541,8 @@
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "App/Wye-iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "App/Wye-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=xros*]" = "App/Wye-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=xrsimulator*]" = "App/Wye-iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = App/Wye.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = YES;
@@ -538,6 +556,8 @@
 				INFOPLIST_FILE = "App/Info-macOS.plist";
 				"INFOPLIST_FILE[sdk=iphoneos*]" = "App/Info-iOS.plist";
 				"INFOPLIST_FILE[sdk=iphonesimulator*]" = "App/Info-iOS.plist";
+				"INFOPLIST_FILE[sdk=xros*]" = "App/Info-iOS.plist";
+				"INFOPLIST_FILE[sdk=xrsimulator*]" = "App/Info-iOS.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Wye;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -558,15 +578,24 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=xros*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=xrsimulator*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.twarge.app.twig;
 				PRODUCT_NAME = Wye;
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};
@@ -575,6 +604,8 @@
 			buildSettings = {
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "Extensions/Widgets/Widgets-iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Extensions/Widgets/Widgets-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=xros*]" = "Extensions/Widgets/Widgets-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=xrsimulator*]" = "Extensions/Widgets/Widgets-iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Extensions/Widgets/Widgets-macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -601,16 +632,27 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=xros*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=xrsimulator*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.twarge.app.twig.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -619,6 +661,8 @@
 			buildSettings = {
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = "Extensions/Widgets/Widgets-iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "Extensions/Widgets/Widgets-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=xros*]" = "Extensions/Widgets/Widgets-iOS.entitlements";
+				"CODE_SIGN_ENTITLEMENTS[sdk=xrsimulator*]" = "Extensions/Widgets/Widgets-iOS.entitlements";
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Extensions/Widgets/Widgets-macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -645,16 +689,27 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=xros*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=xrsimulator*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.twarge.app.twig.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};
@@ -680,11 +735,12 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -710,11 +766,12 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};

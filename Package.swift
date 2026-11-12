@@ -6,7 +6,8 @@ let package = Package(
     name: "Wye",
     platforms: [
         .macOS(.v26),
-        .iOS(.v26)
+        .iOS(.v26),
+        .visionOS(.v26)
     ],
     products: [
         // The app is built by Wye.xcodeproj, which links these products.

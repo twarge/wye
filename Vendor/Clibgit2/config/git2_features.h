@@ -1,6 +1,7 @@
 /*
  * Build configuration for the libgit2 sources in Vendor/libgit2, standing in
- * for the header CMake would generate. One configuration serves macOS and iOS.
+ * for the header CMake would generate. One configuration serves macOS, iOS
+ * and visionOS.
  */
 #ifndef INCLUDE_features_h__
 #define INCLUDE_features_h__
@@ -32,7 +33,7 @@
 
 /*
  * getentropy() is public on macOS only, declared in <sys/random.h>. Where the
- * header is absent (iOS) libgit2 seeds from /dev/urandom instead.
+ * header is absent (iOS, visionOS) libgit2 seeds from /dev/urandom instead.
  */
 #if __has_include(<sys/random.h>)
 # include <sys/types.h>

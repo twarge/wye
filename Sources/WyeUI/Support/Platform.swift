@@ -216,7 +216,11 @@ extension View {
                 .imageScale(.large)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
+                #if os(visionOS)
+                .glassBackgroundEffect(in: .capsule)
+                #else
                 .glassEffect(.regular.interactive(), in: .capsule)
+                #endif
                 .padding(.bottom, 8)
                 .frame(maxWidth: .infinity)
         }
@@ -569,10 +573,11 @@ extension Platform {
     /// has one: on macOS repositories are wherever the user keeps them, and
     /// the Finder shows them there.
     static var hasFilesLocation: Bool {
-        #if os(macOS)
-        false
-        #else
+        // visionOS has no Files extension: clones go in Documents there.
+        #if os(iOS)
         true
+        #else
+        false
         #endif
     }
 
@@ -589,3 +594,14 @@ extension Platform {
         #endif
     }
 }
+
+#if os(visionOS)
+// MARK: visionOS
+
+extension View {
+    /// visionOS has no navigation subtitle; the title stands alone there.
+    func navigationSubtitle<S: StringProtocol>(_ subtitle: S) -> some View {
+        self
+    }
+}
+#endif
