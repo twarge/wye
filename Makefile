@@ -13,6 +13,7 @@
 #   make test       run the tests
 #   make deps       fetch the libgit2 submodule
 #   make icon       regenerate the app icon from scripts/make-app-icon.swift
+#   make symbol     regenerate the branch symbol from scripts/make-branch-symbol.swift
 #   make strings    bring the string catalogs up to date with the sources
 #   make archive    Release .xcarchive for the App Store (PLATFORM=macOS or iOS)
 #   make upload     export that archive to App Store Connect
@@ -31,7 +32,7 @@ XCODEBUILD := xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(
 
 LIBGIT2 := Vendor/libgit2/include/git2.h
 
-.PHONY: all build run release ios test deps clean help icon strings archive upload
+.PHONY: all build run release ios test deps clean help icon symbol strings archive upload
 
 all: build
 
@@ -64,6 +65,10 @@ test: deps
 ## icon: regenerate App/Resources/AppIcon.icon from scripts/make-app-icon.swift
 icon:
 	swift scripts/make-app-icon.swift
+
+## symbol: regenerate the branch symbol in App/Resources/Assets.xcassets
+symbol:
+	swift scripts/make-branch-symbol.swift
 
 ## strings: bring the string catalogs up to date with the sources
 strings: deps

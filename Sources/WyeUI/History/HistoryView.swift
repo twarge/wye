@@ -135,7 +135,7 @@ struct HistoryView: View {
                     }
                     .help("Act on the selected commits")
                 }
-                Button("New Branch", systemImage: "plus") { isCreatingBranch = true }
+                Button("New Branch", image: .branch) { isCreatingBranch = true }
                     .help("Create a branch at the selected commit")
                 Button("Compare", systemImage: "arrow.left.arrow.right") {
                     history.requests.compare = CompareRequest(from: history.selection?.hex ?? "HEAD", to: "HEAD")

@@ -34,11 +34,23 @@ struct RepositoryLibraryView: View {
                     } description: {
                         Text("Add a folder that holds a git repository, or clone one, to browse its history and commit changes.")
                     } actions: {
-                        Button("Add Repository…") { actions.isAddingRepository = true }
+                        // One above the other, each as wide as the widest.
+                        VStack(spacing: 8) {
+                            Button { actions.isAddingRepository = true } label: {
+                                Text("Add Repository…").frame(maxWidth: .infinity)
+                            }
                             .buttonStyle(.borderedProminent)
-                        Button("Watch a Folder of Repositories…") { isChoosingFolderToWatch = true }
-                        Button("Clone Repository…") { actions.isCloning = true }
-                        Button("New Repository…") { actions.isCreatingRepository = true }
+                            Button { isChoosingFolderToWatch = true } label: {
+                                Text("Watch a Folder of Repositories…").frame(maxWidth: .infinity)
+                            }
+                            Button { actions.isCloning = true } label: {
+                                Text("Clone Repository…").frame(maxWidth: .infinity)
+                            }
+                            Button { actions.isCreatingRepository = true } label: {
+                                Text("New Repository…").frame(maxWidth: .infinity)
+                            }
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
                     }
                 }
             }
