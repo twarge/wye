@@ -450,11 +450,17 @@ private struct CommitRow: View {
                     if columns.hash {
                         hash.frame(width: widths.hash, alignment: .leading)
                     }
-                    if columns.checks {
-                        checkColumn
+                    // The mark stands at the middle of the message beside it,
+                    // tags and all: a tag's text is smaller than the
+                    // message's, so its middle is not that of a line of
+                    // the row's text set on the same baseline.
+                    HStack(spacing: HistoryColumnWidths.spacing) {
+                        if columns.checks {
+                            checkColumn
+                        }
+                        summary
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    summary
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     if columns.author {
                         author.frame(width: widths.author, alignment: .leading)
                     }
@@ -493,13 +499,12 @@ private struct CommitRow: View {
     }
 
     /// The mark of the commit's checks in its column, empty for a commit
-    /// nothing ran for. The column is a line of text high and the mark is
-    /// laid over it, so a mark larger than the text leaves the row as
+    /// nothing ran for. The column has no height of its own and the mark
+    /// is laid over it, so a mark larger than the text leaves the row as
     /// tall as it was.
     private var checkColumn: some View {
-        Text(verbatim: " ")
-            .accessibilityHidden(true)
-            .frame(width: HistoryColumnWidths.checks)
+        Color.clear
+            .frame(width: HistoryColumnWidths.checks, height: 0)
             .overlay {
                 if let checks {
                     CommitCheckMark(commit: row.id, status: checks, scale: size == .compact ? .medium : .large)
