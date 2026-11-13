@@ -104,7 +104,7 @@ final class HistoryPreferences {
         firstParentOnly = defaults.bool(forKey: Key.firstParentOnly)
         // Each branch's commits together under its merge, unless date order was chosen.
         order = defaults.string(forKey: Key.order).flatMap(HistoryOptions.Order.init) ?? .topological
-        grouping = defaults.string(forKey: Key.grouping).flatMap(Grouping.init) ?? .month
+        grouping = defaults.string(forKey: Key.grouping).flatMap(Grouping.init) ?? Grouping.none
         rowSize = defaults.string(forKey: Key.rowSize).flatMap(RowSize.init) ?? .regular
         showsHash = defaults.object(forKey: Key.showsHash) as? Bool ?? true
         showsAuthor = defaults.object(forKey: Key.showsAuthor) as? Bool ?? true
@@ -148,7 +148,7 @@ struct HistoryColumns: Hashable {
 /// What the rows of a history depend on beyond its commits.
 struct HistoryLayout: Hashable {
     var options = HistoryOptions()
-    var grouping = HistoryPreferences.Grouping.month
+    var grouping = HistoryPreferences.Grouping.none
 }
 
 extension HistoryPreferences {

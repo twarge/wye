@@ -356,9 +356,7 @@ private struct CommitRow: View {
                     summary
                         .frame(maxWidth: .infinity, alignment: .leading)
                     if columns.author {
-                        author
-                            .foregroundStyle(.secondary)
-                            .frame(width: widths.author, alignment: .leading)
+                        author.frame(width: widths.author, alignment: .leading)
                     }
                     if columns.date {
                         date.frame(width: widths.date, alignment: .leading)
@@ -407,9 +405,9 @@ private struct CommitRow: View {
     }
 
     private var date: some View {
+        // The row's own text, with figures of one width so dates line up.
         Text(row.commit.author.date, format: .dateTime.day().month(.defaultDigits).year(.twoDigits))
-            .font(.callout.monospacedDigit())
-            .foregroundStyle(.secondary)
+            .monospacedDigit()
             .lineLimit(1)
     }
 }
