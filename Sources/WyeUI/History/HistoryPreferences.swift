@@ -3,7 +3,7 @@ import GitKit
 import Observation
 
 /// How histories are shown, for the whole app: the graph, the order, which
-/// parents are followed, the headings and the row size. Kept in
+/// parents are followed, the headings, what a row shows and its size. Kept in
 /// `UserDefaults`, and observable so open histories follow a change at once.
 @MainActor
 @Observable
@@ -45,6 +45,9 @@ final class HistoryPreferences {
         static let order = "history.order"
         static let grouping = "history.grouping"
         static let rowSize = "history.rowSize"
+        static let showsHash = "history.showsHash"
+        static let showsAuthor = "history.showsAuthor"
+        static let showsDate = "history.showsDate"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -70,6 +73,19 @@ final class HistoryPreferences {
         didSet { defaults.set(rowSize.rawValue, forKey: Key.rowSize) }
     }
 
+    /// What a row shows beside the summary.
+    var showsHash: Bool {
+        didSet { defaults.set(showsHash, forKey: Key.showsHash) }
+    }
+
+    var showsAuthor: Bool {
+        didSet { defaults.set(showsAuthor, forKey: Key.showsAuthor) }
+    }
+
+    var showsDate: Bool {
+        didSet { defaults.set(showsDate, forKey: Key.showsDate) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         showsGraph = defaults.object(forKey: Key.showsGraph) as? Bool ?? true
@@ -78,6 +94,14 @@ final class HistoryPreferences {
         order = defaults.string(forKey: Key.order).flatMap(HistoryOptions.Order.init) ?? .topological
         grouping = defaults.string(forKey: Key.grouping).flatMap(Grouping.init) ?? .month
         rowSize = defaults.string(forKey: Key.rowSize).flatMap(RowSize.init) ?? .regular
+        showsHash = defaults.object(forKey: Key.showsHash) as? Bool ?? true
+        showsAuthor = defaults.bool(forKey: Key.showsAuthor)
+        showsDate = defaults.object(forKey: Key.showsDate) as? Bool ?? true
+    }
+
+    /// What a row shows beside the summary, all together.
+    var columns: HistoryColumns {
+        HistoryColumns(hash: showsHash, author: showsAuthor, date: showsDate)
     }
 
     /// How the engine reads the history.
@@ -90,6 +114,14 @@ final class HistoryPreferences {
     var layout: HistoryLayout {
         HistoryLayout(options: options, grouping: grouping)
     }
+}
+
+/// What a history's row shows beside its summary. Rows a column wide show
+/// the author only when asked; those on two lines, on an iPhone, always do.
+struct HistoryColumns: Hashable {
+    var hash = true
+    var author = false
+    var date = true
 }
 
 /// What the rows of a history depend on beyond its commits.
@@ -108,5 +140,8 @@ extension HistoryPreferences {
         if order != fresh.order { order = fresh.order }
         if grouping != fresh.grouping { grouping = fresh.grouping }
         if rowSize != fresh.rowSize { rowSize = fresh.rowSize }
+        if showsHash != fresh.showsHash { showsHash = fresh.showsHash }
+        if showsAuthor != fresh.showsAuthor { showsAuthor = fresh.showsAuthor }
+        if showsDate != fresh.showsDate { showsDate = fresh.showsDate }
     }
 }

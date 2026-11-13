@@ -16,6 +16,7 @@ enum SettingsSyncPlan {
         "diff.contextLines", "diff.ignoreWhitespace", "diff.showsInvisibles", "diff.tabWidth",
         "diff.autoCollapseFileCount",
         "history.showsGraph", "history.firstParentOnly", "history.order", "history.grouping", "history.rowSize",
+        "history.showsHash", "history.showsAuthor", "history.showsDate",
         "appearance.syntaxTheme", "workingCopy.layout", "workingCopy.sort", "repositoryListOrder",
         "authorProfiles"
     ]

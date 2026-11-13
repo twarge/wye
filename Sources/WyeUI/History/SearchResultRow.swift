@@ -6,6 +6,8 @@ import SwiftUI
 struct SearchResultRow: View {
     var commit: Commit
     var labels: [RefLabel]
+    /// The author is on the second line whatever this says.
+    var columns = HistoryColumns()
     /// `HEAD`'s commit is bold, in place of a badge.
     var isHead = false
     var hasNote = false
@@ -25,13 +27,17 @@ struct SearchResultRow: View {
                 }
             }
             HStack(spacing: 6) {
-                Text(commit.id.abbreviated())
-                    .font(.smallCode)
+                if columns.hash {
+                    Text(commit.id.abbreviated())
+                        .font(.smallCode)
+                }
                 Text(commit.author.name)
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                Text(commit.author.date, format: .dateTime.day().month(.defaultDigits).year(.twoDigits))
-                    .monospacedDigit()
+                if columns.date {
+                    Text(commit.author.date, format: .dateTime.day().month(.defaultDigits).year(.twoDigits))
+                        .monospacedDigit()
+                }
             }
             .font(.caption)
             .foregroundStyle(.secondary)

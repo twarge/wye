@@ -24,6 +24,7 @@ struct HistoryView: View {
                     // only mislead: results are plain rows in the history's order.
                     ForEach(search.results) { commit in
                         SearchResultRow(commit: commit, labels: model.refLabels[commit.id] ?? [],
+                                        columns: preferences.columns,
                                         isHead: commit.id == headID, hasNote: history.notes.hasNote(commit.id))
                             .tag(commit.id)
                             .draggable(drag(for: commit))
@@ -44,7 +45,8 @@ struct HistoryView: View {
                                 .selectionDisabled()
                         case .commit(let row):
                             CommitRow(row: row, labels: model.refLabels[row.id] ?? [], graphWidth: graphWidth,
-                                      showsGraph: preferences.showsGraph, size: rowSize,
+                                      showsGraph: preferences.showsGraph, columns: preferences.columns,
+                                      size: rowSize,
                                       isHead: row.id == headID, hasNote: history.notes.hasNote(row.id)) {
                                 Task { await history.toggleFold(of: row.id) }
                             }
@@ -170,14 +172,19 @@ struct HistoryView: View {
     }
 
     /// The context menu for the commits it was opened on: one commit's
-    /// actions, or those for several.
+    /// actions, or those for several, then what the rows show. Opened on
+    /// no commit, it has all the ways the history is shown.
     @ViewBuilder
     private func selectionMenu(_ ids: Set<OID>) -> some View {
         let commits = model.history.commits(ids)
         if commits.count == 1, let commit = commits.first {
             CommitActionsMenu(model: model, commit: commit)
+            Section { HistoryRowOptions() }
         } else if commits.count > 1 {
             MultipleCommitsMenu(model: model, commits: commits)
+            Section { HistoryRowOptions() }
+        } else {
+            HistoryViewOptions()
         }
     }
 
@@ -275,6 +282,7 @@ private struct CommitRow: View {
     var labels: [RefLabel]
     var graphWidth: Int
     var showsGraph: Bool
+    var columns: HistoryColumns
     var size: HistoryPreferences.RowSize
     /// `HEAD`'s commit is bold, in place of a badge.
     var isHead = false
@@ -290,21 +298,31 @@ private struct CommitRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     summary
                     HStack(spacing: 6) {
-                        Text(row.commit.author.name)
-                            .lineLimit(1)
-                        hash
+                        author
+                        if columns.hash { hash }
                         Spacer(minLength: 4)
-                        date
+                        if columns.date { date }
                     }
                     .font(.caption)
                 }
                 .padding(.vertical, 7)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    hash
+                    if columns.hash { hash }
                     summary
                     Spacer(minLength: 8)
-                    date
+                    // Columns as wide in every row, so they line up.
+                    if columns.author {
+                        author
+                            .foregroundStyle(.secondary)
+                            .frame(width: 130, alignment: .leading)
+                    }
+                    if columns.date {
+                        ZStack(alignment: .trailing) {
+                            Self.dateText(Self.widestDate).hidden().accessibilityHidden(true)
+                            date
+                        }
+                    }
                 }
                 .font(size == .compact ? .callout : nil)
                 .padding(.vertical, size == .compact ? 2 : 5)
@@ -336,6 +354,11 @@ private struct CommitRow: View {
         }
     }
 
+    private var author: some View {
+        Text(row.commit.author.name)
+            .lineLimit(1)
+    }
+
     private var hash: some View {
         Text(row.commit.id.abbreviated())
             .font(.smallCode)
@@ -343,10 +366,19 @@ private struct CommitRow: View {
     }
 
     private var date: some View {
-        Text(row.commit.author.date, format: .dateTime.day().month(.defaultDigits).year(.twoDigits))
+        Self.dateText(row.commit.author.date)
+    }
+
+    private static func dateText(_ date: Date) -> some View {
+        Text(date, format: .dateTime.day().month(.defaultDigits).year(.twoDigits))
             .font(.callout.monospacedDigit())
             .foregroundStyle(.secondary)
     }
+
+    /// A date with two digits in each place, which the date column is as
+    /// wide as.
+    private static let widestDate = Calendar(identifier: .gregorian)
+        .date(from: DateComponents(year: 2028, month: 12, day: 28)) ?? .now
 }
 
 /// Asks for a new branch's name.

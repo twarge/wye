@@ -1,13 +1,13 @@
 import GitKit
 import SwiftUI
 
-/// How histories are shown, as menu items: in the View menu and in the
-/// history's toolbar.
+/// How histories are shown, as menu items: in the View menu, in the
+/// history's toolbar, and on a right-click below its rows.
 struct HistoryViewOptions: View {
     @Bindable private var preferences = HistoryPreferences.shared
 
     var body: some View {
-        Toggle("Show Graph", isOn: $preferences.showsGraph)
+        HistoryRowOptions()
         Toggle("First Parent Only", isOn: $preferences.firstParentOnly)
         Picker("Sort By", selection: $preferences.order) {
             Text("Date").tag(HistoryOptions.Order.date)
@@ -25,6 +25,23 @@ struct HistoryViewOptions: View {
                 }
             }
         }
+    }
+}
+
+/// What a history's rows show, as menu items, in the order a row shows
+/// them: also at the foot of a commit's context menu.
+struct HistoryRowOptions: View {
+    @Bindable private var preferences = HistoryPreferences.shared
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    var body: some View {
+        Toggle("Show Graph", isOn: $preferences.showsGraph)
+        Toggle("Show Commit Hash", isOn: $preferences.showsHash)
+        // Rows on two lines always show the author.
+        if sizeClass != .compact {
+            Toggle("Show Author", isOn: $preferences.showsAuthor)
+        }
+        Toggle("Show Commit Date", isOn: $preferences.showsDate)
     }
 }
 

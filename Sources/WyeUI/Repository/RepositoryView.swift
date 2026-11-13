@@ -63,6 +63,9 @@ struct RepositoryView: View {
             // not close an inspector showing nothing selected. Closed, the
             // list's toolbar has it, to open it again.
             list
+                // Room for a hash, a summary and a date: the details or a
+                // narrow window take no more than this from it.
+                .frame(minWidth: 380)
                 .toolbar {
                     if !showsDetail {
                         ToolbarItem(placement: .primaryAction) { detailToggle }

@@ -2555,7 +2555,16 @@
     "Show Assumed-Unchanged Files" : {
       "extractionState" : "manual"
     },
+    "Show Author" : {
+      "extractionState" : "manual"
+    },
     "Show Commit" : {
+      "extractionState" : "manual"
+    },
+    "Show Commit Date" : {
+      "extractionState" : "manual"
+    },
+    "Show Commit Hash" : {
       "extractionState" : "manual"
     },
     "Show Details" : {
