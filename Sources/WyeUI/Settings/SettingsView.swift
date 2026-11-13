@@ -34,6 +34,7 @@ struct SettingsView: View {
             PullSettingsSection()
             PushSettingsSection()
             BranchSettingsSection()
+            SidebarSettingsSection()
             NewRepositorySettingsSection()
             SubmoduleSettingsSection()
             FilesLocationSettingsSection()

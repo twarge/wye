@@ -108,7 +108,7 @@ Each item is marked:
 | Make a branch from a stash (`git stash branch`) | Done. From the stash's menu, undoably. |
 | Rebase onto (move a range of commits to a new base) | Done. |
 | Merge preview: say beforehand whether it will conflict | Done. In the merge, rebase and pull sheets. |
-| Sort and limit long lists of tags and remote branches | Done. By name, version or most recent; long lists show the first 30. |
+| Sort and limit long lists of tags and remote branches | Done. By name, version or most recent. The sidebar lists the 5 most recent tags, a number set in Settings, with More tags… for the rest; a remote's long list shows its first 30 branches. |
 | Parent branches and stacked branches (a branch that follows another, restacked when its parent changes) | Not planned for now. Its menu items (Track Parent Branch, New Stacked Branch) are left out. |
 | Branching workflows: named conventions (feature / release / hotfix) with start and finish actions | Missing |
 | Export the files of a branch or tag as an archive | Done. A zip, from the branch's, remote branch's or tag's menu. |

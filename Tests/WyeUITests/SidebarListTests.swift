@@ -41,6 +41,46 @@ import Testing
         #expect(Shortened(Array(0..<33), showsAll: false).hiddenCount == 0)
     }
 
+    @Test func onlyTheMostRecentTagsAreListed() {
+        // Named so that neither name nor version order is date order.
+        let dates = Dictionary(uniqueKeysWithValues: ["v3", "v1", "v7", "v5", "v2", "v6", "v4"].enumerated().map {
+            ($1, Date(timeIntervalSince1970: TimeInterval(100 - $0)))
+        })
+        let names = dates.keys.sorted()
+        func listed(_ limit: Int, showsAll: Bool = false, sort: SidebarSort = .recent, selected: String? = nil) -> Shortened<String> {
+            Shortened(
+                mostRecent: limit, of: names, showsAll: showsAll, sort: sort,
+                name: { $0 }, date: { dates[$0] }, keeps: { $0 == selected }
+            )
+        }
+        let short = listed(5)
+        #expect(short.shown == ["v3", "v1", "v7", "v5", "v2"])
+        #expect(short.hiddenCount == 2)
+        // The same five whatever the order they are listed in.
+        #expect(listed(5, sort: .name).shown == ["v1", "v2", "v3", "v5", "v7"])
+        #expect(listed(5, sort: .version).shown == ["v7", "v5", "v3", "v2", "v1"])
+        // One more than the limit is already too many; the limit itself is not.
+        #expect(listed(6).hiddenCount == 1)
+        #expect(listed(7).hiddenCount == 0)
+        #expect(listed(7, sort: .name).shown == names)
+        #expect(listed(5, showsAll: true, sort: .version).shown == ["v7", "v6", "v5", "v4", "v3", "v2", "v1"])
+        // The selected tag stays listed, in its place.
+        #expect(listed(5, selected: "v4").shown == ["v3", "v1", "v7", "v5", "v2", "v4"])
+        #expect(listed(5, sort: .name, selected: "v4").shown == ["v1", "v2", "v3", "v4", "v5", "v7"])
+        #expect(listed(5, selected: "v4").hiddenCount == 1)
+        #expect(listed(5, selected: "v3").shown.count == 5)
+    }
+
+    @Test func tagLimitDefaultsToFive() {
+        #expect(SidebarPreferences.defaultTagLimit == 5)
+        #expect(SidebarPreferences.tagLimit(12) == 12)
+        // Whatever ended up in the defaults, some tags are listed.
+        #expect(SidebarPreferences.tagLimit(0) == 1)
+        #expect(SidebarPreferences.tagLimit(-3) == 1)
+        #expect(SidebarPreferences.tagLimit(5000) == 100)
+        #expect(SettingsSyncPlan.keys.contains(SidebarPreferences.tagLimitKey))
+    }
+
     @Test func optionsReadWhatTheyCan() throws {
         let decoded = try JSONDecoder().decode(SidebarListOptions.self, from: Data(#"{"tagSort":"version"}"#.utf8))
         #expect(decoded.tagSort == .version)

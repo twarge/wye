@@ -11,7 +11,8 @@ enum SettingsSyncPlan {
     static let keys: [String] = [
         "fetch.prune", "fetch.backgroundInterval", "fetch.backgroundOnExpensiveNetworks",
         "newRepository.defaultBranch", "push.allTags", "tag.pushToAllRemotes", "submoduleAutoUpdate",
-        "branches.staleMonths", "branches.autoArchiveMonths", "pullMode", "autostash", "hosting.prefersSSH",
+        "branches.staleMonths", "branches.autoArchiveMonths", "sidebar.tagLimit",
+        "pullMode", "autostash", "hosting.prefersSSH",
         "commit.subjectSoftLimit", "commit.subjectHardLimit", "commit.templates",
         "diff.contextLines", "diff.ignoreWhitespace", "diff.showsInvisibles", "diff.tabWidth",
         "diff.autoCollapseFileCount",

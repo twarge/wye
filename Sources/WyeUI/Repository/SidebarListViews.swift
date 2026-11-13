@@ -2,12 +2,12 @@ import SwiftUI
 
 /// The last row of a shortened list, which lists the rest.
 struct ShowAllRow: View {
-    var count: Int
+    var title: LocalizedStringKey
     var showAll: () -> Void
 
     var body: some View {
         Button(action: showAll) {
-            Text("Show All (\(count.formatted()))")
+            Text(title)
                 .foregroundStyle(.tint)
         }
         .buttonStyle(.borderless)
@@ -32,7 +32,7 @@ struct SidebarSortPicker: View {
 }
 
 /// View ▸ the sidebar's sort orders, and putting a long list back to its
-/// first few after Show All.
+/// first few after Show All or More tags….
 struct SidebarListCommands: View {
     var model: RepositoryModel?
 
@@ -50,13 +50,13 @@ struct SidebarListCommands: View {
             model?.interface.setSidebarLists(lists)
         }
         .disabled(model == nil)
-        Button("Show First \(SidebarListOptions.limit) Only") {
+        Button("Show Fewer Tags and Remote Branches") {
             var lists = lists
             lists.remotesShowingAll = []
             lists.showsAllTags = false
             model?.interface.setSidebarLists(lists)
         }
         .disabled(lists.remotesShowingAll.isEmpty && !lists.showsAllTags)
-        .help("List only the first remote branches and tags again, after Show All")
+        .help("List only the most recent tags and the first remote branches again, after More tags… or Show All")
     }
 }

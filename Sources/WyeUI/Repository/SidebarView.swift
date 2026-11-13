@@ -16,6 +16,7 @@ struct SidebarView: View {
     @AppStorage("sidebar.archivedExpanded") private var archivedExpanded = false
     @AppStorage(BranchPreferences.staleMonthsKey) private var staleMonths = 3
     @AppStorage(BranchPreferences.autoArchiveMonthsKey) private var autoArchiveMonths = 0
+    @AppStorage(SidebarPreferences.tagLimitKey) private var storedTagLimit = SidebarPreferences.defaultTagLimit
     /// Folders and remotes closed by hand while filtering, when everything
     /// else opens to show its matches. Dropped with the filter, so the
     /// expansion from before comes back.
@@ -25,8 +26,11 @@ struct SidebarView: View {
     /// What a drop onto a branch or the working copy offers.
     @State private var drop: SidebarDropProposal?
     /// When the tags' and remote branches' commits were made, for sorting
-    /// by most recent.
+    /// by most recent and for listing only the most recent tags.
     @State private var commitDates: [OID: Date] = [:]
+
+    /// How many tags are listed before the More tags… row, from Settings.
+    private var tagLimit: Int { SidebarPreferences.tagLimit(storedTagLimit) }
 
     var body: some View {
         let listing = model.branchListing(staleMonths: staleMonths, autoArchiveMonths: autoArchiveMonths)
@@ -118,7 +122,7 @@ struct SidebarView: View {
                                         .draggable(branch.id)
                                 }
                                 if shortened.hiddenCount > 0 {
-                                    ShowAllRow(count: sorted.count) {
+                                    ShowAllRow(title: "Show All (\(sorted.count.formatted()))") {
                                         var lists = lists
                                         lists.remotesShowingAll.append(remote.name)
                                         model.interface.setSidebarLists(lists)
@@ -135,10 +139,28 @@ struct SidebarView: View {
                     }
                 }
 
+                let submodules = snapshot.submodules.filter { matches($0.name) || matches($0.path) }
+                if !submodules.isEmpty {
+                    Section(isExpanded: opened($submodulesExpanded)) {
+                        ForEach(submodules) { submodule in
+                            SubmoduleLabel(submodule: submodule)
+                                .tag(SidebarItem.submodule(submodule.name))
+                        }
+                    } header: {
+                        // Its actions are in the Repository menu.
+                        Text("Submodules")
+                    }
+                }
+
                 let tags = snapshot.tags.filter { matches($0.name) }
                 if !tags.isEmpty {
-                    let sorted = lists.tagSort.sorted(tags, name: \.name, date: { commitDates[$0.target] })
-                    let shortened = Shortened(sorted, showsAll: isFiltering || lists.showsAllTags)
+                    // The most recent few, in the chosen order; the selected
+                    // tag stays listed however old it is.
+                    let shortened = Shortened(
+                        mostRecent: tagLimit, of: tags, showsAll: isFiltering || lists.showsAllTags,
+                        sort: lists.tagSort, name: \.name, date: { commitDates[$0.target] },
+                        keeps: { model.selection == .tag($0.id) }
+                    )
                     Section(isExpanded: opened($tagsExpanded)) {
                         ForEach(shortened.shown) { tag in
                             Label(tag.name, systemImage: "tag")
@@ -146,7 +168,7 @@ struct SidebarView: View {
                                 .draggable(tag.id)
                         }
                         if shortened.hiddenCount > 0 {
-                            ShowAllRow(count: sorted.count) {
+                            ShowAllRow(title: "More tags…") {
                                 var lists = lists
                                 lists.showsAllTags = true
                                 model.interface.setSidebarLists(lists)
@@ -161,19 +183,6 @@ struct SidebarView: View {
                         .dropDestination(for: String.self) { items, _ in
                             propose(items, onto: .tags)
                         }
-                    }
-                }
-
-                let submodules = snapshot.submodules.filter { matches($0.name) || matches($0.path) }
-                if !submodules.isEmpty {
-                    Section(isExpanded: opened($submodulesExpanded)) {
-                        ForEach(submodules) { submodule in
-                            SubmoduleLabel(submodule: submodule)
-                                .tag(SidebarItem.submodule(submodule.name))
-                        }
-                    } header: {
-                        // Its actions are in the Repository menu.
-                        Text("Submodules")
                     }
                 }
 
@@ -210,7 +219,7 @@ struct SidebarView: View {
             // Merged and stale marks, worked out off the main thread.
             await model.updateBranchReview()
         }
-        .task(id: DatesKey(snapshot: model.snapshot, lists: model.interface.sidebarLists)) {
+        .task(id: DatesKey(snapshot: model.snapshot, lists: model.interface.sidebarLists, tagLimit: tagLimit)) {
             await readCommitDates()
         }
         .confirmationDialog(drop?.title ?? "", isPresented: Binding {
@@ -308,14 +317,17 @@ struct SidebarView: View {
     private struct DatesKey: Hashable {
         var snapshot: RepositorySnapshot?
         var lists: SidebarListOptions
+        var tagLimit: Int
     }
 
-    /// Reads the commit dates that sorting by most recent needs, and only then.
+    /// Reads the commit dates that sorting by most recent needs, or picking
+    /// the most recent tags out of more than are listed, and only then.
     private func readCommitDates() async {
         guard let snapshot = model.snapshot else { return }
         let lists = model.interface.sidebarLists
         var ids: Set<OID> = []
-        if lists.tagSort == .recent { ids.formUnion(snapshot.tags.map(\.target)) }
+        let shortensTags = !lists.showsAllTags && snapshot.tags.count > tagLimit
+        if lists.tagSort == .recent || shortensTags { ids.formUnion(snapshot.tags.map(\.target)) }
         if lists.remoteBranchSort == .recent { ids.formUnion(snapshot.remotes.flatMap(\.branches).map(\.target)) }
         ids.subtract(commitDates.keys)
         guard !ids.isEmpty else { return }

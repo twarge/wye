@@ -106,7 +106,8 @@ struct SidebarListOptions: Codable, Hashable, Sendable {
     /// Remotes whose branches are all listed, by name.
     var remotesShowingAll: [String] = []
 
-    /// How many rows a long list shows before its Show All row.
+    /// How many of a remote's branches are listed before its Show All row.
+    /// The tags have a setting of their own: `SidebarPreferences.tagLimit`.
     static let limit = 30
 
     init() {}
@@ -125,6 +126,19 @@ struct SidebarListOptions: Codable, Hashable, Sendable {
     }
 }
 
+/// The app's settings for the sidebar's lists, in the user defaults.
+enum SidebarPreferences {
+    static let tagLimitKey = "sidebar.tagLimit"
+    static let defaultTagLimit = 5
+    static let tagLimitRange = 1...100
+
+    /// How many tags the sidebar lists before its More tags… row: the most
+    /// recent ones. Whatever the defaults hold, at least one.
+    static func tagLimit(_ stored: Int) -> Int {
+        min(max(stored, tagLimitRange.lowerBound), tagLimitRange.upperBound)
+    }
+}
+
 /// The first `limit` of a list, unless all are wanted, and how many more
 /// there are.
 struct Shortened<Item> {
@@ -140,6 +154,26 @@ struct Shortened<Item> {
             shown = Array(items.prefix(limit))
             hiddenCount = items.count - limit
         }
+    }
+
+    /// The `limit` most recent of `items`, in `sort`'s order, unless all are
+    /// wanted or there are no more than that. Which are the most recent does
+    /// not depend on the order they are listed in. One that `keeps` says to
+    /// keep, the selected one, stays listed however old it is.
+    init(
+        mostRecent limit: Int, of items: [Item], showsAll: Bool, sort: SidebarSort,
+        name: (Item) -> String, date: (Item) -> Date?, keeps: (Item) -> Bool = { _ in false }
+    ) {
+        guard !showsAll, items.count > max(limit, 0) else {
+            shown = sort.sorted(items, name: name, date: date)
+            hiddenCount = 0
+            return
+        }
+        let recent = SidebarSort.recent.sorted(items, name: name, date: date)
+        var listed = Array(recent.prefix(max(limit, 0)))
+        listed += recent.dropFirst(listed.count).filter(keeps)
+        shown = sort == .recent ? listed : sort.sorted(listed, name: name, date: date)
+        hiddenCount = items.count - listed.count
     }
 }
 

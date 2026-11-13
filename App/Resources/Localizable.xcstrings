@@ -1503,7 +1503,7 @@
     "List only the commits these branches lead to" : {
       "extractionState" : "manual"
     },
-    "List only the first remote branches and tags again, after Show All" : {
+    "List only the most recent tags and the first remote branches again, after More tags… or Show All" : {
       "extractionState" : "manual"
     },
     "Lists the repositories in Wye with commits not pushed or changes not committed, as of when Wye last read them. Does not fetch." : {
@@ -1597,6 +1597,9 @@
       "extractionState" : "manual"
     },
     "More" : {
+      "extractionState" : "manual"
+    },
+    "More tags…" : {
       "extractionState" : "manual"
     },
     "Move" : {
@@ -2623,7 +2626,7 @@
     "Show Details" : {
       "extractionState" : "manual"
     },
-    "Show First %lld Only" : {
+    "Show Fewer Tags and Remote Branches" : {
       "extractionState" : "manual"
     },
     "Show Graph" : {
@@ -2699,6 +2702,9 @@
       "extractionState" : "manual"
     },
     "Shows the files in this folder" : {
+      "extractionState" : "manual"
+    },
+    "Sidebar" : {
       "extractionState" : "manual"
     },
     "Sign Commits" : {
@@ -2924,6 +2930,9 @@
       "extractionState" : "manual"
     },
     "Tags" : {
+      "extractionState" : "manual"
+    },
+    "Tags Listed" : {
       "extractionState" : "manual"
     },
     "Take Base" : {
