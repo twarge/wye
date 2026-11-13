@@ -234,8 +234,8 @@ struct HistoryView: View {
     }
 
     /// What a row shows beside its summary. The marks for checks have a
-    /// place of their own once any commit has one, so that they line up
-    /// down the list and no message is cut short for a mark it lacks.
+    /// column of their own, there once any commit has one to show: a
+    /// repository with no checks, or no account to read them, has none.
     private var columns: HistoryColumns {
         var columns = preferences.columns
         columns.checks = preferences.showsChecks && !model.checks.statuses.isEmpty
@@ -432,7 +432,7 @@ private struct CommitRow: View {
                         summary
                         if let checks {
                             Spacer(minLength: 0)
-                            CommitCheckMark(commit: row.id, status: checks)
+                            CommitCheckMark(commit: row.id, status: checks, scale: .medium)
                         }
                     }
                     HStack(spacing: 6) {
@@ -450,17 +450,11 @@ private struct CommitRow: View {
                     if columns.hash {
                         hash.frame(width: widths.hash, alignment: .leading)
                     }
+                    if columns.checks {
+                        checkColumn
+                    }
                     summary
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    if columns.checks {
-                        // Empty for a commit nothing ran for.
-                        ZStack {
-                            if let checks {
-                                CommitCheckMark(commit: row.id, status: checks)
-                            }
-                        }
-                        .frame(width: HistoryColumnWidths.checks)
-                    }
                     if columns.author {
                         author.frame(width: widths.author, alignment: .leading)
                     }
@@ -496,6 +490,21 @@ private struct CommitRow: View {
                 NoteMark()
             }
         }
+    }
+
+    /// The mark of the commit's checks in its column, empty for a commit
+    /// nothing ran for. The column is a line of text high and the mark is
+    /// laid over it, so a mark larger than the text leaves the row as
+    /// tall as it was.
+    private var checkColumn: some View {
+        Text(verbatim: " ")
+            .accessibilityHidden(true)
+            .frame(width: HistoryColumnWidths.checks)
+            .overlay {
+                if let checks {
+                    CommitCheckMark(commit: row.id, status: checks, scale: size == .compact ? .medium : .large)
+                }
+            }
     }
 
     private var author: some View {

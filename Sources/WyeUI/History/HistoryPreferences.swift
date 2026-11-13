@@ -151,8 +151,8 @@ struct HistoryColumns: Hashable {
     var hash = true
     var author = true
     var date = true
-    /// Whether rows keep a place after the message for the mark of a
-    /// commit's checks: once the history has any to show.
+    /// Whether rows have the column for the mark of a commit's checks,
+    /// between the hash and the message: once the history has any to show.
     var checks = false
 }
 

@@ -33,12 +33,12 @@ struct HistoryRowOptions: View {
     var body: some View {
         Toggle("Show Graph", isOn: $preferences.showsGraph)
         Toggle("Show Commit Hash", isOn: $preferences.showsHash)
+        Toggle("Show CI Status", isOn: $preferences.showsChecks)
         // Rows on two lines always show the author.
         if sizeClass != .compact {
             Toggle("Show Author", isOn: $preferences.showsAuthor)
         }
         Toggle("Show Commit Date", isOn: $preferences.showsDate)
-        Toggle("Show Checks", isOn: $preferences.showsChecks)
     }
 }
 

@@ -7,6 +7,8 @@ import SwiftUI
 struct CommitCheckMark: View {
     var commit: OID
     var status: CheckStatus
+    /// How large the mark is beside the row's text.
+    var scale: Image.Scale = .medium
 
     @Environment(CommitCheckStore.self) private var store: CommitCheckStore?
     @State private var isShown = false
@@ -25,7 +27,7 @@ struct CommitCheckMark: View {
         } label: {
             Image(systemName: status.symbol)
                 .foregroundStyle(status.color)
-                .imageScale(.small)
+                .imageScale(scale)
                 .contentShape(.rect)
         }
         // Borderless, so that in a row only the mark takes the click.

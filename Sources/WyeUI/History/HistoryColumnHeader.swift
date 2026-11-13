@@ -7,9 +7,9 @@ struct HistoryColumnWidths: Hashable {
     var author: CGFloat = 120
     var date: CGFloat = 64
 
-    /// The place for the mark of a commit's checks, which has no title
-    /// and is not resized.
-    static let checks: CGFloat = 16
+    /// The column for the mark of a commit's checks: as wide as the mark,
+    /// and not resized.
+    static let checks: CGFloat = 20
 
     /// Between one column and the next, in the header and in every row.
     static let spacing: CGFloat = 8
@@ -19,7 +19,8 @@ struct HistoryColumnWidths: Hashable {
 /// Names a history's columns above its rows and resizes them by the
 /// dividers between them: the hash by the one at its right, the author and
 /// date by the one at their left, as the message gives or takes the
-/// difference. Right-click it for which columns show.
+/// difference. The checks' column keeps its width. Right-click it for
+/// which columns show.
 struct HistoryColumnHeader: View {
     var columns: HistoryColumns
     /// The graph's width and the gap after it, as the rows lead with.
@@ -38,12 +39,13 @@ struct HistoryColumnHeader: View {
                             .offset(x: ColumnDivider.hitWidth / 2 + spacing / 2)
                     }
             }
+            if columns.checks {
+                title("CI")
+                    .frame(width: HistoryColumnWidths.checks)
+                    .help("How each commit’s checks stand on its hosting service")
+            }
             title("Message")
                 .frame(maxWidth: .infinity, alignment: .leading)
-            if columns.checks {
-                Color.clear
-                    .frame(width: HistoryColumnWidths.checks, height: 1)
-            }
             if columns.author {
                 title("Author")
                     .frame(width: preferences.columnWidths.author, alignment: .leading)

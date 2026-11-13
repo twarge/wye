@@ -29,7 +29,7 @@ struct SearchResultRow: View {
                 }
                 if let checks {
                     Spacer(minLength: 0)
-                    CommitCheckMark(commit: commit.id, status: checks)
+                    CommitCheckMark(commit: commit.id, status: checks, scale: .medium)
                 }
             }
             HStack(spacing: 6) {

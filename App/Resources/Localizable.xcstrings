@@ -601,6 +601,9 @@
     "Built In" : {
       "extractionState" : "manual"
     },
+    "CI" : {
+      "extractionState" : "manual"
+    },
     "Cancel" : {
       "extractionState" : "manual"
     },
@@ -1366,6 +1369,9 @@
       "extractionState" : "manual"
     },
     "Host Key Changed" : {
+      "extractionState" : "manual"
+    },
+    "How each commit’s checks stand on its hosting service" : {
       "extractionState" : "manual"
     },
     "I have checked the new fingerprint with the host’s owners" : {
@@ -2635,7 +2641,7 @@
     "Show Author" : {
       "extractionState" : "manual"
     },
-    "Show Checks" : {
+    "Show CI Status" : {
       "extractionState" : "manual"
     },
     "Show Commit" : {
