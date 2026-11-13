@@ -96,7 +96,7 @@ struct NewPullRequestSheet: View {
                 }
             }
         }
-        .frame(minWidth: 480, minHeight: 460)
+        .sheetMinimumSize(width: 480, height: 460)
         .onAppear(perform: start)
         .task(id: "\(headBranch)|\(base)|\(targetRemote)") { await prefill() }
     }

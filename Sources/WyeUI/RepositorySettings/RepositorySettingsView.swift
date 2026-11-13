@@ -47,7 +47,11 @@ struct RepositorySettingsView: View {
                 RemoteEditor(model: model, subject: .new)
             }
         }
+        // A size for the Mac's sheet; an iPhone's is the screen's width,
+        // which a minimum must not exceed.
+        #if os(macOS)
         .frame(minWidth: 480, idealWidth: 540, minHeight: 480, idealHeight: 640)
+        #endif
         .task { await settings.reload() }
         // The repository window's notices are behind this sheet.
         .sheetNotices(model)

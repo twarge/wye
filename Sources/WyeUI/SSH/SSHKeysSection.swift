@@ -179,7 +179,7 @@ private struct NewSSHKeySheet: View {
                 }
             }
         }
-        .frame(minWidth: 440)
+        .sheetMinimumSize(width: 440)
         .onAppear { comment = SSHKeyHelp.defaultComment }
         .notice(for: $error)
     }
@@ -249,7 +249,7 @@ private struct ImportSSHKeySheet: View {
                 }
             }
         }
-        .frame(minWidth: 480, minHeight: 420)
+        .sheetMinimumSize(width: 480, height: 420)
         .onChange(of: text) {
             problem = nil
             isEncrypted = (try? SSHPrivateKey.isEncrypted(openSSHPrivateKey: text)) ?? false
@@ -339,7 +339,7 @@ private struct KnownHostsSheet: View {
                 }
             }
         }
-        .frame(minWidth: 520, minHeight: 360)
+        .sheetMinimumSize(width: 520, height: 360)
         .onAppear(perform: reload)
         .notice(for: $error)
     }

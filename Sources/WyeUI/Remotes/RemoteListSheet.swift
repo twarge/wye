@@ -84,7 +84,7 @@ struct RemoteListSheet: View {
                 Text(RemoveRemoteSheet.consequences(of: remote))
             }
         }
-        .frame(minWidth: 420, minHeight: 300)
+        .sheetMinimumSize(width: 420, height: 300)
         // The repository window's notices are behind this sheet.
         .sheetNotices(model)
     }
@@ -144,7 +144,7 @@ struct RemoteEditor: View {
                 }
             }
         }
-        .frame(minWidth: 380)
+        .sheetMinimumSize(width: 380)
         .task {
             if case .existing(let remote) = subject {
                 pushURL = (try? await model.repository.pushURL(ofRemote: remote.name)) ?? ""

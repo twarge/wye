@@ -52,7 +52,7 @@ struct CredentialsSheet: View {
                 }
             }
         }
-        .frame(minWidth: 380)
+        .sheetMinimumSize(width: 380)
         .notice(for: $error)
     }
 

@@ -86,7 +86,7 @@ struct SignInSheet: View {
                 }
             }
         }
-        .frame(minWidth: 440, minHeight: 380)
+        .sheetMinimumSize(width: 440, height: 380)
         .onAppear {
             kind = initialKind
             hostText = initialHost ?? ""

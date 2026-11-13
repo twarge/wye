@@ -106,7 +106,7 @@ struct PublishSheet: View {
                 }
             }
         }
-        .frame(minWidth: 440, minHeight: 360)
+        .sheetMinimumSize(width: 440, height: 360)
         .interactiveDismissDisabled(isPublishing)
         .onAppear {
             if name.isEmpty { name = Self.suggestedName(model.name) }

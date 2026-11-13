@@ -67,7 +67,7 @@ struct StashSheet: View {
                 }
             }
         }
-        .frame(minWidth: 380)
+        .sheetMinimumSize(width: 380)
         .onAppear {
             // A chosen untracked file is meant to go into the stash.
             if let paths {

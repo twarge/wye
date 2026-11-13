@@ -120,7 +120,7 @@ struct RemoteAccountSheet: View {
                 }
             }
         }
-        .frame(minWidth: 380, minHeight: 300)
+        .sheetMinimumSize(width: 380, height: 300)
         .onAppear {
             choice = hosted.flatMap { AccountStore.shared.chosenAccountID(for: $0) }
         }

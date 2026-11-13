@@ -41,7 +41,7 @@ struct ActivityView: View {
                 }
             }
         }
-        .frame(minWidth: 420, minHeight: 300)
+        .sheetMinimumSize(width: 420, height: 300)
         .onAppear { log.markSeen() }
         .onChange(of: log.unseenFailures) { log.markSeen() }
     }

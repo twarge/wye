@@ -565,7 +565,7 @@ struct NewBranchSheet: View {
                 }
             }
         }
-        .frame(minWidth: 360)
+        .sheetMinimumSize(width: 360)
     }
 
     private func create() {

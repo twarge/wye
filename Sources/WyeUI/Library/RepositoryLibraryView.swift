@@ -32,8 +32,13 @@ struct RepositoryLibraryView: View {
                     ContentUnavailableView {
                         Label("No Repositories", systemImage: "arrow.triangle.branch")
                     } description: {
+                        #if os(macOS)
                         Text("Add a folder that holds a git repository, or clone one, to browse its history and commit changes.")
+                        #else
+                        Text("Clone a repository, or start a new one, to browse its history and commit changes.")
+                        #endif
                     } actions: {
+                        #if os(macOS)
                         // One above the other, each as wide as the widest.
                         VStack(spacing: 8) {
                             Button { actions.isAddingRepository = true } label: {
@@ -51,6 +56,23 @@ struct RepositoryLibraryView: View {
                             }
                         }
                         .fixedSize(horizontal: true, vertical: false)
+                        #else
+                        // Cloning is how a repository gets onto the device,
+                        // so it comes first. A folder to add or watch is one
+                        // another app keeps, which few have: those stay in
+                        // the toolbar. Each button is large enough to tap.
+                        VStack(spacing: 12) {
+                            Button { actions.isCloning = true } label: {
+                                Text("Clone Repository…").frame(maxWidth: .infinity)
+                            }
+                            .emptyStateButton(prominent: true)
+                            Button { actions.isCreatingRepository = true } label: {
+                                Text("New Repository…").frame(maxWidth: .infinity)
+                            }
+                            .emptyStateButton()
+                        }
+                        .frame(maxWidth: 300)
+                        #endif
                     }
                 }
             }

@@ -41,6 +41,7 @@ struct CloneFromAccountSheet: View {
                         Text("Sign in to GitHub, GitLab, Bitbucket, Gitea or Forgejo to list your repositories.")
                     } actions: {
                         Button("Add Account…") { isAdding = true }
+                            .emptyStateButton(prominent: true)
                     }
                 } else {
                     list
@@ -56,7 +57,7 @@ struct CloneFromAccountSheet: View {
                 }
             }
         }
-        .frame(minWidth: 520, minHeight: 480)
+        .sheetMinimumSize(width: 520, height: 480)
         .sheet(isPresented: $isAdding) {
             SignInSheet { accountID = $0.id }
         }

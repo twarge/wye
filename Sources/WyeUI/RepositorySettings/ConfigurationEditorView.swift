@@ -180,7 +180,7 @@ private struct EntryEditor: View {
                 }
             }
         }
-        .frame(minWidth: 400)
+        .sheetMinimumSize(width: 400)
         .onAppear {
             switch subject {
             case .new(let name): self.name = name

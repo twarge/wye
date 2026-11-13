@@ -977,6 +977,10 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
+    "Clone a repository, or start a new one, to browse its history and commit changes." : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
     "Clone from Account" : {
       "extractionState" : "manual",
       "generatesSymbol" : false

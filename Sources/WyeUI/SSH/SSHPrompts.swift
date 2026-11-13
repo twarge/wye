@@ -141,7 +141,7 @@ struct HostKeySheet: View {
                 }
             }
         }
-        .frame(minWidth: 440)
+        .sheetMinimumSize(width: 440)
         .notice(for: $error)
     }
 

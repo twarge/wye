@@ -103,7 +103,7 @@ struct BranchingSheetForm<Content: View>: View {
         SheetStack(title) {
             form
         }
-        .frame(minWidth: 400)
+        .sheetMinimumSize(width: 400)
     }
 
     private var form: some View {

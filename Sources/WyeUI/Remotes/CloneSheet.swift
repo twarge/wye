@@ -85,7 +85,7 @@ struct CloneSheet: View {
                 }
             }
         }
-        .frame(minWidth: 440)
+        .sheetMinimumSize(width: 440)
         .fileImporter(isPresented: $isChoosingFolder, allowedContentTypes: [.folder]) { result in
             switch result {
             case .success(let url): parent = url

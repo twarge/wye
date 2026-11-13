@@ -42,7 +42,7 @@ struct PullRequestListView: View {
             Text(availability.message ?? "")
         } actions: {
             if case .noAccount = availability {
-                SettingsButton { Text("Open Settings") }
+                SettingsButton(inEmptyState: true) { Text("Open Settings") }
             }
         }
     }
@@ -127,7 +127,7 @@ private struct PullRequestRows: View {
                         Text(failure)
                     } actions: {
                         if list.failureNeedsSignIn {
-                            SettingsButton { Text("Open Settings") }
+                            SettingsButton(inEmptyState: true) { Text("Open Settings") }
                         }
                     }
                 } else {

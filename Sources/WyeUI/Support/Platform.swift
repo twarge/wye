@@ -332,6 +332,9 @@ extension URL {
 /// A button that opens the app's settings: the Settings window on macOS, a
 /// sheet on iOS, where an app has no settings window of its own.
 struct SettingsButton<Label: View>: View {
+    /// Whether it is an empty state's button. Said here rather than by a
+    /// style around it, which the settings sheet it opens would take on too.
+    var inEmptyState = false
     @ViewBuilder var label: Label
     @State private var isPresented = false
 
@@ -339,28 +342,51 @@ struct SettingsButton<Label: View>: View {
         #if os(macOS)
         SettingsLink { label }
         #else
-        Button { isPresented = true } label: { label }
-            .sheet(isPresented: $isPresented) {
-                NavigationStack {
-                    SettingsView()
-                        .navigationTitle("Settings")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Done") { isPresented = false }
-                            }
-                        }
-                }
+        Group {
+            if inEmptyState {
+                Button { isPresented = true } label: { label }
+                    .emptyStateButton()
+            } else {
+                Button { isPresented = true } label: { label }
             }
+        }
+        .sheet(isPresented: $isPresented) {
+            NavigationStack {
+                SettingsView()
+                    .navigationTitle("Settings")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { isPresented = false }
+                        }
+                    }
+            }
+        }
         #endif
     }
 }
 
 extension View {
+    /// The look of an empty state's button on iOS: filled and large enough
+    /// to tap, where it is otherwise a line of small text. `prominent` is
+    /// for the one that is the way forward. A Mac's is a push button as it is.
+    @ViewBuilder
+    func emptyStateButton(prominent: Bool = false) -> some View {
+        #if os(macOS)
+        self
+        #else
+        if prominent {
+            buttonStyle(.borderedProminent).controlSize(.large)
+        } else {
+            buttonStyle(.bordered).controlSize(.large)
+        }
+        #endif
+    }
+
     /// The smallest a sheet may be. A Mac sheet is as small as its content
     /// unless given a size; an iOS sheet fills the screen or its card, where a
     /// minimum wider than an iPhone would push the content off it.
-    func sheetMinimumSize(width: CGFloat, height: CGFloat) -> some View {
+    func sheetMinimumSize(width: CGFloat? = nil, height: CGFloat? = nil) -> some View {
         #if os(macOS)
         frame(minWidth: width, minHeight: height)
         #else

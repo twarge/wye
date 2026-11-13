@@ -140,7 +140,7 @@ private struct NoteEditor: View {
             TextEditor(text: $draft.text)
                 .font(.body)
                 .padding(8)
-                .frame(minWidth: 380, minHeight: 200)
+                .sheetMinimumSize(width: 380, height: 200)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel", role: .cancel, action: cancel)

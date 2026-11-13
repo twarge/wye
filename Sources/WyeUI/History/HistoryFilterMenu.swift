@@ -168,6 +168,6 @@ private struct DateRangeSheet: View {
                 }
             }
         }
-        .frame(minWidth: 340, minHeight: 260)
+        .sheetMinimumSize(width: 340, height: 260)
     }
 }
