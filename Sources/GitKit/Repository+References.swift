@@ -3,7 +3,12 @@ import Foundation
 
 extension Repository {
     /// Reads the references, stashes, submodules and worktrees.
-    public func snapshot() throws -> RepositorySnapshot {
+    ///
+    /// - Parameter scanningSubmodules: Whether to look through each
+    ///   submodule's working tree for changes, which takes as long as its
+    ///   status does. Without it a submodule says only which commit it is
+    ///   at: enough for a window to open with, ahead of the full reading.
+    public func snapshot(scanningSubmodules: Bool = true) throws -> RepositorySnapshot {
         let head = try head()
         var branches: [Branch] = []
         var remoteBranches: [Branch] = []
@@ -53,7 +58,7 @@ extension Repository {
             remotes: try remotes(with: remoteBranches),
             tags: tags.sorted { $0.name.localizedStandardCompare($1.name) == .orderedDescending },
             stashes: try stashes(),
-            submodules: (try? submodules()) ?? [],
+            submodules: (try? submodules(scanningWorkingTrees: scanningSubmodules)) ?? [],
             worktrees: worktreeList
         )
     }

@@ -94,6 +94,10 @@ final class HistoryModel {
 
     private let repository: Repository
     private let pageSize = 300
+    /// How many commits a history opens with: a tall window's worth, and no
+    /// more, since a list on the Mac measures every row it is given, not
+    /// only those on screen, and the rest are read as the list reaches them.
+    static let firstPageSize = 60
     private var cursor: HistoryCursor?
     private var graph = CommitGraph()
     /// Where the line the graph keeps straight in its first lane starts.
@@ -137,46 +141,85 @@ final class HistoryModel {
         await reload()
     }
 
+    /// What a reload reads from the repository: handed out by
+    /// `beginReload()`, read off the main thread, and shown by
+    /// `finishReload(_:with:)`. An opening window reads it along with its
+    /// references, in the same turn.
+    struct ReloadRequest: Sendable {
+        let scope: HistoryScope
+        let options: HistoryOptions
+        let limit: Int
+        /// Where the history shown until now was being read, to close.
+        let previous: HistoryCursor?
+        fileprivate let generation: Int
+
+        /// Reads the top of the history, in the turn of the repository the
+        /// caller is in.
+        func read(from repository: isolated Repository) -> Top {
+            Top(
+                start: try? repository.startHistory(scope, options: options, limit: limit, closing: previous),
+                noted: (try? repository.notedCommits()) ?? []
+            )
+        }
+    }
+
+    /// What a reload read: all the list needs to show its top at once.
+    struct Top: Sendable {
+        /// `nil` for a branch with no commits, or a reference that has gone.
+        var start: HistoryStart?
+        /// The commits that have notes.
+        var noted: Set<OID>
+    }
+
     /// Reads the history again from the top.
     func reload() async {
-        generation += 1
-        let generation = generation
-        if let cursor {
-            await repository.closeHistory(cursor)
-            self.cursor = nil
-        }
-
+        let request = beginReload()
         // The list keeps showing what it has until the first page arrives.
-        let page: [Commit]
-        var mainLine: OID?
-        do {
-            let cursor = try await repository.openHistory(scope, options: options)
-            guard generation == self.generation else {
-                await repository.closeHistory(cursor)
-                return
-            }
-            self.cursor = cursor
-            page = try await repository.nextCommits(from: cursor, limit: pageSize)
-            mainLine = try? await repository.mainLine(of: scope, options: options)
-        } catch {
-            // A branch with no commits, or a reference that has gone.
-            page = []
-        }
-        guard generation == self.generation else { return }
+        let top = await repository.read { request.read(from: $0) }
+        guard finishReload(request, with: top) else { return }
+        await countCommits(for: request)
+    }
 
+    /// Starts a reload: whatever is still being read for the history shown
+    /// until now is dropped when it arrives.
+    func beginReload() -> ReloadRequest {
+        generation += 1
+        defer { cursor = nil }
+        // As many as a page the list had, so it does not shorten under the
+        // user; a history just opened has none.
+        let limit = max(Self.firstPageSize, min(commitsRead.count, pageSize))
+        return ReloadRequest(scope: scope, options: options, limit: limit, previous: cursor, generation: generation)
+    }
+
+    /// Shows what a reload read. Returns `false`, showing nothing, when a
+    /// later reload has taken its place.
+    @discardableResult
+    func finishReload(_ request: ReloadRequest, with top: Top) -> Bool {
+        guard request.generation == generation else {
+            if let cursor = top.start?.cursor {
+                Task { [repository] in await repository.closeHistory(cursor) }
+            }
+            return false
+        }
+        cursor = top.start?.cursor
         commitsRead = []
-        self.mainLine = mainLine
+        mainLine = top.start?.mainLine
         resetLayout()
-        append(page)
+        append(top.start?.commits ?? [], of: request.limit)
         if let selection, !contains(selection) {
             self.selection = nil
         }
         multipleSelection = multipleSelection.filter(contains)
         if multipleSelection.count < 2 { multipleSelection = [] }
+        notes.show(top.noted)
+        return true
+    }
 
-        await notes.reload()
-        let count = try? await repository.commitCount(in: scope, options: options)
-        if generation == self.generation {
+    /// Counts the history's commits, which walks all of it: once its top is
+    /// on screen.
+    func countCommits(for request: ReloadRequest) async {
+        let count = try? await repository.commitCount(in: request.scope, options: request.options)
+        if request.generation == generation {
             commitCount = count ?? 0
         }
     }
@@ -192,7 +235,7 @@ final class HistoryModel {
         while items.count == count, !isComplete {
             guard let page = try? await repository.nextCommits(from: cursor, limit: pageSize),
                   generation == self.generation else { return }
-            append(page)
+            append(page, of: pageSize)
         }
     }
 
@@ -295,8 +338,9 @@ final class HistoryModel {
         items.contains { $0.id == .commit(id) }
     }
 
-    private func append(_ commits: [Commit]) {
-        isComplete = commits.count < pageSize
+    /// Adds the commits read when `limit` were asked for: fewer end the history.
+    private func append(_ commits: [Commit], of limit: Int) {
+        isComplete = commits.count < limit
         commitsRead += commits
         layOut(commits)
     }

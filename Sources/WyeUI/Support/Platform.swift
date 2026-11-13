@@ -29,6 +29,19 @@ enum Platform {
         #endif
     }
 
+    /// How many rows a long list is first built with, the rest being added
+    /// once it is on screen; `nil` where a list creates only the rows it
+    /// shows. On the Mac a list creates every row it is built with, at about
+    /// a millisecond each, and only measures the rows added afterwards. As
+    /// many as a tall window shows.
+    static var listRowsBuiltFirst: Int? {
+        #if os(macOS)
+        60
+        #else
+        nil
+        #endif
+    }
+
     /// What happens to untracked files whose changes are discarded, for the
     /// confirmation that asks first. macOS has a Trash to move them to.
     static var untrackedDiscardNote: String {

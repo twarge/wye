@@ -88,6 +88,16 @@ struct RootView: View {
     /// system restored, even one showing the list of repositories.
     @SceneStorage("hasOpened") private var hasOpened = false
     @State private var model: RepositoryModel?
+    /// A repository opened and not on screen yet. See `open(_:restoring:)`.
+    @State private var arriving: RepositoryModel?
+    /// Whether the window has yet to show what it reopens with. Until it
+    /// has, one that showed a repository when the app quit shows nothing,
+    /// for the moment that takes: the list of repositories would be built
+    /// and would start reading every repository's status, only to be
+    /// replaced.
+    @State private var isReopening = true
+    /// Whether `WindowRestoration.openWindows` counts this window yet.
+    @State private var isCounted = false
     @State private var actions = WindowActions()
 
     var body: some View {
@@ -95,6 +105,8 @@ struct RootView: View {
             if let model {
                 RepositoryView(model: model) { close() }
                     .id(model.id)
+            } else if isReopening, reopensRepository {
+                Color.clear
             } else {
                 RepositoryLibraryView { open($0) }
             }
@@ -110,6 +122,7 @@ struct RootView: View {
             actions.open = { open($0) }
             actions.close = { close() }
             WindowRestoration.openWindows += 1
+            isCounted = true
         }
         .onDisappear {
             WindowRestoration.openWindows -= 1
@@ -121,22 +134,24 @@ struct RootView: View {
         .task {
             let isNew = !hasOpened
             hasOpened = true
-            if model == nil, let id = library.openInNextWindow,
+            if !isOpening, let id = library.openInNextWindow,
                let bookmark = library.bookmarks.first(where: { $0.id == id }) {
                 library.openInNextWindow = nil
                 open(bookmark)
             }
             // Reopen what this window showed when the app last quit.
-            if model == nil, let bookmark = library.bookmarks.first(where: { $0.id.uuidString == openRepositoryID }) {
+            if !isOpening, let bookmark = library.bookmarks.first(where: { $0.id.uuidString == openRepositoryID }) {
                 open(bookmark, restoring: SavedWindow(encoded: savedView))
             }
             // A new window, the only one open, with nothing of its own to
             // restore: the window last seen. A new window beside others
             // shows the list of repositories.
-            if model == nil, isNew, WindowRestoration.openWindows == 1, let last = WindowRestoration.last,
+            if !isOpening, isNew, WindowRestoration.openWindows == 1, let last = WindowRestoration.last,
                let bookmark = library.bookmarks.first(where: { $0.id == last.repository }) {
                 open(bookmark, restoring: last)
             }
+            // Nothing to reopen, or it could not be: the list of repositories.
+            if arriving == nil { isReopening = false }
         }
         .onChange(of: model.map(SavedWindow.init)) { old, new in
             savedView = new?.encoded
@@ -179,18 +194,61 @@ struct RootView: View {
 
     /// Opens a repository in this window, showing what `saved` says when it
     /// is for the same repository.
+    ///
+    /// The window turns to it once its references and the top of its
+    /// history are read, which begins at once and is a matter of
+    /// milliseconds: it arrives with its sidebar and history in place,
+    /// laid out once, where an empty one would fill in piece by piece. A
+    /// repository slow to read is shown without them after a moment.
     private func open(_ bookmark: RepositoryBookmark, restoring saved: SavedWindow? = nil) {
         do {
             let opened = try RepositoryModel(bookmark: bookmark, access: library.access(to: bookmark))
             if let saved { opened.restore(saved) }
-            if let model { OpenRepositories.remove(model) }
-            model = opened
-            OpenRepositories.add(opened)
-            openRepositoryID = bookmark.id.uuidString
-            library.recordOpened(bookmark)
+            opened.beginLoading()
+            arriving = opened
+            Task {
+                await opened.finishLoading()
+                show(opened)
+            }
+            Task {
+                try? await Task.sleep(for: Self.longestWait)
+                show(opened)
+            }
         } catch {
             actions.notices.post(error, during: "Open “\(bookmark.name)”")
         }
+    }
+
+    /// Whether the window is about to open a repository by itself, going by
+    /// what its first task looks at: one being read, the one it showed when
+    /// the app quit, the one a new tab was opened for, or the window last
+    /// seen when this is the only one.
+    private var reopensRepository: Bool {
+        if arriving != nil || openRepositoryID != nil || library.openInNextWindow != nil { return true }
+        let otherWindows = WindowRestoration.openWindows - (isCounted ? 1 : 0)
+        return !hasOpened && otherWindows == 0 && WindowRestoration.last != nil
+    }
+
+    /// How long a click on a repository waits for it to be read before the
+    /// window turns to it regardless.
+    private static let longestWait = Duration.milliseconds(200)
+
+    /// Whether the window shows a repository or is about to.
+    private var isOpening: Bool {
+        model != nil || arriving != nil
+    }
+
+    /// Turns the window to a repository `open(_:restoring:)` opened, unless
+    /// it has done so already or another has been opened since.
+    private func show(_ opened: RepositoryModel) {
+        guard arriving === opened else { return }
+        arriving = nil
+        isReopening = false
+        if let model { OpenRepositories.remove(model) }
+        model = opened
+        OpenRepositories.add(opened)
+        openRepositoryID = opened.bookmark.id.uuidString
+        library.recordOpened(opened.bookmark)
     }
 
     /// A patch file opened from outside: offered to the repository this
@@ -212,6 +270,8 @@ struct RootView: View {
     private func close() {
         if let model { OpenRepositories.remove(model) }
         model = nil
+        arriving = nil
+        isReopening = false
         openRepositoryID = nil
     }
 }

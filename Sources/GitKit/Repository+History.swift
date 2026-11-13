@@ -60,6 +60,15 @@ public struct HistoryOptions: Hashable, Sendable, Codable {
     }
 }
 
+/// The top of a history: its first commits, where to read on from, and the
+/// commit whose line its graph keeps straight.
+public struct HistoryStart: Sendable {
+    public var cursor: HistoryCursor
+    public var commits: [Commit]
+    /// See `Repository.mainLine(of:options:)`.
+    public var mainLine: OID?
+}
+
 /// Owns a libgit2 revision walk.
 final class Walk {
     let pointer: OpaquePointer
@@ -95,6 +104,24 @@ extension Repository {
         let cursor = HistoryCursor()
         walks[cursor] = walk
         return cursor
+    }
+
+    /// Starts reading a history and reads its first commits, at most
+    /// `limit`, with the main line of its graph: all a list needs to show
+    /// its top, in one turn. `previous` is closed, for a history read again.
+    public func startHistory(
+        _ scope: HistoryScope, options: HistoryOptions = HistoryOptions(), limit: Int,
+        closing previous: HistoryCursor? = nil
+    ) throws -> HistoryStart {
+        if let previous { closeHistory(previous) }
+        let cursor = try openHistory(scope, options: options)
+        do {
+            let commits = try nextCommits(from: cursor, limit: limit)
+            return HistoryStart(cursor: cursor, commits: commits, mainLine: try? mainLine(of: scope, options: options))
+        } catch {
+            closeHistory(cursor)
+            throw error
+        }
     }
 
     /// The next commits of a history, at most `limit`. Empty once it has ended.

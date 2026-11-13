@@ -37,7 +37,13 @@ final class CommitNotes {
 
     /// Reads which commits have notes again.
     func reload() async {
-        noted = (try? await repository.notedCommits()) ?? []
+        show((try? await repository.notedCommits()) ?? [])
+    }
+
+    /// Takes which commits have notes, as the history read it with its rows.
+    func show(_ noted: Set<OID>) {
+        // Not set when the same: every row on screen asks whether it has one.
+        if noted != self.noted { self.noted = noted }
         generation += 1
     }
 

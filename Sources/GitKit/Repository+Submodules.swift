@@ -77,7 +77,11 @@ extension Repository {
     // MARK: Listing
 
     /// Every submodule, with where it stands.
-    public func submodules() throws -> [Submodule] {
+    ///
+    /// - Parameter scanningWorkingTrees: Whether to look through each one's
+    ///   working tree for modified and untracked files, as its status
+    ///   would. Without it only a different commit counts as a change.
+    public func submodules(scanningWorkingTrees: Bool = true) throws -> [Submodule] {
         guard !isBare else { return [] }
         let collected = Collector<Submodule>()
         let code = git_submodule_foreach(pointer, { submodule, name, payload in
@@ -100,7 +104,7 @@ extension Repository {
         let configured = configuredSubmoduleURLs()
         return collected.items.map { item in
             var item = item
-            let flags = submoduleStatusFlags(item.name)
+            let flags = submoduleStatusFlags(item.name, scanningWorkingTree: scanningWorkingTrees)
             item.resolvedURL = configured[item.name] ?? item.url.map(resolveSubmoduleURL)
             item.changes = Self.changes(from: flags)
             item.status = Self.state(from: flags, initialized: configured[item.name] != nil, changes: item.changes)
@@ -132,9 +136,12 @@ extension Repository {
         return changes
     }
 
-    func submoduleStatusFlags(_ name: String) -> UInt32 {
+    /// - Parameter scanningWorkingTree: Without it, libgit2 compares commits
+    ///   and leaves the submodule's files alone.
+    func submoduleStatusFlags(_ name: String, scanningWorkingTree: Bool = true) -> UInt32 {
         var flags: UInt32 = 0
-        guard git_submodule_status(&flags, pointer, name, GIT_SUBMODULE_IGNORE_NONE) == 0 else { return 0 }
+        let ignoring = scanningWorkingTree ? GIT_SUBMODULE_IGNORE_NONE : GIT_SUBMODULE_IGNORE_DIRTY
+        guard git_submodule_status(&flags, pointer, name, ignoring) == 0 else { return 0 }
         return flags
     }
 
@@ -801,8 +808,18 @@ extension Repository {
         }
     }
 
+    /// Each submodule's name by its path. Only that: reading where each
+    /// stands would look through its whole working tree.
     private func submodulePathsToNames() -> [String: String] {
-        Dictionary(((try? submodules()) ?? []).map { ($0.path, $0.name) }, uniquingKeysWith: { first, _ in first })
+        guard !isBare else { return [:] }
+        let collected = Collector<(path: String, name: String)>()
+        _ = git_submodule_foreach(pointer, { submodule, name, payload in
+            guard let submodule, let name, let payload else { return 0 }
+            let collected = Unmanaged<Collector<(path: String, name: String)>>.fromOpaque(payload).takeUnretainedValue()
+            collected.items.append((String(cString: git_submodule_path(submodule)), String(cString: name)))
+            return 0
+        }, Unmanaged.passUnretained(collected).toOpaque())
+        return Dictionary(collected.items, uniquingKeysWith: { first, _ in first })
     }
 
     private static func commits(

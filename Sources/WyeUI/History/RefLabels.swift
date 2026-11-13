@@ -1,5 +1,24 @@
 import GitKit
 
+/// What a history of every reference is read from: where `HEAD` and each
+/// branch, remote branch and tag point. While these stay the same it lists
+/// the same commits, whatever else about the repository changes.
+struct HistorySource: Equatable {
+    var head: OID?
+    /// Each reference's commit, by its full name.
+    var references: [String: OID]
+}
+
+extension RepositorySnapshot {
+    var historySource: HistorySource {
+        var references: [String: OID] = [:]
+        for branch in branches { references[branch.id] = branch.target }
+        for branch in remotes.lazy.flatMap(\.branches) { references[branch.id] = branch.target }
+        for tag in tags { references[tag.id] = tag.target }
+        return HistorySource(head: head.target, references: references)
+    }
+}
+
 extension RefLabel {
     /// The badges each commit shows, from a snapshot's references. Pure, so
     /// it can be tested without a window.

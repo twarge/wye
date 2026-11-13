@@ -44,6 +44,15 @@ public actor Repository {
 
     var pointer: OpaquePointer { handle.pointer }
 
+    /// Reads several things in one turn: nothing else the repository is
+    /// asked for comes between them, and the caller waits once for all of
+    /// them, where a window would otherwise lay itself out again after each.
+    public func read<Value: Sendable>(
+        _ body: @Sendable (isolated Repository) throws -> Value
+    ) rethrows -> Value {
+        try body(self)
+    }
+
     /// Owns the libgit2 repository, freeing it with the actor.
     private final class Handle: @unchecked Sendable {
         let pointer: OpaquePointer

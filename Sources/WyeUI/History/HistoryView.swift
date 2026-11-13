@@ -6,6 +6,14 @@ import TipKit
 struct HistoryView: View {
     @Bindable var model: RepositoryModel
     @State private var isCreatingBranch = false
+    /// Whether the list has been built and its rows laid out. Until then
+    /// it holds only its first rows and no spinner: a list on the Mac
+    /// creates every row it is built with, where it only measures those
+    /// added to it later. Built with all the commits read so far it takes
+    /// a millisecond for each to appear, every time the sidebar comes back
+    /// to it, and the spinner at its end, on screen until the rows above it
+    /// have their heights, reads pages nobody scrolled to.
+    @State private var isBuilt = Platform.listRowsBuiltFirst == nil
     @FocusState private var isSearchFocused: Bool
     @Environment(\.openCommitWindow) private var openCommitWindow
     /// Compact, rows are on two lines and have no columns to name.
@@ -78,13 +86,26 @@ struct HistoryView: View {
             // Edit ▸ Copy while the list has focus: the selected commits' hashes.
             .copyable(copiedHashes)
             #endif
-            .onChange(of: history.scrollTarget) {
-                guard let target = history.scrollTarget else { return }
+            .onChange(of: ScrollRequest(target: history.scrollTarget, isBuilt: isBuilt)) {
+                // Once the list holds every row: the commit may be past the first.
+                guard isBuilt, let target = history.scrollTarget else { return }
                 withMotion {
                     proxy.scrollTo(HistoryModel.Item.ID.commit(target), anchor: .center)
                 }
                 history.didScroll()
             }
+        }
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            // Laid out: the rows it was built with reach past the window.
+            geometry.containerSize.height > 0 && geometry.contentSize.height > geometry.containerSize.height
+        } action: { _, isFilled in
+            if isFilled { isBuilt = true }
+        }
+        .task {
+            // With too few rows to fill the window there is nothing to wait
+            // for: the rest follow, or the spinner that reads them.
+            try? await Task.sleep(for: .milliseconds(300))
+            isBuilt = true
         }
         .listStyle(.plain)
         // Rows set their own height; a taller minimum would break the graph's lines.
@@ -164,7 +185,7 @@ struct HistoryView: View {
     /// more are read.
     @ViewBuilder
     private func commitRows(_ history: HistoryModel) -> some View {
-        ForEach(history.items) { item in
+        ForEach(rows(of: history)) { item in
             switch item {
             case .heading(let date, let grouping, _, let lines):
                 HeadingRow(date: date, grouping: grouping, lines: lines, graphWidth: graphWidth)
@@ -184,7 +205,7 @@ struct HistoryView: View {
         .listRowInsets(Self.rowInsets)
         .listRowSeparator(.hidden)
 
-        if !history.isComplete, !history.items.isEmpty {
+        if isBuilt, !history.isComplete, !history.items.isEmpty {
             ProgressView()
                 .frame(maxWidth: .infinity)
                 .listRowSeparator(.hidden)
@@ -194,6 +215,14 @@ struct HistoryView: View {
                     await history.loadMore()
                 }
         }
+    }
+
+    /// The rows the list holds: all that are read, once it is built.
+    private func rows(of history: HistoryModel) -> [HistoryModel.Item] {
+        guard !isBuilt, let limit = Platform.listRowsBuiltFirst, history.items.count > limit else {
+            return history.items
+        }
+        return Array(history.items.prefix(limit))
     }
 
     /// The rows' insets, which the column header shares so its titles
@@ -241,6 +270,12 @@ struct HistoryView: View {
 
     private var rowSize: HistoryPreferences.RowSize {
         Platform.choosesHistoryRowSize ? preferences.rowSize : .regular
+    }
+
+    /// The commit to scroll to, and whether the list holds it yet.
+    private struct ScrollRequest: Equatable {
+        var target: OID?
+        var isBuilt: Bool
     }
 
     /// What a search depends on: it runs again when any of these changes.

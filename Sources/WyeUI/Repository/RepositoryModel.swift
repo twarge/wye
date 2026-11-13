@@ -145,6 +145,8 @@ final class RepositoryModel: Identifiable {
     private let access: RepositoryAccess
     /// What the last refresh failed with, while it keeps failing.
     @ObservationIgnored private var refreshFailure: String?
+    /// What a window opens with, being read and shown. See `beginLoading()`.
+    @ObservationIgnored private var opening: Task<Void, Never>?
 
     nonisolated var id: UUID { bookmark.id }
     var name: String { bookmark.name }
@@ -158,21 +160,59 @@ final class RepositoryModel: Identifiable {
         interface = RepositoryInterfaceState(repositoryID: bookmark.id)
     }
 
+    /// Begins reading what a window shows first, before the window is on
+    /// screen: the references and the top of the history, together and off
+    /// the main thread. The window then lays itself out once with all of
+    /// it, where reading each as the window asks has it lay out again for
+    /// the sidebar, the rows and the toolbar in turn. The working copy, and
+    /// whatever else takes looking through files, follows in `refresh()`.
+    func beginLoading() {
+        guard opening == nil, snapshot == nil else { return }
+        let request = history.beginReload()
+        // Detached, to start now: the main thread is about to build the window.
+        let reading = Task.detached(priority: .userInitiated) { [repository] in
+            try? await repository.read { repository in
+                // A submodule's own changes wait for `refresh()`: finding
+                // them means looking through its whole working tree.
+                (try repository.snapshot(scanningSubmodules: false), request.read(from: repository))
+            }
+        }
+        opening = Task {
+            // Unreadable: `refresh()` says why.
+            guard let (snapshot, top) = await reading.value else { return }
+            take(snapshot)
+            if history.finishReload(request, with: top) {
+                Task { await history.countCommits(for: request) }
+            }
+        }
+    }
+
+    /// Waits until what `beginLoading()` began to read is shown. Returns at
+    /// once when nothing is being read.
+    func finishLoading() async {
+        guard let opening else { return }
+        await opening.value
+        self.opening = nil
+    }
+
     /// Reads the repository again and updates whatever changed.
     func refresh() async {
         diskChanges.refreshBegan()
         defer { diskChanges.refreshEnded() }
+        // First what an opening window began to read.
+        await finishLoading()
         do {
-            let snapshot = try await repository.snapshot()
-            workingCopy.entries = try await repository.status()
-            workingCopy.identity = await repository.identity()
+            // In one turn, so the window shows them together.
+            let (snapshot, entries, identity) = try await repository.read { repository in
+                (try repository.snapshot(), try repository.status(), repository.identity())
+            }
+            workingCopy.entries = entries
+            workingCopy.identity = identity
             updateCommitSigning()
-            if let selected = workingCopy.selection, !workingCopy.entries.contains(where: { $0.path == selected }) {
+            if let selected = workingCopy.selection, !entries.contains(where: { $0.path == selected }) {
                 workingCopy.selection = nil
             }
-            if snapshot != self.snapshot {
-                self.snapshot = snapshot
-                refLabels = RefLabel.labels(in: snapshot)
+            if take(snapshot) {
                 await history.reload()
             }
             checkRestoredSelection()
@@ -186,6 +226,20 @@ final class RepositoryModel: Identifiable {
         }
         // Every operation and change on disk ends here.
         FilesLocationSignal.repositoryChanged(at: repository.url)
+    }
+
+    /// Takes a snapshot just read. Returns whether the history lists other
+    /// commits for it, and is to be read again: not for a stash, a
+    /// submodule's changes or anything else that moves no reference.
+    @discardableResult
+    private func take(_ snapshot: RepositorySnapshot) -> Bool {
+        guard snapshot != self.snapshot else { return false }
+        let listsOtherCommits = snapshot.historySource != self.snapshot?.historySource
+        self.snapshot = snapshot
+        // Not set when the same: every row of the history reads them.
+        let labels = RefLabel.labels(in: snapshot)
+        if labels != refLabels { refLabels = labels }
+        return listsOtherCommits
     }
 
     static let readingTitle = "Read Repository"
