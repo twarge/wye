@@ -2,8 +2,8 @@ import Foundation
 import GitKit
 import Observation
 
-/// What the sidebar can select.
-enum SidebarItem: Hashable {
+/// What the sidebar can select. Codable, for a window to reopen to it.
+enum SidebarItem: Hashable, Codable {
     case workingCopy
     case history
     case stashes
@@ -104,6 +104,12 @@ final class RepositoryModel: Identifiable {
     /// The branch or tag just selected in the sidebar, until the history has
     /// selected the commit it points at. See `revealSelectedReference()`.
     var referenceToReveal: SidebarItem?
+    /// The commit a reopened window had selected, until the history is on
+    /// screen to select it in. See `restoreSelectedCommit()`.
+    var commitToRestore: OID?
+    /// What a reopened window's sidebar selected, until the first snapshot
+    /// says whether it is still there. See `restore(_:)`.
+    @ObservationIgnored var restoredSelection: SidebarItem?
     var selectedStash: OID?
     var workingCopy = WorkingCopyState()
     /// What went wrong and what operations left behind, for the strip at
@@ -169,6 +175,7 @@ final class RepositoryModel: Identifiable {
                 refLabels = RefLabel.labels(in: snapshot)
                 await history.reload()
             }
+            checkRestoredSelection()
             revision += 1
             if refreshFailure != nil {
                 refreshFailure = nil

@@ -46,6 +46,8 @@ struct RepositoryView: View {
                     await model.history.show(scope)
                 }
                 await model.revealSelectedReference()
+                // A reopened window's commit, once its history is shown.
+                await model.restoreSelectedCommit()
             }
     }
 

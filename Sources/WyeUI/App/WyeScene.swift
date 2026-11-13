@@ -11,6 +11,14 @@ public struct WyeScene: Scene {
     static let activityWindowID = "activity"
 
     public init() {
+        #if os(macOS)
+        // Windows come back after Quit as they were left, commit windows and
+        // tabs too, as a repository's folder would in the Finder. Out of the
+        // box the Mac closes an app's windows when it quits; this is only
+        // Wye's default, so a choice made in System Settings ▸ Desktop & Dock
+        // still wins.
+        UserDefaults.standard.register(defaults: ["NSQuitAlwaysKeepsWindows": true])
+        #endif
         // Wye keeps its own git configuration: inside the sandbox it cannot
         // read the one in the user's home folder.
         try? GitEnvironment.useGlobalConfiguration(in: .applicationSupportDirectory.appending(path: "Wye/git"))
@@ -73,6 +81,11 @@ struct RootView: View {
     @Environment(RepositoryLibrary.self) private var library
     @Environment(\.scenePhase) private var scenePhase
     @SceneStorage("openRepository") private var openRepositoryID: String?
+    /// What the window shows in its repository, as `SavedWindow` keeps it.
+    @SceneStorage("windowView") private var savedView: String?
+    /// Set once the window has opened: true from the start in a window the
+    /// system restored, even one showing the list of repositories.
+    @SceneStorage("hasOpened") private var hasOpened = false
     @State private var model: RepositoryModel?
     @State private var actions = WindowActions()
 
@@ -95,8 +108,18 @@ struct RootView: View {
         .onAppear {
             actions.open = { open($0) }
             actions.close = { close() }
+            WindowRestoration.openWindows += 1
+        }
+        .onDisappear {
+            WindowRestoration.openWindows -= 1
+            // The last window closed is the one a new window reopens.
+            if WindowRestoration.openWindows == 0 {
+                WindowRestoration.last = model.map(SavedWindow.init)
+            }
         }
         .task {
+            let isNew = !hasOpened
+            hasOpened = true
             if model == nil, let id = library.openInNextWindow,
                let bookmark = library.bookmarks.first(where: { $0.id == id }) {
                 library.openInNextWindow = nil
@@ -104,7 +127,23 @@ struct RootView: View {
             }
             // Reopen what this window showed when the app last quit.
             if model == nil, let bookmark = library.bookmarks.first(where: { $0.id.uuidString == openRepositoryID }) {
-                open(bookmark)
+                open(bookmark, restoring: SavedWindow(encoded: savedView))
+            }
+            // A new window, the only one open, with nothing of its own to
+            // restore: the window last seen. A new window beside others
+            // shows the list of repositories.
+            if model == nil, isNew, WindowRestoration.openWindows == 1, let last = WindowRestoration.last,
+               let bookmark = library.bookmarks.first(where: { $0.id == last.repository }) {
+                open(bookmark, restoring: last)
+            }
+        }
+        .onChange(of: model.map(SavedWindow.init)) { old, new in
+            savedView = new?.encoded
+            if let new {
+                WindowRestoration.last = new
+            } else if WindowRestoration.last?.repository == old?.repository {
+                // Back to the list of repositories.
+                WindowRestoration.last = nil
             }
         }
         .onOpenURL { url in
@@ -137,9 +176,12 @@ struct RootView: View {
         }
     }
 
-    private func open(_ bookmark: RepositoryBookmark) {
+    /// Opens a repository in this window, showing what `saved` says when it
+    /// is for the same repository.
+    private func open(_ bookmark: RepositoryBookmark, restoring saved: SavedWindow? = nil) {
         do {
             let opened = try RepositoryModel(bookmark: bookmark, access: library.access(to: bookmark))
+            if let saved { opened.restore(saved) }
             if let model { OpenRepositories.remove(model) }
             model = opened
             OpenRepositories.add(opened)

@@ -52,6 +52,51 @@ extension RepositoryModel {
         referenceToReveal = nil
     }
 
+    // MARK: Reopening
+
+    /// Shows what a window showed when it closed: the sidebar's selection,
+    /// and the commit selected in the history once that is on screen.
+    func restore(_ saved: SavedWindow) {
+        guard saved.repository == id else { return }
+        if let selection = saved.selection {
+            self.selection = selection
+            restoredSelection = selection
+        }
+        if let commit = saved.commitID {
+            commitToRestore = commit
+            // The saved commit, not the one the branch or tag points at.
+            referenceToReveal = nil
+        }
+    }
+
+    /// Selects the commit a reopened window had selected, once the history
+    /// is on screen, and only once.
+    func restoreSelectedCommit() async {
+        guard let commit = commitToRestore, selection?.historyScope != nil, referenceToReveal == nil else { return }
+        commitToRestore = nil
+        // Quietly, if no branch or tag leads to it any more.
+        _ = await history.select(commit)
+    }
+
+    /// Goes to the full history in place of a restored branch, tag, remote
+    /// branch, submodule, worktree or pull request list that is gone,
+    /// once the first snapshot says.
+    func checkRestoredSelection() {
+        guard let item = restoredSelection, let snapshot else { return }
+        restoredSelection = nil
+        guard selection == item else { return }
+        let isThere = switch item {
+        case .branch(let id): snapshot.branches.contains { $0.id == id }
+        case .remoteBranch(let id): snapshot.remotes.contains { $0.branches.contains { $0.id == id } }
+        case .tag(let id): snapshot.tags.contains { $0.id == id }
+        case .submodule(let name): submodule(named: name) != nil
+        case .worktree(let name): worktree(named: name) != nil
+        case .pullRequests: pullRequestTarget != nil
+        case .workingCopy, .history, .stashes, .reflog: true
+        }
+        if !isThere { selection = .history }
+    }
+
     /// Selects the commit `HEAD` points at: in the history on screen when it
     /// is the full history or the checked-out branch's, otherwise in the
     /// full history.
