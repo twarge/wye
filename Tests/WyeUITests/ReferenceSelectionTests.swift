@@ -22,6 +22,9 @@ import Testing
                 .appending(path: "WyeUITests-\(UUID().uuidString)", directoryHint: .isDirectory)
             repository = try Repository.create(at: folder)
             let identity = GitIdentity(name: "Test Author", email: "author@example.com")
+            // The repository's own, too: an annotated tag's tagger is read
+            // from configuration, and a machine like CI's has no global one.
+            try await repository.setLocalIdentity(identity)
             try Data("one\n".utf8).write(to: folder.appending(path: "a.txt"))
             try await repository.stage(["a.txt"])
             first = try await repository.commit(message: "One", as: identity)
