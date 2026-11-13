@@ -45,6 +45,7 @@ final class ViewRequests {
 /// | ⌘Z, ⇧⌘Z | Undo, Redo (the text's while a field has focus) |
 /// | ⌘1 to ⌘4 | Working Copy, History, Stashes, Reflog |
 /// | ⌘0 | Show HEAD |
+/// | ⌃⌘I | Show Details, Hide Details (macOS, where the detail closes) |
 /// | ⌘R | Refresh |
 /// | ⇧⌘F, ⇧⌘P, ⇧⌘U | Fetch, Pull, Push |
 /// | ⇧⌘B, ⇧⌘M | New Branch…, Merge… |

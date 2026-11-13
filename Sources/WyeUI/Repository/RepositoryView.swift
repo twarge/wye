@@ -11,6 +11,12 @@ struct RepositoryView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     /// Whether the detail is open on the right, on macOS.
     @SceneStorage("showsDetail") private var showsDetail = true
+    #if os(macOS)
+    /// The list's width beside the detail, which the divider between them
+    /// sets. One width for every window and tab, so that the list does not
+    /// jump from one to the next.
+    @AppStorage(DetailSplitWidths.listWidthKey) private var listWidth = Double(DetailSplitWidths.defaultListWidth)
+    #endif
 
     var body: some View {
         columns
@@ -51,35 +57,34 @@ struct RepositoryView: View {
     }
 
     /// The sidebar, the list, and the detail of what it selects. On macOS
-    /// the detail is an inspector, which the toolbar's button and
-    /// View ▸ Hide Inspector close: a split view's last column cannot be.
+    /// the detail can be closed, with the toolbar's button and
+    /// View ▸ Hide Details, which a split view's last column cannot be; so
+    /// the list and the detail share the split view's detail column, where
+    /// the list keeps its width and the detail takes up a change in the
+    /// window's. See `DetailSplit`.
     @ViewBuilder
     private var columns: some View {
         #if os(macOS)
         NavigationSplitView {
             sidebar
         } detail: {
-            // The button sits in the inspector's own toolbar while it is
-            // open, as SwiftUI's inspectors want it: from the list's, it did
-            // not close an inspector showing nothing selected. Closed, the
-            // list's toolbar has it, to open it again.
-            list
-                // Room for a hash, a summary and a date: the details or a
-                // narrow window take no more than this from it.
-                .frame(minWidth: 380)
-                .toolbar {
-                    if !showsDetail {
-                        ToolbarItem(placement: .primaryAction) { detailToggle }
+            DetailSplit(showsDetail: showsDetail, listWidth: $listWidth) {
+                list
+                    // On a view over the list: its button then follows
+                    // the list's own, last before the search field, where
+                    // the open detail has always had it.
+                    .overlay {
+                        Color.clear
+                            .allowsHitTesting(false)
+                            .toolbar {
+                                ToolbarItem(placement: .primaryAction) { detailToggle }
+                            }
                     }
-                }
-                .inspector(isPresented: $showsDetail) {
-                    detailColumn
-                        .inspectorColumnWidth(min: 320, ideal: 560, max: 1600)
-                        .toolbar {
-                            ToolbarItem(placement: .primaryAction) { detailToggle }
-                        }
-                }
+            } detail: {
+                detailColumn
+            }
         }
+        .focusedSceneValue(\.detailVisibility, $showsDetail)
         #else
         NavigationSplitView {
             sidebar

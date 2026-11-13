@@ -39,14 +39,14 @@ public struct WyeScene: Scene {
             RootView()
                 .environment(library)
         }
-        // With the sidebar at its narrowest and the details at their usual
-        // width, the list of commits has about 490 points.
+        // With the sidebar at its narrowest and the list of commits at its
+        // usual 490 points, the details have about 560.
         .defaultSize(width: 1220, height: 780)
         .commands {
             WyeCommands(library: library)
             #if os(macOS)
-            // View ▸ Show and Hide Inspector, for the details on the right.
-            InspectorCommands()
+            // View ▸ Show and Hide Details, for the details on the right.
+            DetailCommands()
             #endif
         }
 
