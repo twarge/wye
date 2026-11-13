@@ -2,11 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>257KW9ZJFP.com.twarge.app.wye</string>
+		<string>group.com.twarge.app.wye</string>
 	</array>
 	<key>com.apple.security.files.bookmarks.app-scope</key>
 	<true/>
@@ -14,8 +16,5 @@
 	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
-	<!-- Settings sync (Settings ▸ iCloud) through iCloud's key-value store. -->
-	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
-	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
 </dict>
 </plist>

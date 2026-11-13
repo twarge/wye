@@ -1,13 +1,7 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%@" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
     "%@: %@" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false,
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -18,8 +12,7 @@
       }
     },
     "%lld" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
+
     },
     "Changes" : {
       "extractionState" : "manual",
@@ -89,6 +82,10 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
+    "repositories to push" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
     "Repositories with commits to push or changes to commit." : {
       "extractionState" : "manual",
       "generatesSymbol" : false
@@ -98,6 +95,10 @@
       "generatesSymbol" : false
     },
     "Repository not found" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
+    "repository to push" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
@@ -120,15 +121,7 @@
     "Up to date" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
-    },
-    "repositories to push" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
-    "repository to push" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
     }
   },
-  "version" : "1.0"
+  "version" : "1.1"
 }

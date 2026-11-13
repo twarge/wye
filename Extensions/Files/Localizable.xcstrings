@@ -1,10 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%@" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
     "Check out ${branch} in ${repository}" : {
       "extractionState" : "manual",
       "generatesSymbol" : false

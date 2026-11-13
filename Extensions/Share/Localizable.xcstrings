@@ -1,10 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%@" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
     "Cancel" : {
       "extractionState" : "manual",
       "generatesSymbol" : false

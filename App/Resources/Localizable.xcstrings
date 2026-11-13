@@ -1,14 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
-    " " : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
     "%@" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
