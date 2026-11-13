@@ -12,6 +12,15 @@ public enum FileChange: Hashable, Sendable {
     case conflicted
 }
 
+/// Where a side of a comparison is read from: a commit, the index, or the
+/// files in the working tree.
+public enum ContentSource: Hashable, Sendable {
+    /// A commit's tree. A tree's own ID works as well.
+    case commit(OID)
+    case index
+    case workingTree
+}
+
 /// One file's changes.
 public struct FileDiff: Identifiable, Hashable, Sendable {
     public var change: FileChange
@@ -31,9 +40,16 @@ public struct FileDiff: Identifiable, Hashable, Sendable {
     /// file does not exist, and for a working tree file git has not hashed.
     public var oldBlobID: OID? = nil
     public var newBlobID: OID? = nil
+    /// What each side of the diff as a whole was read from, so that the
+    /// folder around a file, such as a document package, can be put back
+    /// together as that side has it. `nil` for an empty side, such as the
+    /// parent of a first commit.
+    public var oldSource: ContentSource? = nil
+    public var newSource: ContentSource? = nil
+
     /// Whether the new side is the file in the working tree rather than a
     /// blob, as in an unstaged diff.
-    public var newSideIsWorkingTree = false
+    public var newSideIsWorkingTree: Bool { newSource == .workingTree }
 
     public var id: String { path }
 

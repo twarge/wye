@@ -22,8 +22,9 @@ public struct WyeScene: Scene {
         // Wye keeps its own git configuration: inside the sandbox it cannot
         // read the one in the user's home folder.
         try? GitEnvironment.useGlobalConfiguration(in: .applicationSupportDirectory.appending(path: "Wye/git"))
-        // Files written for drags and shares in an earlier run.
+        // Files written for drags, shares and previews in an earlier run.
         DragFiles.removeAll()
+        PreviewFiles.removeAll()
         // Before launch finishes, as the system wants both.
         FetchNotifications.install()
         BackgroundRefresh.register(library: RepositoryLibrary.shared)

@@ -2,7 +2,8 @@ import GitKit
 import ImageIO
 import SwiftUI
 
-/// A file as it is at a commit: text with line numbers, or an image.
+/// A file as it is at a commit: text with line numbers, an image, or the
+/// picture Quick Look has of it.
 struct FileContentView: View {
     var model: RepositoryModel
     var path: String
@@ -16,6 +17,10 @@ struct FileContentView: View {
     /// commit deleted.
     @State private var failure: String?
     @Environment(\.openCommitRoute) private var open
+
+    private var item: PreviewItem {
+        PreviewItem(path: path, source: .commit(commitID))
+    }
 
     var body: some View {
         if isBesideList {
@@ -38,6 +43,7 @@ struct FileContentView: View {
 
     @ViewBuilder
     private var actions: some View {
+        QuickLookButton(item: item, repository: model.repository)
         Button("History", systemImage: "clock.arrow.circlepath") {
             open(.fileHistory(path: path, commit: commitID))
         }
@@ -63,12 +69,17 @@ struct FileContentView: View {
                                 .padding()
                         }
                     } else {
-                        ContentUnavailableView("Binary File", systemImage: "doc",
-                                               description: Text(content.size.formatted(.byteCount(style: .file))))
+                        QuickLookPicture(item: item, repository: model.repository) {
+                            ContentUnavailableView("Binary File", systemImage: "doc",
+                                                   description: Text(content.size.formatted(.byteCount(style: .file))))
+                        }
                     }
                 case .tooLarge:
-                    ContentUnavailableView("File Too Large to Show", systemImage: "doc",
-                                           description: Text(content.size.formatted(.byteCount(style: .file))))
+                    // Too large to read here, but Quick Look reads it from a copy.
+                    QuickLookPicture(item: item, repository: model.repository) {
+                        ContentUnavailableView("File Too Large to Show", systemImage: "doc",
+                                               description: Text(content.size.formatted(.byteCount(style: .file))))
+                    }
                 }
             } else {
                 ProgressView()

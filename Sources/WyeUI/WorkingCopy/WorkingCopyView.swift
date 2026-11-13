@@ -92,6 +92,12 @@ struct WorkingCopyView: View {
             }
         }
         .listStyle(.plain)
+        .quickLookOnSpace(in: model.repository) {
+            // The files on disk; one deleted there, as the index has it.
+            model.workingCopy.selectedSet.sorted().map { path in
+                PreviewItem(path: path, source: model.fileExists(path) ? .workingTree : .index)
+            }
+        }
         // The window follows changes on disk; iOS sees only some of them.
         .refreshable { await model.refresh() }
         .workingCopyDrops(model)
@@ -247,6 +253,8 @@ struct WorkingCopyView: View {
                     } toggleStaging: {
                         Task { await model.toggleStaging(of: entries) }
                     }
+                    .fileDrag(model.fileExists(row.node.path)
+                              ? FileDrag(repository: model.repository, path: row.node.path, isFolder: true) : nil)
                     .contextMenu {
                         let state = StagingState(entries)
                         Button(state == .staged ? "Unstage Folder" : "Stage Folder",
@@ -823,12 +831,14 @@ struct WorkingCopyDetailView: View {
                                 file: staged, caption: "Staged", isCollapsed: isCollapsed("staged"),
                                 actions: actions(for: staged, side: .staged)
                             )
+                            .diffPackages([staged])
                         }
                         if let unstaged = loaded.unstaged {
                             FileDiffView(
                                 file: unstaged, caption: "Unstaged", isCollapsed: isCollapsed("unstaged"),
                                 actions: actions(for: unstaged, side: .unstaged)
                             )
+                            .diffPackages([unstaged])
                         }
                     }
                     .padding(.bottom, 20)

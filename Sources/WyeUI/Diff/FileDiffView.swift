@@ -39,15 +39,20 @@ struct FileDiffView: View {
     /// Syntax colours and changes within lines, worked out off the main actor.
     @State private var decorations = DiffDecorationLoader()
     @Environment(FindModel.self) private var find: FindModel?
+    @Environment(\.diffPackages) private var packages
+    @Environment(\.diffRepository) private var repository
 
     var body: some View {
+        if let package = packages[file.id] {
+            PackageDiffSection(package: package, caption: caption)
+        }
         header
         if !isCollapsed {
             if let submodule = file.submodule {
                 SubmoduleDiffRows(change: submodule)
             } else if file.isBinary {
-                if ImageDiffView.canShow(file) {
-                    ImageDiffView(file: file)
+                if let subject = VisualDiffView.subject(for: file) {
+                    VisualDiffView(subject: subject)
                 } else {
                     note("Binary file")
                 }
@@ -121,7 +126,15 @@ struct FileDiffView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .fileActionsMenu(fileActions)
+        .contextMenu {
+            if let fileActions {
+                FileActionsMenuItems(actions: fileActions)
+            }
+            if file.submodule == nil {
+                DiffQuickLookButtons(old: file.oldItem, new: file.newItem)
+            }
+        }
+        .fileDrag(file.drag(in: repository))
         .background(.fill.tertiary)
         // A heading too, so the same rotor steps from file to file.
         .accessibilityAddTraits(.isHeader)

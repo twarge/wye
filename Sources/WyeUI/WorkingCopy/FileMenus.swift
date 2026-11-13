@@ -51,7 +51,10 @@ struct WorkingCopyFolderMenu: View {
 
     var body: some View {
         let path = node.path
-        if Platform.canRevealFiles, model.fileExists(path) {
+        if model.fileExists(path), DocumentPackages.isPackage(path: path) {
+            // A document package opens as the one file it is.
+            OpenFileButtons(model: model, path: path)
+        } else if Platform.canRevealFiles, model.fileExists(path) {
             Button(Platform.revealInFileBrowserTitle, systemImage: "folder") {
                 Platform.revealInFileBrowser(model.fileURL(for: path))
             }
@@ -79,7 +82,7 @@ struct WorkingCopyHiddenFileMenu: View {
     var body: some View {
         let trimmed = path.hasSuffix("/") ? String(path.dropLast()) : path
         if model.fileExists(trimmed) {
-            if path.hasSuffix("/") {
+            if path.hasSuffix("/"), !DocumentPackages.isPackage(path: trimmed) {
                 if Platform.canRevealFiles {
                     Button(Platform.revealInFileBrowserTitle, systemImage: "folder") {
                         Platform.revealInFileBrowser(model.fileURL(for: trimmed))

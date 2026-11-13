@@ -161,6 +161,7 @@ private struct CommitDetailContent: View {
                             .adding(workingCopyCommandsFor: file, in: loaded.commit.id, model: model)
                     )
                 }
+                .diffPackages(loaded.files)
             }
             .padding(.bottom, 20)
         }

@@ -128,7 +128,9 @@ extension Repository {
            let source = try renameSource(of: path, from: oldTree, to: newTree) {
             paths.append(source)
         }
-        let files = try treeDiff(from: oldTree, to: newTree, paths: paths)
+        let files = try treeDiff(
+            from: oldTree, to: newTree, paths: paths, sources: (DiffBuilder.source(parent), DiffBuilder.source(commit))
+        )
         return files.first { $0.path == path } ?? files.first { $0.oldPath == path }
     }
 
@@ -150,8 +152,12 @@ extension Repository {
     }
 
     /// The diff between two trees, as values, with renames found. Limited to
-    /// `paths`, named literally, when any are given.
-    func treeDiff(from oldTree: OpaquePointer?, to newTree: OpaquePointer?, paths: [String] = []) throws -> [FileDiff] {
+    /// `paths`, named literally, when any are given. `sources` are the
+    /// commits the trees are of.
+    func treeDiff(
+        from oldTree: OpaquePointer?, to newTree: OpaquePointer?, paths: [String] = [],
+        sources: (old: ContentSource?, new: ContentSource?)
+    ) throws -> [FileDiff] {
         var options = git_diff_options()
         try check(git_diff_options_init(&options, UInt32(GIT_DIFF_OPTIONS_VERSION)))
         return try withStringArray(paths) { pathspec in
@@ -163,7 +169,7 @@ extension Repository {
             try check(git_diff_tree_to_tree(&diff, pointer, oldTree, newTree, &options))
             defer { git_diff_free(diff) }
             try findRenames(in: diff)
-            return try DiffBuilder.files(in: diff)
+            return try DiffBuilder.files(in: diff, old: sources.old, new: sources.new)
         }
     }
 

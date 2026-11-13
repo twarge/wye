@@ -91,6 +91,7 @@ struct WorkingTreeCompareView: View {
                     ForEach(files ?? []) { file in
                         FileDiffView(file: file, isCollapsed: isCollapsed(file.id))
                     }
+                    .diffPackages(files ?? [])
                 }
                 .padding(.bottom, 20)
             }
@@ -102,6 +103,8 @@ struct WorkingTreeCompareView: View {
             }
         }
         .sheetMinimumSize(width: 640, height: 520)
+        // A sheet: the window's are outside it.
+        .diffSupport(model)
         .task(id: Key(comparison: comparison, revision: model.revision)) {
             await load()
         }

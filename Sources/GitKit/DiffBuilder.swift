@@ -7,9 +7,16 @@ enum DiffBuilder {
     /// further, and laying it out would stall the interface.
     static let lineLimit = 5_000
 
-    /// - Parameter newSideIsWorkingTree: whether the diff's new side is the
-    ///   working tree, so its files are read from disk rather than as blobs.
-    static func files(in diff: OpaquePointer?, newSideIsWorkingTree: Bool = false) throws -> [FileDiff] {
+    /// A commit as the source of a side; `nil` for no commit, an empty side.
+    static func source(_ commit: OpaquePointer?) -> ContentSource? {
+        commit.map { .commit(OID(git_commit_id($0))) }
+    }
+
+    /// - Parameters:
+    ///   - old: what the diff's old side was read from; `nil` when it is empty.
+    ///   - new: what its new side was read from. When it is the working tree,
+    ///     its files are read from disk rather than as blobs.
+    static func files(in diff: OpaquePointer?, old: ContentSource?, new: ContentSource?) throws -> [FileDiff] {
         let count = git_diff_num_deltas(diff)
         var files: [FileDiff] = []
         files.reserveCapacity(count)
@@ -22,7 +29,8 @@ enum DiffBuilder {
             // the file is binary.
             guard let delta = patch.map(git_patch_get_delta) ?? git_diff_get_delta(diff, index) else { continue }
             var file = FileDiff(delta.pointee)
-            file.newSideIsWorkingTree = newSideIsWorkingTree
+            file.oldSource = old
+            file.newSource = new
             if let change = submoduleChange(delta.pointee) {
                 // Its patch is only "Subproject commit" lines.
                 file.submodule = change

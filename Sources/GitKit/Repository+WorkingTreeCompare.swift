@@ -38,8 +38,15 @@ extension Repository {
         }
         defer { git_diff_free(diff) }
         try check(git_diff_find_similar(diff, nil))
-        let isWorkingTree = comparison != .indexToHead
-        return withSubmoduleCommits(try DiffBuilder.files(in: diff, newSideIsWorkingTree: isWorkingTree), workingCopy: isWorkingTree)
+        let sources: (old: ContentSource?, new: ContentSource) = switch comparison {
+        case .workingTreeToHead: (DiffBuilder.source(head), .workingTree)
+        case .workingTreeToIndex: (.index, .workingTree)
+        case .indexToHead: (DiffBuilder.source(head), .index)
+        }
+        let isWorkingTree = sources.new == .workingTree
+        return withSubmoduleCommits(
+            try DiffBuilder.files(in: diff, old: sources.old, new: sources.new), workingCopy: isWorkingTree
+        )
     }
 
     /// Every file that differs between a commit and the working tree,
@@ -56,7 +63,9 @@ extension Repository {
         try check(git_diff_tree_to_workdir_with_index(&diff, pointer, baseTree, &options))
         defer { git_diff_free(diff) }
         try check(git_diff_find_similar(diff, nil))
-        return withSubmoduleCommits(try DiffBuilder.files(in: diff, newSideIsWorkingTree: true), workingCopy: true)
+        return withSubmoduleCommits(
+            try DiffBuilder.files(in: diff, old: DiffBuilder.source(base), new: .workingTree), workingCopy: true
+        )
     }
 
     /// The options for a diff against the working tree, with the index read

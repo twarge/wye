@@ -71,6 +71,11 @@ private struct FilePane: View {
                     .truncationMode(.middle)
                     .help(file.path)
                 Spacer(minLength: 8)
+                if !file.isFolder || DocumentPackages.isPackage(path: file.path) {
+                    QuickLookButton(item: PreviewItem(path: file.path, source: .commit(commitID)), repository: model.repository)
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                }
                 if !file.isFolder {
                     Picker("Show", selection: $aspect) {
                         ForEach(FileAspect.allCases, id: \.self) { aspect in
@@ -90,7 +95,7 @@ private struct FilePane: View {
                 case .contents:
                     FileContentView(model: model, path: file.path, commitID: commitID, isBesideList: true)
                 case .history:
-                    FileHistoryView(model: model, path: file.path, commitID: commitID, isBesideList: true)
+                    FileHistoryView(model: model, path: file.path, commitID: commitID, isBesideList: true, isFolder: file.isFolder)
                 case .blame:
                     BlameView(model: model, path: file.path, commitID: commitID, isBesideList: true)
                 }
@@ -141,6 +146,11 @@ struct TreeBrowserView: View {
     private var list: some View {
         if let selection {
             List(selection: selection) { levels }
+                .quickLookOnSpace(in: model.repository) {
+                    guard let focus = selection.wrappedValue,
+                          !focus.isFolder || DocumentPackages.isPackage(path: focus.path) else { return [] }
+                    return [PreviewItem(path: focus.path, source: .commit(commitID))]
+                }
         } else {
             List { levels }
         }
@@ -169,7 +179,7 @@ private struct TreeLevel: View {
             if entry.isDirectory {
                 TreeFolderRow(model: model, commitID: commitID, entry: entry, select: select)
             } else {
-                TreeFileRow(commitID: commitID, entry: entry, selects: select != nil)
+                TreeFileRow(repository: model.repository, commitID: commitID, entry: entry, selects: select != nil)
                     .fileDrag(entry.kind == .submodule ? nil : FileDrag(
                         repository: model.repository, path: entry.path, commit: commitID
                     ))
@@ -216,7 +226,12 @@ private struct TreeFolderRow: View {
                             open(.fileHistory(path: entry.path, commit: commitID))
                         }
                     }
+                    if DocumentPackages.isPackage(path: entry.path) {
+                        QuickLookButton(item: PreviewItem(path: entry.path, source: .commit(commitID)), repository: model.repository)
+                    }
                 }
+                // The folder as this commit has it, every file in it.
+                .fileDrag(FileDrag(repository: model.repository, path: entry.path, source: .commit(commitID), isFolder: true))
         }
     }
 
@@ -234,6 +249,7 @@ private struct TreeFolderRow: View {
 }
 
 private struct TreeFileRow: View {
+    var repository: Repository
     var commitID: OID
     var entry: TreeEntry
     var selects: Bool
@@ -271,6 +287,7 @@ private struct TreeFileRow: View {
                 Button("Blame", systemImage: "person.text.rectangle") {
                     open(.blame(path: entry.path, commit: commitID))
                 }
+                QuickLookButton(item: PreviewItem(path: entry.path, source: .commit(commitID)), repository: repository)
             }
         }
     }

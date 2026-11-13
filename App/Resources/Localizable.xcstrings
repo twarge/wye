@@ -57,6 +57,9 @@
     "%@ Settings" : {
       "extractionState" : "manual"
     },
+    "%@ files changed" : {
+      "extractionState" : "manual"
+    },
     "%@ in “%@” are taken out of it. The file is not tracked, so git has no copy of them." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -209,6 +212,9 @@
     ".gitignore" : {
       "extractionState" : "manual"
     },
+    "1 file changed" : {
+      "extractionState" : "manual"
+    },
     "A README or .gitignore is committed as the first commit when an author is set in Settings." : {
       "extractionState" : "manual"
     },
@@ -234,6 +240,9 @@
       "extractionState" : "manual"
     },
     "A new path for “%@”, from the top of the repository. A tracked file’s move is staged, as git mv stages it." : {
+      "extractionState" : "manual"
+    },
+    "A preview of the whole package, which its changed files below are part of" : {
       "extractionState" : "manual"
     },
     "A push URL only when pushes go somewhere other than fetches, such as your own copy of the project." : {
@@ -372,6 +381,9 @@
       "extractionState" : "manual"
     },
     "Add to .gitignore" : {
+      "extractionState" : "manual"
+    },
+    "Added" : {
       "extractionState" : "manual"
     },
     "Address" : {
@@ -545,6 +557,9 @@
       "extractionState" : "manual"
     },
     "Binary File" : {
+      "extractionState" : "manual"
+    },
+    "Binary file" : {
       "extractionState" : "manual"
     },
     "Bitbucket cannot reopen a declined pull request. Its branch stays." : {
@@ -981,6 +996,9 @@
     "Delete this key" : {
       "extractionState" : "manual"
     },
+    "Deleted" : {
+      "extractionState" : "manual"
+    },
     "Delete…" : {
       "extractionState" : "manual"
     },
@@ -1033,6 +1051,9 @@
       "extractionState" : "manual"
     },
     "Done" : {
+      "extractionState" : "manual"
+    },
+    "Double-click to open in Quick Look" : {
       "extractionState" : "manual"
     },
     "Draft" : {
@@ -1617,6 +1638,9 @@
     "Needs Attention" : {
       "extractionState" : "manual"
     },
+    "Neither side can be read" : {
+      "extractionState" : "manual"
+    },
     "Neither side of this image can be read" : {
       "extractionState" : "manual"
     },
@@ -1811,6 +1835,9 @@
     "No other signers" : {
       "extractionState" : "manual"
     },
+    "No preview" : {
+      "extractionState" : "manual"
+    },
     "No rules yet" : {
       "extractionState" : "manual"
     },
@@ -1974,6 +2001,17 @@
     },
     "Owner" : {
       "extractionState" : "manual"
+    },
+    "Package %@, %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Package %1$@, %2$@"
+          }
+        }
+      }
     },
     "Parent %lld (%@)" : {
       "extractionState" : "manual",
@@ -2174,6 +2212,15 @@
       "extractionState" : "manual"
     },
     "Quick Look" : {
+      "extractionState" : "manual"
+    },
+    "Quick Look Before" : {
+      "extractionState" : "manual"
+    },
+    "Quick Look This Version" : {
+      "extractionState" : "manual"
+    },
+    "Quick Look “%@”" : {
       "extractionState" : "manual"
     },
     "Quick Open…" : {
@@ -2609,7 +2656,13 @@
     "Show all repositories" : {
       "extractionState" : "manual"
     },
+    "Show both sides in Quick Look" : {
+      "extractionState" : "manual"
+    },
     "Show how the working tree, staged or not, differs from this commit" : {
+      "extractionState" : "manual"
+    },
+    "Show it in Quick Look" : {
       "extractionState" : "manual"
     },
     "Show the commits that changed this file" : {
@@ -2907,6 +2960,9 @@
       "extractionState" : "manual"
     },
     "The description is Markdown. Wye wrote these from the branch’s commits." : {
+      "extractionState" : "manual"
+    },
+    "The file can’t be read here" : {
       "extractionState" : "manual"
     },
     "The file stays as it is, still in conflict." : {

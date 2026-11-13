@@ -37,6 +37,7 @@ struct CommitWindow: View {
         Group {
             if let model, let commitID {
                 CommitDetailView(model: model, commitID: commitID, titlesWindow: true) { self.commitID = $0 }
+                    .diffSupport(model)
                     // Its own notices, as the repository's window may be closed
                     // or behind it.
                     .sheetNotices(model)

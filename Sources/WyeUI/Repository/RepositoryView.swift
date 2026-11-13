@@ -16,8 +16,7 @@ struct RepositoryView: View {
         columns
             .focusedSceneValue(model)
             .opensCommitWindows(model)
-            // For diffs that read more than their lines, such as images.
-            .environment(\.diffRepository, model.repository)
+            .diffSupport(model)
             .repositoryWindowServices(model)
             .modifier(notices(perColumn: false))
             .branchingSheets(model)

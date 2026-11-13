@@ -49,6 +49,8 @@ struct CompareView: View {
             }
         }
         .sheetMinimumSize(width: 640, height: 520)
+        // A sheet: the window's are outside it.
+        .diffSupport(model)
         .task {
             if comparesAtOnce { await compare() }
         }
@@ -139,6 +141,7 @@ struct CompareView: View {
         ForEach(comparison.files) { file in
             FileDiffView(file: file, isCollapsed: isCollapsed(file.id))
         }
+        .diffPackages(comparison.files)
     }
 
     @ViewBuilder

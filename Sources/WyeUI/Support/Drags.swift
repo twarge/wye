@@ -18,9 +18,14 @@ enum DragFiles {
     static func newFile(named name: String) throws -> URL {
         let folder = folder.appending(path: UUID().uuidString, directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder.appending(path: safeName(name))
+    }
+
+    /// A name that stays inside the folder it is written into.
+    static func safeName(_ name: String) -> String {
         // A name that is a path would leave the folder.
         let safe = name.replacing("/", with: "-").replacing(":", with: "-")
-        return folder.appending(path: safe.isEmpty ? "file" : safe)
+        return safe.isEmpty || safe == "." || safe == ".." ? "file" : safe
     }
 }
 
@@ -75,50 +80,82 @@ struct CommitDrag: Transferable, Sendable {
     }
 }
 
-/// A file being dragged out of a repository window: the one in the working
-/// tree, or the file as a commit has it. The receiver always gets a copy,
-/// so a drop on the Finder never moves a file out of the repository.
+/// A file or folder being dragged out of a repository window: the one in
+/// the working tree, or as a commit or the index has it. A folder, such as
+/// a document package git keeps as many files, goes as one. The receiver
+/// always gets a copy, so a drop on the Finder never moves anything out of
+/// the repository.
 struct FileDrag: Transferable, Sendable {
     var repository: Repository
+    /// Empty for the whole tree.
     var path: String
-    /// The commit to take the file from; `nil` for the working tree.
-    var commit: OID?
+    var source: ContentSource = .workingTree
+    var isFolder = false
 
-    /// The largest file read out of a commit for a drag.
-    static let sizeLimit = 256 << 20
+    init(repository: Repository, path: String, source: ContentSource = .workingTree, isFolder: Bool = false) {
+        self.repository = repository
+        self.path = path
+        self.source = source
+        self.isFolder = isFolder
+    }
+
+    /// The file as a commit has it, or the working tree's for `nil`.
+    init(repository: Repository, path: String, commit: OID?) {
+        self.init(repository: repository, path: path, source: commit.map { .commit($0) } ?? .workingTree)
+    }
 
     struct TooLarge: LocalizedError {
-        var errorDescription: String? { "The file is too large to drag out of a commit." }
+        var errorDescription: String? {
+            "It is too large to drag out: more than \(PreviewFiles.sizeLimit.formatted(.byteCount(style: .file)))."
+        }
+    }
+
+    struct Missing: LocalizedError {
+        var errorDescription: String? { "It is not there any more." }
     }
 
     /// `main.swift` for the working tree's file; `main-1a2b3c4d.swift` for a
     /// commit's, so that it does not pass for the current one.
     static func fileName(for path: String, commit: OID?) -> String {
-        let name = path.split(separator: "/").last.map(String.init) ?? path
-        guard let commit else { return name }
-        let hash = commit.abbreviated()
-        // A leading dot is the name, not an extension: `.gitignore`.
-        guard let dot = name.lastIndex(of: "."), dot != name.startIndex else { return "\(name)-\(hash)" }
-        return "\(name[..<dot])-\(hash)\(name[dot...])"
+        fileName(for: path, suffix: commit?.abbreviated())
     }
 
+    /// A path's name with `suffix` before its extension: `main-staged.swift`.
+    static func fileName(for path: String, suffix: String?) -> String {
+        let name = path.split(separator: "/").last.map(String.init) ?? path
+        guard let suffix else { return name }
+        // A leading dot is the name, not an extension: `.gitignore`.
+        guard let dot = name.lastIndex(of: "."), dot != name.startIndex else { return "\(name)-\(suffix)" }
+        return "\(name[..<dot])-\(suffix)\(name[dot...])"
+    }
+
+    /// The working tree's file itself, which the system copies; anything
+    /// else written out first.
     func file() async throws -> URL {
-        guard let commit else { return repository.url.appending(path: path) }
-        let content = try await repository.fileContent(at: path, in: commit, limit: Self.sizeLimit)
-        let data: Data = switch content.contents {
-        case .text(let text): Data(text.utf8)
-        case .binary(let data): data
-        case .tooLarge: throw TooLarge()
+        if source == .workingTree, !isFolder {
+            return path.isEmpty ? repository.url : repository.url.appending(path: path)
         }
-        let file = try DragFiles.newFile(named: Self.fileName(for: path, commit: commit))
-        try data.write(to: file, options: .atomic)
-        return file
+        let name = PreviewFiles.exportName(for: path, source: source, repositoryName: repository.url.lastPathComponent)
+        let destination = try DragFiles.newFile(named: name)
+        do {
+            guard try await repository.export(path, from: source, to: destination, limit: PreviewFiles.sizeLimit) != nil else {
+                throw Missing()
+            }
+        } catch is ExportTooLarge {
+            throw TooLarge()
+        }
+        return destination
     }
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .data) { drag in
             SentTransferredFile(try await drag.file(), allowAccessingOriginalFile: false)
         }
+        .exportingCondition { !$0.isFolder }
+        FileRepresentation(exportedContentType: .directory) { drag in
+            SentTransferredFile(try await drag.file(), allowAccessingOriginalFile: false)
+        }
+        .exportingCondition(\.isFolder)
     }
 }
 

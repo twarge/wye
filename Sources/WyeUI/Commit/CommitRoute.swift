@@ -79,12 +79,21 @@ extension View {
     func fileActionsMenu(_ actions: FileActions?) -> some View {
         contextMenu {
             if let actions {
-                ForEach(actions.items, id: \.self) { item in
-                    Button(item.title, systemImage: item.systemImage) { actions.open(item.route) }
-                }
-                FileCommandButtons(commands: actions.commands)
+                FileActionsMenuItems(actions: actions)
             }
         }
+    }
+}
+
+/// A file's actions, as menu items.
+struct FileActionsMenuItems: View {
+    var actions: FileActions
+
+    var body: some View {
+        ForEach(actions.items, id: \.self) { item in
+            Button(item.title, systemImage: item.systemImage) { actions.open(item.route) }
+        }
+        FileCommandButtons(commands: actions.commands)
     }
 }
 

@@ -8,12 +8,16 @@ struct FileHistoryView: View {
     /// Beside a commit's list of files, whose bar names the file: Show
     /// Commit sits by the selected commit, not in the toolbar.
     var isBesideList: Bool
+    /// Whether the history is a folder's, whose versions are dragged out as
+    /// folders.
+    var isFolder: Bool
     @State private var history: FileHistoryModel
     @State private var isCollapsed = false
 
-    init(model: RepositoryModel, path: String, commitID: OID, isBesideList: Bool = false) {
+    init(model: RepositoryModel, path: String, commitID: OID, isBesideList: Bool = false, isFolder: Bool = false) {
         self.model = model
         self.isBesideList = isBesideList
+        self.isFolder = isFolder
         _history = State(initialValue: FileHistoryModel(repository: model.repository, path: path, startID: commitID))
     }
 
@@ -23,6 +27,14 @@ struct FileHistoryView: View {
                 ForEach(history.entries) { entry in
                     FileHistoryRow(entry: entry, currentPath: history.path)
                         .tag(entry.id)
+                        .contextMenu {
+                            if let item = previewItem(entry), !isFolder || DocumentPackages.isPackage(path: item.path) {
+                                QuickLookButton(item: item, repository: model.repository, title: "Quick Look This Version")
+                            }
+                        }
+                        .fileDrag(previewItem(entry).map {
+                            FileDrag(repository: model.repository, path: $0.path, source: $0.source, isFolder: isFolder)
+                        })
                 }
                 if !history.isComplete {
                     ProgressView()
@@ -35,6 +47,11 @@ struct FileHistoryView: View {
                 }
             }
             .listStyle(.plain)
+            .quickLookOnSpace(in: model.repository) {
+                guard let item = history.selectedEntry.flatMap(previewItem),
+                      !isFolder || DocumentPackages.isPackage(path: item.path) else { return [] }
+                return [item]
+            }
             .frame(minHeight: 140, idealHeight: 240, maxHeight: 300)
             .overlay {
                 if history.isComplete, history.entries.isEmpty {
@@ -89,6 +106,7 @@ struct FileHistoryView: View {
                     .textSelection(.enabled)
                     if let diff = history.diff, diff.path == entry.path || diff.oldPath == entry.path {
                         FileDiffView(file: diff, isCollapsed: $isCollapsed)
+                            .diffPackages([diff])
                     }
                 }
                 .padding(.bottom, 20)
@@ -99,6 +117,12 @@ struct FileHistoryView: View {
             ContentUnavailableView("No Commit Selected", systemImage: "smallcircle.filled.circle")
                 .frame(maxHeight: .infinity)
         }
+    }
+
+    /// The file as this commit left it; for a deletion, as it was just before.
+    private func previewItem(_ entry: FileHistoryEntry) -> PreviewItem? {
+        guard entry.change == .deleted else { return PreviewItem(path: entry.path, source: .commit(entry.commit.id)) }
+        return entry.commit.parentIDs.first.map { PreviewItem(path: entry.path, source: .commit($0)) }
     }
 
     private func showCommitButton(_ entry: FileHistoryEntry) -> some View {

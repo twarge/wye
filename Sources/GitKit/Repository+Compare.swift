@@ -52,7 +52,9 @@ extension Repository {
             onlyRight: try commits(in: right, notIn: left, limit: limit),
             leftCount: ahead,
             rightCount: behind,
-            files: try treeDiff(from: leftTree, to: rightTree)
+            files: try treeDiff(
+                from: leftTree, to: rightTree, sources: (DiffBuilder.source(leftCommit), DiffBuilder.source(rightCommit))
+            )
         )
     }
 

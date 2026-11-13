@@ -339,6 +339,7 @@ private struct PullRequestDetailContent: View {
                 ForEach(comparison.files) { file in
                     FileDiffView(file: file, isCollapsed: isCollapsed(file.id, total: comparison.files.count))
                 }
+                .diffPackages(comparison.files)
             }
         } else {
             HStack {

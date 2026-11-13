@@ -106,8 +106,9 @@ extension Repository {
     /// Reads a file's diff again with every line's exact bytes, which the
     /// shown diff does not keep, and checks it is still the diff that was shown.
     func patchSource(of shown: FileDiff, side: WorkingCopySide, options: DiffOptions) throws -> PatchSource {
-        try withWorkingCopyDiff(of: shown.path, side: side, options: options) { diff in
-            guard git_diff_num_deltas(diff) == 1, try DiffBuilder.files(in: diff, newSideIsWorkingTree: side == .unstaged).first == shown else {
+        try withWorkingCopyDiff(of: shown.path, side: side, options: options) { diff, sources in
+            guard git_diff_num_deltas(diff) == 1,
+                  try DiffBuilder.files(in: diff, old: sources.old, new: sources.new).first == shown else {
                 throw WorkingCopyError.diffChanged(path: shown.path)
             }
             var patch: OpaquePointer?
@@ -120,12 +121,13 @@ extension Repository {
         }
     }
 
-    /// Calls `body` with one file's staged or unstaged diff, named literally.
-    /// `stagedDiff(of:)` and `unstagedDiff(of:)` read it this way too, so a
-    /// patch made here numbers its lines as the shown diff does.
+    /// Calls `body` with one file's staged or unstaged diff, named literally,
+    /// and what its two sides were read from. `stagedDiff(of:)` and
+    /// `unstagedDiff(of:)` read it this way too, so a patch made here numbers
+    /// its lines as the shown diff does.
     func withWorkingCopyDiff<Result>(
         of path: String, side: WorkingCopySide, options diffOptions: DiffOptions,
-        _ body: (OpaquePointer?) throws -> Result
+        _ body: (OpaquePointer?, (old: ContentSource?, new: ContentSource?)) throws -> Result
     ) throws -> Result {
         var options = git_diff_options()
         try check(git_diff_options_init(&options, UInt32(GIT_DIFF_OPTIONS_VERSION)))
@@ -139,6 +141,7 @@ extension Repository {
         return try withStringArray([path]) { paths in
             options.pathspec = paths
             var diff: OpaquePointer?
+            let sources: (old: ContentSource?, new: ContentSource?)
             switch side {
             case .staged:
                 let head = try headCommit()
@@ -146,11 +149,13 @@ extension Repository {
                 let headTree = try tree(of: head)
                 defer { git_tree_free(headTree) }
                 try check(git_diff_tree_to_index(&diff, pointer, headTree, nil, &options))
+                sources = (DiffBuilder.source(head), .index)
             case .unstaged:
                 try check(git_diff_index_to_workdir(&diff, pointer, nil, &options))
+                sources = (.index, .workingTree)
             }
             defer { git_diff_free(diff) }
-            return try body(diff)
+            return try body(diff, sources)
         }
     }
 }
