@@ -31,7 +31,7 @@ Each item is marked:
 
 | Feature | Status |
 | --- | --- |
-| See what is uncommitted or unpushed in every repository at once | Done. Review, beside Repositories in the list's toolbar: each repository's changed files and unpushed commits, with Push. |
+| See what wants attention in every repository at once | Done. Review, beside Repositories in the list's toolbar, lists each repository with changed files or unpushed commits (with Push), with commits to pull as of the last fetch, on the checked-out branch or on another local branch whose upstream is ahead of it, or with an open pull request (merge request) that asks the signed-in account for review on GitHub, GitLab, Bitbucket or Gitea/Forgejo. The services are asked a few at a time, their answers kept for ten minutes, and one that cannot be asked says nothing. |
 | Pull every repository | Done. Pull All, a few at a time, with a report that lists what failed or stopped on conflicts first. |
 | Find repositories by scanning folders on disk | Done. A watched folder lists every repository in it and follows as they come and go. |
 | Create a new empty repository | Done. New Repository… (⌃⌘N), with an optional README and .gitignore. |

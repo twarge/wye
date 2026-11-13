@@ -32,6 +32,17 @@
         }
       }
     },
+    "%@ %@ asks for your review" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@ asks for your review"
+          }
+        }
+      }
+    },
     "%@ (%@)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1143,7 +1154,7 @@
     "Everything Is Pushed and Up to Date" : {
       "extractionState" : "manual"
     },
-    "Everything in every repository is committed and pushed." : {
+    "Everything in every repository is committed, pushed and up to date, and no pull request waits for your review." : {
       "extractionState" : "manual"
     },
     "Expand All" : {
@@ -2476,7 +2487,7 @@
     "Repository Template" : {
       "extractionState" : "manual"
     },
-    "Repository, branch, file or commit" : {
+    "Repository, branch, file, commit or pull request" : {
       "extractionState" : "manual"
     },
     "Repository’s Author" : {
@@ -3331,6 +3342,9 @@
       "extractionState" : "manual"
     },
     "and %lld more unpushed commits" : {
+      "extractionState" : "manual"
+    },
+    "and more to review on the service" : {
       "extractionState" : "manual"
     },
     "approved" : {

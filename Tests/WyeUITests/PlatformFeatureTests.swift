@@ -106,7 +106,7 @@ private func commit(_ id: OID, _ summary: String, parents: [OID] = []) -> Commit
         #expect(totals.files == 3)
         #expect(totals.commits == 4)
         #expect(totals.sentence == "3 uncommitted files and 4 unpushed commits in 3 repositories")
-        #expect(ReviewTotals([review("c")]).sentence == "Everything is committed and pushed.")
+        #expect(ReviewTotals([review("c")]).sentence == "Everything is committed, pushed and up to date.")
         #expect(ReviewTotals([review("a", files: ["x"])]).sentence == "1 uncommitted file in 1 repository")
         #expect(ReviewTotals([review("u", upstream: nil)]).sentence == "Unpublished branches in 1 repository")
     }

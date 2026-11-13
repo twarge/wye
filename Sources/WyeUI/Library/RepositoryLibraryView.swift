@@ -66,7 +66,7 @@ struct RepositoryLibraryView: View {
             #endif
             // Inside the stack, so the strip sits under its bar, not over it.
             .noticeStrip(actions.notices)
-            .searchable(text: $query, prompt: actions.isReviewing ? "Repository, branch, file or commit" : "Name, folder or branch")
+            .searchable(text: $query, prompt: actions.isReviewing ? "Repository, branch, file, commit or pull request" : "Name, folder or branch")
             .navigationTitle(navigationTitle)
             .toolbar {
                 // In the middle of the Mac's toolbar. An iPhone's has no

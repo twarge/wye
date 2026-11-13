@@ -12,12 +12,24 @@ private func commit(_ character: Character, _ summary: String) -> Commit {
 private func review(
     branch: String? = "main", upstream: String? = "origin/main", hasRemote: Bool = true,
     entries: [StatusEntry] = [], commits: [Commit] = [], ahead: Int = 0, behind: Int = 0,
-    lastModified: Date? = nil
+    lastModified: Date? = nil, otherBranches: [BranchToPull] = [], reviewRequests: [ReviewRequest] = [],
+    hasMoreReviewRequests: Bool = false
 ) -> RepositoryReview {
     RepositoryReview(
         id: UUID(), name: "Wye", branch: branch, upstream: upstream, hasRemote: hasRemote,
-        entries: entries, commits: commits, ahead: ahead, behind: behind, lastModified: lastModified
+        entries: entries, commits: commits, ahead: ahead, behind: behind, lastModified: lastModified,
+        otherBranches: otherBranches, reviewRequests: reviewRequests, hasMoreReviewRequests: hasMoreReviewRequests
     )
+}
+
+private func toPull(_ name: String, _ behind: Int) -> BranchToPull {
+    BranchToPull(name: name, upstream: "origin/" + name, behind: behind)
+}
+
+private func request(
+    _ number: Int, _ title: String = "Add login", kind: HostingKind = .github, author: String? = "mona"
+) -> ReviewRequest {
+    ReviewRequest(repository: "example.com/octo/project", kind: kind, number: number, title: title, author: author)
 }
 
 private func modified(_ path: String) -> StatusEntry {
@@ -64,9 +76,134 @@ private func staged(_ path: String, _ change: FileChange = .modified) -> StatusE
         #expect(review(upstream: nil, hasRemote: false, entries: [modified("a")]).summary == "1 file changed")
     }
 
-    @Test func leavesOutCommitsToPull() {
-        #expect(review(entries: [modified("a")], behind: 3).summary == "1 file changed")
+    @Test func saysCommitsToPullAfterTheWorkHere() {
+        #expect(review(behind: 1).summary == "1 commit to pull")
+        #expect(review(entries: [modified("a")], behind: 3).summary == "1 file changed · 3 commits to pull")
+        #expect(review(ahead: 2, behind: 3).summary == "2 unpushed commits · 3 commits to pull")
         #expect(review().summary == "Committed and pushed")
+    }
+
+    @Test func saysAnotherBranchByItsNameAndSeveralByTheirNumber() {
+        #expect(review(otherBranches: [toPull("release", 1)]).summary == "1 commit to pull on release")
+        #expect(review(otherBranches: [toPull("release", 4)]).summary == "4 commits to pull on release")
+        let several = review(otherBranches: [toPull("release", 5), toPull("topic", 1)])
+        #expect(several.summary == "6 commits to pull on 2 other branches")
+        // After the checked-out branch's own.
+        #expect(
+            review(ahead: 1, behind: 2, otherBranches: [toPull("release", 3)]).summary
+                == "1 unpushed commit · 2 commits to pull · 3 commits to pull on release"
+        )
+    }
+
+    @Test func saysInFullWhatThereIsToPullAndOnWhichBranch() {
+        #expect(review(behind: 1).pullSentence == "1 commit to pull from origin/main")
+        #expect(review(behind: 12).pullSentence == "12 commits to pull from origin/main")
+        #expect(review(ahead: 3).pullSentence == nil)
+        #expect(toPull("release", 2).pullSentence == "“release” has 2 commits to pull from origin/release")
+        #expect(toPull("old", 1).pullSentence == "“old” has 1 commit to pull from origin/old")
+    }
+
+    @Test func saysPullRequestsToReviewInTheServicesWords() {
+        #expect(review(reviewRequests: [request(12)]).summary == "1 pull request to review")
+        #expect(review(reviewRequests: [request(12), request(13)]).summary == "2 pull requests to review")
+        #expect(review(reviewRequests: [request(7, kind: .gitlab)]).summary == "1 merge request to review")
+        #expect(
+            review(entries: [modified("a")], behind: 1, reviewRequests: [request(12)]).summary
+                == "1 file changed · 1 commit to pull · 1 pull request to review"
+        )
+        // More on the service than were read.
+        #expect(review(reviewRequests: [request(12)], hasMoreReviewRequests: true).summary == "1+ pull requests to review")
+    }
+
+    @Test func listsARepositoryForEachReasonAndNotWithoutOne() {
+        #expect(!review().needsAttention)
+        #expect(review(entries: [modified("a")]).needsAttention)
+        #expect(review(ahead: 1).needsAttention)
+        #expect(review(upstream: nil).needsAttention)
+        // Commits to pull are not work, but they are a reason to look.
+        #expect(!review(behind: 2).hasWork)
+        #expect(review(behind: 2).needsAttention)
+        #expect(review(otherBranches: [toPull("release", 1)]).needsAttention)
+        #expect(review(reviewRequests: [request(12)]).needsAttention)
+        // Nowhere to publish to, nothing to pull, nobody asking.
+        #expect(!review(upstream: nil, hasRemote: false).needsAttention)
+        #expect(!review(branch: nil, upstream: nil).needsAttention)
+    }
+
+    @Test func findsOtherBranchesAndPullRequests() {
+        let item = review(
+            otherBranches: [toPull("release/2.0", 1)], reviewRequests: [request(12, "Fix the parser", author: "hubot")]
+        )
+        #expect(item.matches("release"))
+        #expect(item.matches("parser"))
+        #expect(item.matches("#12"))
+        #expect(item.matches(" hubot "))
+        #expect(!item.matches("login"))
+    }
+
+    @Test func totalsEveryReason() {
+        let totals = ReviewTotals([
+            review(entries: [modified("a"), modified("b")], ahead: 1, behind: 2),
+            review(otherBranches: [toPull("release", 4)]),
+            review(reviewRequests: [request(12), request(13)]),
+            review()
+        ])
+        #expect(totals.repositories == 3)
+        #expect(totals.files == 2)
+        #expect(totals.commits == 1)
+        #expect(totals.toPull == 6)
+        #expect(totals.reviewRequests == 2)
+        #expect(
+            totals.sentence
+                == "2 uncommitted files, 1 unpushed commit, 6 commits to pull and 2 pull requests to review in 3 repositories"
+        )
+        #expect(ReviewTotals([review(behind: 1)]).sentence == "1 commit to pull in 1 repository")
+        #expect(
+            ReviewTotals([review(behind: 1, reviewRequests: [request(7, kind: .gitlab)])]).sentence
+                == "1 commit to pull and 1 merge request to review in 1 repository"
+        )
+        // Pull requests and merge requests together go by the commoner name.
+        #expect(
+            ReviewTotals([review(reviewRequests: [request(7, kind: .gitlab)]), review(reviewRequests: [request(12)])]).sentence
+                == "2 pull requests to review in 2 repositories"
+        )
+    }
+}
+
+@Suite struct BranchToPullTests {
+    private let oid: OID
+
+    init() throws {
+        oid = try #require(OID(hex: String(repeating: "a", count: 40)))
+    }
+
+    private func branch(_ name: String, isHead: Bool = false, ahead: Int? = nil, behind: Int = 0) -> Branch {
+        Branch(
+            id: "refs/heads/" + name, name: name, target: oid, isHead: isHead,
+            upstream: ahead.map { Branch.Upstream(name: "origin/" + name, ahead: $0, behind: behind) }
+        )
+    }
+
+    @Test func listsOtherBranchesWhoseUpstreamsAreAhead() {
+        let snapshot = RepositorySnapshot(
+            head: .branch(name: "refs/heads/main", target: oid),
+            branches: [
+                // Unpushed commits on another branch are not a reason to list a repository.
+                branch("fix", ahead: 2), branch("level", ahead: 0), branch("local"),
+                // The checked-out branch's commits are the row's own.
+                branch("main", isHead: true, ahead: 5, behind: 5),
+                branch("release", ahead: 0, behind: 3), branch("topic", ahead: 1, behind: 1)
+            ]
+        )
+        #expect(BranchToPull.others(in: snapshot) == [
+            BranchToPull(name: "release", upstream: "origin/release", behind: 3),
+            BranchToPull(name: "topic", upstream: "origin/topic", behind: 1)
+        ])
+    }
+
+    @Test func aDetachedHeadLeavesEveryBranchAnother() {
+        let snapshot = RepositorySnapshot(head: .detached(oid), branches: [branch("main", ahead: 0, behind: 1)])
+        #expect(BranchToPull.others(in: snapshot).map(\.name) == ["main"])
     }
 }
 

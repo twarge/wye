@@ -49,7 +49,9 @@ connections are made in Swift with
   the Keychain; unknown or changed host keys are shown before connecting.
   RSA keys are not supported.
 - **Every repository at once:** Review lists what is not committed or
-  pushed across the whole list (⇧⌘R), and Pull All (⌥⇧⌘P) brings every
+  pushed across the whole list (⇧⌘R), along with the repositories that
+  have commits to pull, on the checked-out branch or another, or a pull
+  request waiting for your review, and Pull All (⌥⇧⌘P) brings every
   repository up to date and reports what could not be pulled.
 - **Drag and drop:** a commit onto a branch to cherry-pick, onto the
   Branches or Tags heading to name it, or out of the window as a patch

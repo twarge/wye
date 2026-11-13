@@ -16,6 +16,27 @@ struct HostingTarget: Hashable, Identifiable {
     var usesSSH: Bool {
         !remoteURL.lowercased().hasPrefix("http")
     }
+
+    /// The remotes on a known service, `upstream` and `origin` first.
+    static func targets(for remotes: [Remote]) -> [HostingTarget] {
+        let targets = remotes.compactMap { remote -> HostingTarget? in
+            guard let url = remote.url, let hosted = HostedRepository(remoteURL: url),
+                  let kind = HostingKind(hosted.kind), let path = hosted.repositoryPath else { return nil }
+            return HostingTarget(remote: remote.name, remoteURL: url, hosted: hosted, kind: kind, path: path)
+        }
+        let order = ["upstream": 0, "origin": 1]
+        return targets.sorted { (order[$0.remote] ?? 2, $0.remote) < (order[$1.remote] ?? 2, $1.remote) }
+    }
+
+    /// The account the remote's API requests use: the repository's choice
+    /// or the host's default, where it can use the service, else any
+    /// account for the host that can.
+    func account(in store: AccountStore = .shared) -> HostingAccount? {
+        if let account = store.account(forRemoteURL: remoteURL), account.usesService {
+            return account
+        }
+        return store.accounts(forHost: hosted.host).first { $0.usesService && $0.kind == kind }
+    }
 }
 
 /// A sheet the hosting features ask the repository window for.
@@ -81,14 +102,7 @@ enum HostingAvailability {
 extension RepositoryModel {
     /// The remotes on a known service, `upstream` and `origin` first.
     var hostingTargets: [HostingTarget] {
-        let remotes = snapshot?.remotes ?? []
-        let targets = remotes.compactMap { remote -> HostingTarget? in
-            guard let url = remote.url, let hosted = HostedRepository(remoteURL: url),
-                  let kind = HostingKind(hosted.kind), let path = hosted.repositoryPath else { return nil }
-            return HostingTarget(remote: remote.name, remoteURL: url, hosted: hosted, kind: kind, path: path)
-        }
-        let order = ["upstream": 0, "origin": 1]
-        return targets.sorted { (order[$0.remote] ?? 2, $0.remote) < (order[$1.remote] ?? 2, $1.remote) }
+        HostingTarget.targets(for: snapshot?.remotes ?? [])
     }
 
     /// The remote pull requests are listed for: the one chosen, else
@@ -105,11 +119,7 @@ extension RepositoryModel {
     /// or the host's default, where it can use the service, else any
     /// account for the host that can.
     func hostingAccount(for target: HostingTarget) -> HostingAccount? {
-        let store = AccountStore.shared
-        if let account = store.account(forRemoteURL: target.remoteURL), account.usesService {
-            return account
-        }
-        return store.accounts(forHost: target.hosted.host).first { $0.usesService && $0.kind == target.kind }
+        target.account()
     }
 
     func hostingAvailability(for target: HostingTarget? = nil) -> HostingAvailability {

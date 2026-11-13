@@ -167,6 +167,14 @@ final class ReviewCaptions {
     func describe(_ review: RepositoryReview, in library: RepositoryLibrary) async {
         let key = Key(review)
         guard Self.isAvailable, written[review.id]?.key != key else { return }
+        // A repository listed only for what waits elsewhere has no work to
+        // describe, and keeps no caption of work since committed and pushed.
+        guard !review.entries.isEmpty || !review.commits.isEmpty else {
+            jobs[review.id]?.task.cancel()
+            jobs[review.id] = nil
+            written[review.id] = Written(key: key, text: nil)
+            return
+        }
         guard let bookmark = library.bookmarks.first(where: { $0.id == review.id }) else { return }
         let task: Task<Void, Never>
         if let job = jobs[review.id], job.key == key, !job.task.isCancelled {

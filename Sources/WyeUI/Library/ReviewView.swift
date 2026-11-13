@@ -1,27 +1,39 @@
 import GitKit
 import SwiftUI
 
-/// Everything not yet committed or pushed, across every listed repository:
-/// what would be lost with this device.
+/// What wants looking at across every listed repository: everything not yet
+/// committed or pushed, which would be lost with this device, and what
+/// waits elsewhere, to be pulled or to be reviewed.
 struct ReviewView: View {
     var query: String
     var open: (RepositoryBookmark) -> Void
 
     @Environment(RepositoryLibrary.self) private var library
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     @Environment(WindowActions.self) private var actions
-    @State private var model = ReviewModel()
+    @State private var model: ReviewModel
     private var captions: ReviewCaptions { .shared }
     private var expansion: ReviewExpansion { .shared }
+    private var accountChanges: AccountChangeCounter { .shared }
+
+    /// - Parameter model: What reads the repositories and asks their
+    ///   services; a test gives one whose services are recorded answers.
+    init(query: String, open: @escaping (RepositoryBookmark) -> Void, model: ReviewModel = ReviewModel()) {
+        self.query = query
+        self.open = open
+        _model = State(initialValue: model)
+    }
 
     var body: some View {
-        let reviews = model.withWork.filter { $0.matches(query) }
+        let listed = model.needingAttention
+        let reviews = listed.filter { $0.matches(query) }
         // Read here so the rows fold and open as it changes.
         let _ = expansion.expanded
         List {
-            if !model.withWork.isEmpty {
+            if !listed.isEmpty {
                 Section {
-                    Label(ReviewTotals(model.withWork).sentence, systemImage: "tray.full")
+                    Label(ReviewTotals(listed).sentence, systemImage: "tray.full")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -47,21 +59,26 @@ struct ReviewView: View {
         }
         .overlay {
             if reviews.isEmpty {
-                if model.isLoading, model.withWork.isEmpty {
+                if model.isLoading, listed.isEmpty {
                     ProgressView("Reading repositories…")
-                } else if !query.isEmpty, !model.withWork.isEmpty {
+                } else if !query.isEmpty, !listed.isEmpty {
                     ContentUnavailableView.search(text: query)
                 } else {
                     ContentUnavailableView(
                         "Nothing to Review", systemImage: "checkmark.seal",
-                        description: Text("Everything in every repository is committed and pushed.")
+                        description: Text(
+                            "Everything in every repository is committed, pushed and up to date, and no pull request waits for your review."
+                        )
                     )
                 }
             }
         }
-        .refreshable { await model.load(library.listedBookmarks, from: library) }
-        .task(id: Key(ids: library.listedBookmarks.map(\.id), isActive: scenePhase == .active)) {
+        .refreshable { await model.load(library.listedBookmarks, from: library, asksAgain: true) }
+        .task(id: Key(
+            ids: library.listedBookmarks.map(\.id), isActive: scenePhase == .active, accounts: accountChanges.count
+        )) {
             guard scenePhase == .active else { return }
+            model.accountsChanged(to: accountChanges.count)
             await model.load(library.listedBookmarks, from: library)
         }
         .onChange(of: model.notice) {
@@ -75,14 +92,17 @@ struct ReviewView: View {
         }
     }
 
-    /// Read again when the list changes or the app comes back to the front.
+    /// Read again when the list changes, the app comes back to the front,
+    /// or an account is added or removed.
     private struct Key: Hashable {
         var ids: [UUID]
         var isActive: Bool
+        var accounts: Int
     }
 
-    /// What a repository's row folds away: its changed files, then the
-    /// commits to push.
+    /// What a repository's row folds away: its changed files and the
+    /// commits to push, then what waits elsewhere: the commits to pull, on
+    /// its branch and on others, and the pull requests to review.
     @ViewBuilder
     private func work(in review: RepositoryReview) -> some View {
         ForEach(review.entries) { entry in
@@ -105,6 +125,33 @@ struct ReviewView: View {
         }
         if review.ahead > review.commits.count {
             Text("and \(review.ahead - review.commits.count) more unpushed commits")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        if let sentence = review.pullSentence {
+            Label(sentence, systemImage: "arrow.down")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        ForEach(review.otherBranches) { branch in
+            Label(branch.pullSentence, systemImage: "arrow.down")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        ForEach(review.reviewRequests) { request in
+            Button { open(review) } label: { ReviewRequestRow(request: request) }
+                .buttonStyle(.plain)
+                .pointerHover()
+                .contextMenu {
+                    Button("Open Repository", systemImage: "arrow.right.circle") { open(review) }
+                    if let url = request.webURL {
+                        Button("Open in Browser", systemImage: "safari") { openURL(url) }
+                        Button("Copy Link", systemImage: "link") { Platform.copyToClipboard(url.absoluteString) }
+                    }
+                }
+        }
+        if review.hasMoreReviewRequests {
+            Text("and more to review on the service")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -145,8 +192,8 @@ final class ReviewExpansion {
     var expanded: Set<UUID> = []
 }
 
-/// A repository with its work folded away beneath it: what the work comes
-/// to, and what the on-device model says it is about.
+/// A repository with what wants looking at folded away beneath it: what
+/// that comes to, and what the on-device model says its work is about.
 private struct ReviewRow: View {
     var review: RepositoryReview
     var caption: String?
@@ -215,6 +262,38 @@ private struct ReviewRow: View {
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(.rect)
+    }
+}
+
+/// A pull request that waits for the account's review: its number, its
+/// title, and who opened it.
+private struct ReviewRequestRow: View {
+    var request: ReviewRequest
+
+    var body: some View {
+        HStack(spacing: 8) {
+            // As wide for either symbol, so the numbers line up.
+            Image(systemName: request.isDraft ? "circle.dashed" : "arrow.triangle.pull")
+                .foregroundStyle(request.isDraft ? Color.secondary : Color.green)
+                .frame(width: 18)
+                .accessibilityLabel(request.isDraft ? "Draft \(request.kind.pullRequestTerm)" : request.kind.pullRequestTerm)
+            Text(request.reference)
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(.secondary)
+            Text(request.title)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 8)
+            if let author = request.author {
+                Text(author)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+        .help("\(request.kind.pullRequestTerm) \(request.reference) asks for your review")
     }
 }
 
