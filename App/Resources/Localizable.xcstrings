@@ -3174,6 +3174,9 @@
     "Write the result to the file and mark it resolved" : {
       "extractionState" : "manual"
     },
+    "Written on this device by Apple Intelligence" : {
+      "extractionState" : "manual"
+    },
     "Wye" : {
       "extractionState" : "manual"
     },

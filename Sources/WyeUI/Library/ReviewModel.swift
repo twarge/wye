@@ -18,6 +18,9 @@ struct RepositoryReview: Identifiable, Hashable, Sendable {
     /// How many commits are unpushed, shown or not.
     var ahead: Int
     var behind: Int
+    /// When the newest of the changed files was last written: an edit to a
+    /// file already listed as changed shows here, where `entries` stays the same.
+    var lastModified: Date? = nil
 
     /// A branch with commits and a remote to publish to, but no upstream.
     var isUnpublished: Bool {
@@ -37,6 +40,21 @@ struct RepositoryReview: Identifiable, Hashable, Sendable {
             || branch?.localizedStandardContains(query) == true
             || entries.contains { $0.path.localizedStandardContains(query) }
             || commits.contains { $0.summary.localizedStandardContains(query) }
+    }
+
+    /// What its row says of the work, folded away:
+    /// "3 files changed · 2 staged · 1 unpushed commit".
+    var summary: String {
+        var parts: [String] = []
+        let files = entries.count
+        if files > 0 { parts.append("\(files) \(files == 1 ? "file" : "files") changed") }
+        let conflicted = entries.count(where: \.isConflicted)
+        if conflicted > 0 { parts.append("\(conflicted) conflicted") }
+        let staged = entries.count { $0.staged != nil }
+        if staged > 0 { parts.append("\(staged) staged") }
+        if ahead > 0 { parts.append("\(ahead) unpushed \(ahead == 1 ? "commit" : "commits")") }
+        if isUnpublished { parts.append("branch not published") }
+        return parts.isEmpty ? "Committed and pushed" : parts.joined(separator: " · ")
     }
 }
 
@@ -151,7 +169,17 @@ final class ReviewModel {
         return RepositoryReview(
             id: id, name: name, branch: branch, upstream: head?.upstream?.name,
             hasRemote: !snapshot.remotes.isEmpty, entries: entries, commits: commits,
-            ahead: head?.upstream?.ahead ?? 0, behind: head?.upstream?.behind ?? 0
+            ahead: head?.upstream?.ahead ?? 0, behind: head?.upstream?.behind ?? 0,
+            lastModified: lastModified(of: entries, in: url)
         )
+    }
+
+    /// The newest of the changed files' modification dates, for the first
+    /// few hundred: enough to tell that something was edited.
+    private nonisolated static func lastModified(of entries: [StatusEntry], in root: URL) -> Date? {
+        entries.prefix(300).compactMap { entry in
+            try? root.appending(path: entry.path).resourceValues(forKeys: [.contentModificationDateKey])
+                .contentModificationDate
+        }.max()
     }
 }
