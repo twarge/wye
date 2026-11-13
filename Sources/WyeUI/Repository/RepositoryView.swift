@@ -91,6 +91,9 @@ struct RepositoryView: View {
         } content: {
             list
                 .navigationSplitViewColumnWidth(min: 320, ideal: 500)
+                // The list cannot tell from its own size class, which is
+                // compact beside the other columns too.
+                .environment(\.showsColumnsSideBySide, sizeClass != .compact)
         } detail: {
             detailColumn
         }
@@ -199,4 +202,10 @@ struct RepositoryView: View {
             Color.clear
         }
     }
+}
+
+extension EnvironmentValues {
+    /// Whether the repository's columns are on screen together, as on an
+    /// iPad, rather than one at a time, as on an iPhone.
+    @Entry var showsColumnsSideBySide = false
 }

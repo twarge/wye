@@ -18,6 +18,19 @@ struct HistoryView: View {
     @Environment(\.openCommitWindow) private var openCommitWindow
     /// Compact, rows are on two lines and have no columns to name.
     @Environment(\.horizontalSizeClass) private var sizeClass
+    #if os(iOS)
+    @Environment(\.showsColumnsSideBySide) private var showsColumnsSideBySide
+
+    /// Whether the search field is a button in the list's bar, which opens
+    /// into the field. Beside the other columns the field would otherwise
+    /// have a row of its own under that bar. A filter is a token in the
+    /// field, so the field keeps its row while there is one: the button
+    /// alone would not say the list is filtered. With the list alone on
+    /// screen the field is at the bottom, within reach.
+    private var minimizesSearch: Bool {
+        showsColumnsSideBySide && model.history.search.filters.isEmpty
+    }
+    #endif
 
     private var preferences: HistoryPreferences { .shared }
 
@@ -147,6 +160,12 @@ struct HistoryView: View {
                 Text(field.title).tag(field)
             }
         }
+        #if os(iOS)
+        // A large title would take back the row the button saves, so the
+        // title stays in the bar with it.
+        .searchToolbarBehavior(minimizesSearch ? .minimize : .automatic)
+        .toolbarTitleDisplayMode(minimizesSearch ? .inline : .automatic)
+        #endif
         .task(id: SearchKey(query: search.query, filter: search.filters.commitFilter, scope: history.scope,
                             generation: history.generation)) {
             let query = search.query
