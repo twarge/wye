@@ -47,6 +47,6 @@ struct SettingsView: View {
                 AcknowledgementsButton()
             }
         }
-        .formStyle(.grouped)
+        .groupedFormStyle()
     }
 }

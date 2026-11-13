@@ -72,7 +72,7 @@ struct IgnoreRulesSheet: View {
                     Text("A leading / anchors a rule to the top of the repository, a trailing / matches only folders, and * matches anything but /.")
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

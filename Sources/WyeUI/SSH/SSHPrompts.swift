@@ -126,7 +126,7 @@ struct HostKeySheet: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { broker.decline() }

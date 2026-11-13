@@ -69,7 +69,7 @@ struct SignInSheet: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .disabled(isWorking && device == nil)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -203,6 +203,18 @@ extension Font {
 }
 
 extension View {
+    /// A form in grouped sections, as settings and sheets have. On macOS its
+    /// toggles are checkboxes before their titles, as the Mac's own dialogs
+    /// have them, rather than the switches at the far end a grouped form
+    /// gives them; iOS keeps its switches.
+    func groupedFormStyle() -> some View {
+        #if os(macOS)
+        formStyle(.grouped).toggleStyle(.checkbox)
+        #else
+        formStyle(.grouped)
+        #endif
+    }
+
     /// Puts Fetch, Pull and Push where each platform has room: the window
     /// toolbar on macOS; on iOS a floating bar at the bottom of the content,
     /// where the navigation bar has little room to spare.

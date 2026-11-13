@@ -215,7 +215,7 @@ private struct ProfileEditor: View {
                     Text("A work identity can sign with its own key, which you add to that account’s hosting service.")
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }
@@ -266,7 +266,7 @@ private struct SignerEditor: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

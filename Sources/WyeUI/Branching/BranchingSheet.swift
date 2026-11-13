@@ -111,7 +111,7 @@ struct BranchingSheetForm<Content: View>: View {
             SheetTitleSection()
             content
         }
-        .formStyle(.grouped)
+        .groupedFormStyle()
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel", role: .cancel) { dismiss() }

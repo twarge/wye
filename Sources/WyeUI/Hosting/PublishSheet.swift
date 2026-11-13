@@ -89,7 +89,7 @@ struct PublishSheet: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .disabled(isPublishing)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

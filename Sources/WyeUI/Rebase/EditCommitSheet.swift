@@ -48,7 +48,7 @@ struct EditCommitSheet: View {
                     Text(explanation)
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .disabled(!isLoaded)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

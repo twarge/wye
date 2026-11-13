@@ -493,7 +493,7 @@ private struct WholeFileChoice: View {
                 Text(footer)
             }
         }
-        .formStyle(.grouped)
+        .groupedFormStyle()
         .confirmationDialog(
             pending.map(confirmationTitle) ?? "",
             isPresented: Binding { pending != nil } set: { if !$0 { pending = nil } },

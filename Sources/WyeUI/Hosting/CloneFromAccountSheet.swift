@@ -89,7 +89,7 @@ struct CloneFromAccountSheet: View {
                 TextField("Search", text: $query, prompt: Text("Name"))
                 #endif
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .fixedSize(horizontal: false, vertical: true)
             List(selection: $selection) {
                 ForEach(items) { repository in

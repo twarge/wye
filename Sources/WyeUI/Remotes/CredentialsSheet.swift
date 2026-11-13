@@ -41,7 +41,7 @@ struct CredentialsSheet: View {
                          : "Wye forgets it when it quits.")
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { broker.decline() }

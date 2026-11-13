@@ -434,7 +434,7 @@ struct NewBranchSheet: View {
                 }
                 Toggle("Check Out", isOn: $checksOut)
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

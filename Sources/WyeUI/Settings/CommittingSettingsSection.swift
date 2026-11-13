@@ -71,7 +71,7 @@ private struct TemplateEditor: View {
                         .frame(minHeight: 160)
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

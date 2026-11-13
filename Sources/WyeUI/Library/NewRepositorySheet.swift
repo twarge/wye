@@ -61,7 +61,7 @@ struct NewRepositorySheet: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .disabled(isCreating)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

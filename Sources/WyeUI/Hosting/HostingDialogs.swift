@@ -106,7 +106,7 @@ struct RemoteAccountSheet: View {
                     Text("The account git uses over HTTPS for this repository, and the one its pull requests are read and written with.")
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

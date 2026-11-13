@@ -133,7 +133,7 @@ struct RemoteEditor: View {
                     Text("Only when pushes go somewhere other than fetches, such as your own copy of the project.")
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

@@ -163,7 +163,7 @@ private struct NewSSHKeySheet: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 if created == nil {
                     ToolbarItem(placement: .cancellationAction) {
@@ -238,7 +238,7 @@ private struct ImportSSHKeySheet: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

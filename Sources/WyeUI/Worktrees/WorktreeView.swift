@@ -52,7 +52,7 @@ struct WorktreeView: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .navigationTitle(worktree.displayName)
         } else {
             ContentUnavailableView("No Worktree", systemImage: "square.on.square")

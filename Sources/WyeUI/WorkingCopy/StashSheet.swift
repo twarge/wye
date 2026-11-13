@@ -45,7 +45,7 @@ struct StashSheet: View {
                     Text("Keeping staged changes stashes them too, but also leaves them in place.")
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

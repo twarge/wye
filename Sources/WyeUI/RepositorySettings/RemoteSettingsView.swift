@@ -64,7 +64,7 @@ struct RemoteSettingsView: View {
                     .disabled(!canSave)
             }
         }
-        .formStyle(.grouped)
+        .groupedFormStyle()
         .navigationTitle(remote.name)
         .task { await load() }
     }

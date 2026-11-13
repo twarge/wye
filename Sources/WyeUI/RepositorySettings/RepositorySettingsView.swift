@@ -36,7 +36,7 @@ struct RepositorySettingsView: View {
                     Text("Every setting in this repository’s .git/config, to add to, change and remove.")
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .navigationTitle("\(model.name) Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

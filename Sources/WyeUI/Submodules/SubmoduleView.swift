@@ -64,7 +64,7 @@ struct SubmoduleView: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .groupedFormStyle()
             .navigationTitle(submodule.path)
         } else {
             ContentUnavailableView("No Submodule", systemImage: "shippingbox")
