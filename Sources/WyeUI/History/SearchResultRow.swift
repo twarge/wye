@@ -11,6 +11,8 @@ struct SearchResultRow: View {
     /// `HEAD`'s commit is bold, in place of a badge.
     var isHead = false
     var hasNote = false
+    /// How its checks stand on the hosting services, where any ran.
+    var checks: CheckStatus?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -24,6 +26,10 @@ struct SearchResultRow: View {
                     .lineLimit(1)
                 if hasNote {
                     NoteMark()
+                }
+                if let checks {
+                    Spacer(minLength: 0)
+                    CommitCheckMark(commit: commit.id, status: checks)
                 }
             }
             HStack(spacing: 6) {

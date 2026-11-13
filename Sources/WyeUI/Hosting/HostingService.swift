@@ -47,6 +47,22 @@ protocol HostingService: Sendable {
     /// head, to fetch when its own repository cannot be reached:
     /// `refs/pull/12/head`. `nil` where there is none.
     func headReference(number: Int) -> String?
+
+    // MARK: Checks
+
+    /// How the checks of commits stand overall, by full hash, in one
+    /// request: at most `capabilities.checkBatchSize` commits. A commit
+    /// nothing was run for, or one the service does not have, is left out.
+    func checkStatuses(in repository: RepositoryPath, commits: [String]) async throws -> [String: CheckStatus]
+    /// Every check of one commit: the jobs of its workflows or pipelines,
+    /// and the statuses other services reported for it.
+    func checks(in repository: RepositoryPath, commit: String) async throws -> CommitChecks
+}
+
+extension HostingService {
+    // Where a commit's checks are not read, it has none.
+    func checkStatuses(in repository: RepositoryPath, commits: [String]) async throws -> [String: CheckStatus] { [:] }
+    func checks(in repository: RepositoryPath, commit: String) async throws -> CommitChecks { CommitChecks() }
 }
 
 /// Where each service's API lives.

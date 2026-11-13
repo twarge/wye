@@ -141,6 +141,9 @@ final class RepositoryModel: Identifiable {
     let windowState = RepositoryWindowState()
     /// Publishing, pull requests and the account a remote uses.
     let hosting = HostingState()
+    /// How each commit's checks stand on the hosting services, for the
+    /// history's marks.
+    let checks: CommitCheckStore
 
     private let access: RepositoryAccess
     /// What the last refresh failed with, while it keeps failing.
@@ -158,6 +161,7 @@ final class RepositoryModel: Identifiable {
         history = HistoryModel(repository: repository)
         undoStack = UndoStack(repositoryID: bookmark.id)
         interface = RepositoryInterfaceState(repositoryID: bookmark.id)
+        checks = CommitCheckStore(repositoryName: bookmark.name)
     }
 
     /// Begins reading what a window shows first, before the window is on

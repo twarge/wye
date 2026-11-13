@@ -34,8 +34,9 @@ struct HistoryView: View {
                     // only mislead: results are plain rows in the history's order.
                     ForEach(search.results) { commit in
                         SearchResultRow(commit: commit, labels: model.refLabels[commit.id] ?? [],
-                                        columns: preferences.columns,
-                                        isHead: commit.id == headID, hasNote: history.notes.hasNote(commit.id))
+                                        columns: columns,
+                                        isHead: commit.id == headID, hasNote: history.notes.hasNote(commit.id),
+                                        checks: model.checks.statuses[commit.id])
                             .tag(commit.id)
                             .draggable(drag(for: commit))
                     }
@@ -52,7 +53,7 @@ struct HistoryView: View {
                     Section {
                         commitRows(history)
                     } header: {
-                        HistoryColumnHeader(columns: preferences.columns, leading: rowLeading)
+                        HistoryColumnHeader(columns: columns, leading: rowLeading)
                             .textCase(nil)
                             #if os(macOS)
                             // A section header takes no row insets on the
@@ -81,7 +82,10 @@ struct HistoryView: View {
             }
             #endif
             // The window follows changes on disk; iOS sees only some of them.
-            .refreshable { await model.refresh() }
+            .refreshable {
+                model.checks.reload()
+                await model.refresh()
+            }
             #if os(macOS)
             // Edit ▸ Copy while the list has focus: the selected commits' hashes.
             .copyable(copiedHashes)
@@ -110,6 +114,9 @@ struct HistoryView: View {
         .listStyle(.plain)
         // Rows set their own height; a taller minimum would break the graph's lines.
         .environment(\.defaultMinListRowHeight, 1)
+        // For the marks on commits whose checks ran, and their popovers.
+        .environment(model.checks)
+        .task(id: checkKey) { await followChecks() }
         .overlay {
             if search.isActive {
                 if search.isComplete, search.results.isEmpty {
@@ -192,9 +199,10 @@ struct HistoryView: View {
                     .selectionDisabled()
             case .commit(let row):
                 CommitRow(row: row, labels: model.refLabels[row.id] ?? [], graphWidth: graphWidth,
-                          showsGraph: preferences.showsGraph, columns: preferences.columns,
+                          showsGraph: preferences.showsGraph, columns: columns,
                           widths: preferences.columnWidths, size: rowSize,
-                          isHead: row.id == headID, hasNote: history.notes.hasNote(row.id)) {
+                          isHead: row.id == headID, hasNote: history.notes.hasNote(row.id),
+                          checks: model.checks.statuses[row.id]) {
                     Task { await history.toggleFold(of: row.id) }
                 }
                     .tag(row.id)
@@ -223,6 +231,52 @@ struct HistoryView: View {
             return history.items
         }
         return Array(history.items.prefix(limit))
+    }
+
+    /// What a row shows beside its summary. The marks for checks have a
+    /// place of their own once any commit has one, so that they line up
+    /// down the list and no message is cut short for a mark it lacks.
+    private var columns: HistoryColumns {
+        var columns = preferences.columns
+        columns.checks = preferences.showsChecks && !model.checks.statuses.isEmpty
+        return columns
+    }
+
+    /// What the marks on commits depend on: asked for again when the
+    /// history lists other commits, when an account or a remote comes or
+    /// goes, and when a push may have started checks.
+    private var checkKey: CheckKey {
+        let history = model.history
+        let isOn = preferences.showsChecks
+        return CheckKey(
+            sources: isOn ? model.checkSources.map(\.signature) : [], accounts: AccountChangeCounter.shared.count,
+            generation: history.generation, rows: history.items.count,
+            results: history.search.isActive ? history.search.results.count : nil, epoch: model.checks.epoch
+        )
+    }
+
+    /// Asks the hosting services how the checks of the commits listed
+    /// stand, and again as the answers age, for as long as the history is
+    /// on screen.
+    private func followChecks() async {
+        let history = model.history, checks = model.checks
+        let commits = history.search.isActive ? history.search.results : Array(history.loadedCommits)
+        checks.show(
+            commits, tips: Set(model.refLabels.keys), sources: preferences.showsChecks ? model.checkSources : []
+        )
+        while !Task.isCancelled {
+            await checks.refresh()
+            try? await Task.sleep(for: checks.pollInterval)
+        }
+    }
+
+    private struct CheckKey: Hashable {
+        var sources: [String]
+        var accounts: Int
+        var generation: Int
+        var rows: Int
+        var results: Int?
+        var epoch: Int
     }
 
     /// The rows' insets, which the column header shares so its titles
@@ -363,6 +417,8 @@ private struct CommitRow: View {
     /// `HEAD`'s commit is bold, in place of a badge.
     var isHead = false
     var hasNote = false
+    /// How its checks stand on the hosting services, where any ran.
+    var checks: CheckStatus?
     /// Folds or unfolds the branch a merge brought in.
     var toggleFold: () -> Void = {}
 
@@ -372,7 +428,13 @@ private struct CommitRow: View {
         Group {
             if sizeClass == .compact {
                 VStack(alignment: .leading, spacing: 3) {
-                    summary
+                    HStack(spacing: 4) {
+                        summary
+                        if let checks {
+                            Spacer(minLength: 0)
+                            CommitCheckMark(commit: row.id, status: checks)
+                        }
+                    }
                     HStack(spacing: 6) {
                         author
                         if columns.hash { hash }
@@ -390,6 +452,15 @@ private struct CommitRow: View {
                     }
                     summary
                         .frame(maxWidth: .infinity, alignment: .leading)
+                    if columns.checks {
+                        // Empty for a commit nothing ran for.
+                        ZStack {
+                            if let checks {
+                                CommitCheckMark(commit: row.id, status: checks)
+                            }
+                        }
+                        .frame(width: HistoryColumnWidths.checks)
+                    }
                     if columns.author {
                         author.frame(width: widths.author, alignment: .leading)
                     }

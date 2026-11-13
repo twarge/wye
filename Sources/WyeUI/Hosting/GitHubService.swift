@@ -12,7 +12,7 @@ struct GitHubService: HostingService {
     var capabilities: HostingCapabilities {
         HostingCapabilities(
             mergeMethods: [.merge, .squash, .rebase], canApprove: true, canRequestChanges: true,
-            supportsDrafts: true, canReopen: true, hasHeadReference: true
+            supportsDrafts: true, canReopen: true, hasHeadReference: true, checkBatchSize: Self.checkBatchSize
         )
     }
 
@@ -195,7 +195,7 @@ struct GitHubService: HostingService {
         return client.url("/graphql")
     }
 
-    private func graphQL<Value: Decodable>(_ query: String, variables: [String: Any], as type: Value.Type) async throws -> Value {
+    func graphQL<Value: Decodable>(_ query: String, variables: [String: Any], as type: Value.Type) async throws -> Value {
         let response = try await client.send(
             .post, graphQLURL, json: ["query": query, "variables": variables], as: GraphQLResponse<Value>.self
         ).value

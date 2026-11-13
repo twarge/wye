@@ -233,17 +233,33 @@ struct CheckStatusIcon: View {
     var status: CheckStatus
 
     var body: some View {
-        let (symbol, color, label): (String, Color, String) = switch status {
-        case .success: ("checkmark.circle.fill", .green, "Checks passed")
-        case .failure: ("xmark.circle.fill", .red, "Checks failed")
-        case .pending: ("clock.fill", .orange, "Checks running")
-        case .neutral: ("minus.circle", .secondary, "Checks neutral or skipped")
-        }
-        Image(systemName: symbol)
-            .foregroundStyle(color)
+        Image(systemName: status.symbol)
+            .foregroundStyle(status.color)
             .imageScale(.small)
-            .help(label)
-            .accessibilityLabel(label)
+            .help(status.summary)
+            .accessibilityLabel(status.summary)
+    }
+}
+
+extension CheckStatus {
+    /// A circled check once everything passed, a circled cross when
+    /// anything failed.
+    var symbol: String {
+        switch self {
+        case .success: "checkmark.circle.fill"
+        case .failure: "xmark.circle.fill"
+        case .pending: "clock.fill"
+        case .neutral: "minus.circle"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .success: .green
+        case .failure: .red
+        case .pending: .orange
+        case .neutral: .secondary
+        }
     }
 }
 

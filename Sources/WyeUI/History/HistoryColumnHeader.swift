@@ -7,6 +7,10 @@ struct HistoryColumnWidths: Hashable {
     var author: CGFloat = 120
     var date: CGFloat = 64
 
+    /// The place for the mark of a commit's checks, which has no title
+    /// and is not resized.
+    static let checks: CGFloat = 16
+
     /// Between one column and the next, in the header and in every row.
     static let spacing: CGFloat = 8
     static let range: ClosedRange<CGFloat> = 30...480
@@ -36,6 +40,10 @@ struct HistoryColumnHeader: View {
             }
             title("Message")
                 .frame(maxWidth: .infinity, alignment: .leading)
+            if columns.checks {
+                Color.clear
+                    .frame(width: HistoryColumnWidths.checks, height: 1)
+            }
             if columns.author {
                 title("Author")
                     .frame(width: preferences.columnWidths.author, alignment: .leading)

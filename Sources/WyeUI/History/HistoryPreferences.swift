@@ -48,6 +48,7 @@ final class HistoryPreferences {
         static let showsHash = "history.showsHash"
         static let showsAuthor = "history.showsAuthor"
         static let showsDate = "history.showsDate"
+        static let showsChecks = "history.showsChecks"
         static let hashWidth = "history.hashWidth"
         static let authorWidth = "history.authorWidth"
         static let dateWidth = "history.dateWidth"
@@ -89,6 +90,12 @@ final class HistoryPreferences {
         didSet { defaults.set(showsDate, forKey: Key.showsDate) }
     }
 
+    /// Whether a commit shows how its checks stand on the hosting services
+    /// an account is signed in to.
+    var showsChecks: Bool {
+        didSet { defaults.set(showsChecks, forKey: Key.showsChecks) }
+    }
+
     /// How wide the columns are, as dragged in the header.
     var columnWidths: HistoryColumnWidths {
         didSet {
@@ -109,6 +116,7 @@ final class HistoryPreferences {
         showsHash = defaults.object(forKey: Key.showsHash) as? Bool ?? true
         showsAuthor = defaults.object(forKey: Key.showsAuthor) as? Bool ?? true
         showsDate = defaults.object(forKey: Key.showsDate) as? Bool ?? true
+        showsChecks = defaults.object(forKey: Key.showsChecks) as? Bool ?? true
         let standard = HistoryColumnWidths()
         func width(_ key: String, _ fallback: CGFloat) -> CGFloat {
             (defaults.object(forKey: key) as? Double).map { CGFloat($0) } ?? fallback
@@ -143,6 +151,9 @@ struct HistoryColumns: Hashable {
     var hash = true
     var author = true
     var date = true
+    /// Whether rows keep a place after the message for the mark of a
+    /// commit's checks: once the history has any to show.
+    var checks = false
 }
 
 /// What the rows of a history depend on beyond its commits.
@@ -164,5 +175,6 @@ extension HistoryPreferences {
         if showsHash != fresh.showsHash { showsHash = fresh.showsHash }
         if showsAuthor != fresh.showsAuthor { showsAuthor = fresh.showsAuthor }
         if showsDate != fresh.showsDate { showsDate = fresh.showsDate }
+        if showsChecks != fresh.showsChecks { showsChecks = fresh.showsChecks }
     }
 }

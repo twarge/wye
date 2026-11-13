@@ -38,6 +38,7 @@ struct HistoryRowOptions: View {
             Toggle("Show Author", isOn: $preferences.showsAuthor)
         }
         Toggle("Show Commit Date", isOn: $preferences.showsDate)
+        Toggle("Show Checks", isOn: $preferences.showsChecks)
     }
 }
 

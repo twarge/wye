@@ -405,6 +405,8 @@ extension RepositoryModel {
         ActivityLog.shared.finish(logged, error: failure, transfer: remotes.activity?.progress, said: said)
         remotes.end(success: failure == nil)
         await refresh()
+        // What was pushed or fetched may have checks starting.
+        if failure == nil { checks.remotesChanged() }
         await followRecordedSubmodules(from: recordedSubmodules)
         return failure
     }

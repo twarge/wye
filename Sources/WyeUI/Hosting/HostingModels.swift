@@ -203,8 +203,9 @@ enum PullRequestFilter: String, CaseIterable, Identifiable, Hashable, Sendable {
     }
 }
 
-/// How a pull request's checks, or CI pipeline, stand overall.
-enum CheckStatus: String, Hashable, Sendable {
+/// How the checks, or CI pipelines, of a pull request or a commit stand
+/// overall.
+enum CheckStatus: String, Hashable, Sendable, Codable {
     case pending
     case success
     case failure
@@ -350,4 +351,7 @@ struct HostingCapabilities: Hashable, Sendable {
     /// Whether the service has a fetchable reference for a pull request's
     /// head on the base repository (`refs/pull/12/head`).
     var hasHeadReference: Bool
+    /// How many commits one request can say the checks of, for the
+    /// history's marks. None where Wye does not read a commit's checks.
+    var checkBatchSize = 0
 }

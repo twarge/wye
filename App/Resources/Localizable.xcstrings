@@ -1975,10 +1975,16 @@
     "Open it on %@" : {
       "extractionState" : "manual"
     },
+    "Open on %@" : {
+      "extractionState" : "manual"
+    },
     "Open on Web" : {
       "extractionState" : "manual"
     },
     "Open the file in the app the system uses for it" : {
+      "extractionState" : "manual"
+    },
+    "Open this commit’s checks on %@" : {
       "extractionState" : "manual"
     },
     "Open this repository" : {
@@ -2232,7 +2238,22 @@
     "Quit Wye" : {
       "extractionState" : "manual"
     },
+    "Read %@" : {
+      "extractionState" : "manual"
+    },
+    "Read Again" : {
+      "extractionState" : "manual"
+    },
+    "Read just now" : {
+      "extractionState" : "manual"
+    },
+    "Read the checks again" : {
+      "extractionState" : "manual"
+    },
     "Reading repositories…" : {
+      "extractionState" : "manual"
+    },
+    "Reading…" : {
       "extractionState" : "manual"
     },
     "Reason" : {
@@ -2612,6 +2633,9 @@
       "extractionState" : "manual"
     },
     "Show Author" : {
+      "extractionState" : "manual"
+    },
+    "Show Checks" : {
       "extractionState" : "manual"
     },
     "Show Commit" : {

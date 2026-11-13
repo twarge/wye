@@ -14,7 +14,7 @@ struct GitLabService: HostingService {
         // and requesting changes has no simple REST call.
         HostingCapabilities(
             mergeMethods: [.merge, .squash], canApprove: true, canRequestChanges: false,
-            supportsDrafts: true, canReopen: true, hasHeadReference: true
+            supportsDrafts: true, canReopen: true, hasHeadReference: true, checkBatchSize: Self.checkBatchSize
         )
     }
 
@@ -230,7 +230,7 @@ struct GitLabService: HostingService {
         return components.url.map(PageCursor.url)
     }
 
-    private func all<Item: Decodable>(_ url: URL, as type: Item.Type) async throws -> [Item] {
+    func all<Item: Decodable>(_ url: URL, as type: Item.Type) async throws -> [Item] {
         var items: [Item] = []
         var next: URL? = url
         while let url = next {
@@ -254,7 +254,8 @@ struct GitLabService: HostingService {
         switch status {
         case "success": .success
         case "failed": .failure
-        case "running", "pending", "created", "waiting_for_resource", "preparing", "scheduled": .pending
+        case "running", "pending", "created", "waiting_for_resource", "preparing", "scheduled",
+             "waiting_for_callback", "canceling": .pending
         default: .neutral
         }
     }
