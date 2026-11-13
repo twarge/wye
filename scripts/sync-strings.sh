@@ -10,6 +10,12 @@
 # Xcode leaves them be. Each extension has a catalog of its own, filled the
 # same way from its sources and WyeShared's.
 #
+# Xcode makes a Swift symbol for every string kept by hand
+# (STRING_CATALOG_GENERATE_SYMBOLS, one of its recommended settings), and
+# fails the build on a key with no letters to name one from, such as `%@`
+# or `%lld`. These strings are looked up by their keys, never by symbol, so
+# each entry says it has none.
+#
 # Where the strings come from, most exact first:
 #
 # 1. The compiler, for the packages: they are compiled here for macOS with
@@ -106,6 +112,7 @@ for key in list(strings):
             del strings[key]
         continue
     entry["extractionState"] = "manual"
+    entry["generatesSymbol"] = False
 with open(path, "w") as file:
     json.dump(catalog, file, ensure_ascii=False, indent=2, sort_keys=True, separators=(",", " : "))
     file.write("\n")
