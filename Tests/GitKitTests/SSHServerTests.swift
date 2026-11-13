@@ -281,6 +281,37 @@ struct SSHServerTests {
         #expect(try git(["rev-parse", "main"], in: remote) == ours)
     }
 
+    /// Over a network a fetch's tags come along with the commits it brings,
+    /// so a tag made later on a commit fetched before needs a second round,
+    /// as git makes one.
+    @Test func aFetchFollowsTagsOnCommitsAlreadyHere() async throws {
+        defer { finish() }
+        try trustServer()
+        let repository = try await clone(into: "local")
+        let local = work.url.appending(path: "local")
+
+        // Someone else tags the commit already here, and one no branch holds.
+        let other = work.url.appending(path: "other")
+        try git(["clone", "--quiet", remote.path, other.path], in: work.url)
+        let identity = ["-c", "user.name=O", "-c", "user.email=o@example.com"]
+        try git(identity + ["tag", "-a", "-m", "Release", "v1"], in: other)
+        try git(["tag", "light"], in: other)
+        try git(identity + ["commit", "--quiet", "--allow-empty", "-m", "Tagged only"], in: other)
+        try git(identity + ["tag", "-a", "-m", "Loose", "loose"], in: other)
+        try git(["push", "--quiet", "origin", "v1", "light", "loose"], in: other)
+
+        try await repository.fetch(credentials: credentials())
+        #expect(try git(["tag", "--list"], in: local).split(separator: "\n") == ["light", "v1"])
+        #expect(try git(["rev-parse", "v1"], in: local) == (try git(["rev-parse", "v1"], in: remote)))
+        // Fetched as `.none`, none come.
+        try git(["tag", "-d", "v1", "light"], in: local)
+        try await repository.fetch(tags: .none, credentials: credentials())
+        #expect(try git(["tag", "--list"], in: local).isEmpty)
+        // A pull follows them as a fetch does.
+        _ = try await repository.pull(credentials: credentials())
+        #expect(try git(["tag", "--list"], in: local).split(separator: "\n") == ["light", "v1"])
+    }
+
     @Test func scpLikeAddressesWork() async throws {
         defer { finish() }
         try trustServer()

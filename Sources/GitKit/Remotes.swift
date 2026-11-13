@@ -304,7 +304,9 @@ public enum PullMode: String, Hashable, Sendable, CaseIterable {
 /// Which tags a fetch brings.
 public enum FetchTags: Hashable, Sendable, CaseIterable {
     /// As the remote's `tagOpt` configuration says, as git does. Without
-    /// one, libgit2 brings the remote's tags: unlike git, also those on
+    /// one, the remote's tags on commits here once the fetch is done, as
+    /// git follows them, including one made after its commit was fetched.
+    /// From a remote on this computer's disk, libgit2 also brings those on
     /// commits that no fetched branch holds.
     case automatic
     /// Every tag on the remote, as `git fetch --tags`.

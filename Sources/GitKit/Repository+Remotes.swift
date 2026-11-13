@@ -49,6 +49,60 @@ extension Repository {
         try withExtendedLifetime(session) {
             try session.check(git_remote_fetch(remote, nil, &options, nil))
         }
+
+        // Following tags, the remote sends those on the commits it sends,
+        // but not one made later on a commit fetched before. git fetches
+        // those in a second round, and so does this.
+        guard tags == .automatic, git_remote_autotag(remote) == GIT_REMOTE_DOWNLOAD_TAGS_AUTO else { return }
+        let missing = try tagsOnCommitsHere(advertisedBy: remote)
+        guard !missing.isEmpty else { return }
+        session.resetForNextRemote()
+        options.prune = GIT_FETCH_NO_PRUNE
+        options.download_tags = GIT_REMOTE_DOWNLOAD_TAGS_NONE
+        // `FETCH_HEAD` keeps the branches the first round fetched.
+        options.update_fetchhead = 0
+        let code = withStringArray(missing.map { "\($0):\($0)" }) { refspecs in
+            withExtendedLifetime(session) {
+                git_remote_fetch(remote, &refspecs, &options, nil)
+            }
+        }
+        try session.check(code)
+    }
+
+    /// The tags, by full name, that the remote has on commits here but this
+    /// repository lacks, from what the remote listed when it was last
+    /// connected to. As when git follows tags, one of the same name here is
+    /// left as it is.
+    private func tagsOnCommitsHere(advertisedBy remote: OpaquePointer?) throws -> [String] {
+        var heads: UnsafeMutablePointer<UnsafePointer<git_remote_head>?>?
+        var count = 0
+        try check(git_remote_ls(&heads, &count, remote))
+        guard let heads, count > 0 else { return [] }
+        var odb: OpaquePointer?
+        try check(git_repository_odb(&odb, pointer))
+        defer { git_odb_free(odb) }
+
+        // An annotated tag is listed twice: its own object, then as
+        // `name^{}`, the commit it is on.
+        var tags: [(name: String, id: git_oid)] = []
+        var peeled: [String: git_oid] = [:]
+        for head in UnsafeBufferPointer(start: heads, count: count) {
+            guard let head = head?.pointee, let name = head.name.map({ String(cString: $0) }),
+                  name.hasPrefix("refs/tags/") else { continue }
+            if name.hasSuffix("^{}") {
+                peeled[String(name.dropLast(3))] = head.oid
+            } else {
+                tags.append((name, head.oid))
+            }
+        }
+        return tags.compactMap { tag in
+            var id = tag.id
+            var target = peeled[tag.name] ?? tag.id
+            var existing = git_oid()
+            guard git_odb_exists(odb, &id) == 0, git_odb_exists(odb, &target) == 1,
+                  git_reference_name_to_id(&existing, pointer, tag.name) != 0 else { return nil }
+            return tag.name
+        }
     }
 
     // MARK: Push
