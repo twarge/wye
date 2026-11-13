@@ -37,7 +37,7 @@ struct CommitFilesView: View {
         #if os(macOS)
         HSplitView {
             TreeBrowserView(model: model, commitID: commitID, selection: $file)
-                .frame(minWidth: 180, idealWidth: 240, maxWidth: 420)
+                .frame(minWidth: 180, idealWidth: 180, maxWidth: 420)
             Group {
                 if let file {
                     FilePane(model: model, commitID: commitID, file: file, aspect: $aspect)

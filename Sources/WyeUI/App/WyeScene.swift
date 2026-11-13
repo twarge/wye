@@ -30,7 +30,9 @@ public struct WyeScene: Scene {
             RootView()
                 .environment(library)
         }
-        .defaultSize(width: 1240, height: 780)
+        // With the sidebar at its narrowest and the details at their usual
+        // width, the list of commits has about 490 points.
+        .defaultSize(width: 1220, height: 780)
         .commands {
             WyeCommands(library: library)
             #if os(macOS)

@@ -58,20 +58,22 @@ struct RepositoryView: View {
         NavigationSplitView {
             sidebar
         } detail: {
+            // The button sits in the inspector's own toolbar while it is
+            // open, as SwiftUI's inspectors want it: from the list's, it did
+            // not close an inspector showing nothing selected. Closed, the
+            // list's toolbar has it, to open it again.
             list
                 .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            showsDetail.toggle()
-                        } label: {
-                            Label(showsDetail ? "Hide Details" : "Show Details", systemImage: "sidebar.right")
-                        }
-                        .help(showsDetail ? "Hide the details on the right" : "Show the details on the right")
+                    if !showsDetail {
+                        ToolbarItem(placement: .primaryAction) { detailToggle }
                     }
                 }
                 .inspector(isPresented: $showsDetail) {
                     detailColumn
                         .inspectorColumnWidth(min: 320, ideal: 560, max: 1600)
+                        .toolbar {
+                            ToolbarItem(placement: .primaryAction) { detailToggle }
+                        }
                 }
         }
         #else
@@ -85,6 +87,17 @@ struct RepositoryView: View {
         }
         #endif
     }
+
+    #if os(macOS)
+    private var detailToggle: some View {
+        Button {
+            showsDetail.toggle()
+        } label: {
+            Label(showsDetail ? "Hide Details" : "Show Details", systemImage: "sidebar.right")
+        }
+        .help(showsDetail ? "Hide the details on the right" : "Show the details on the right")
+    }
+    #endif
 
     private var sidebar: some View {
         SidebarView(model: model)
