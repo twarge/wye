@@ -13,11 +13,7 @@ struct HistoryViewOptions: View {
             Text("Date").tag(HistoryOptions.Order.date)
             Text("Topology").tag(HistoryOptions.Order.topological)
         }
-        Picker("Group By", selection: $preferences.grouping) {
-            ForEach(HistoryPreferences.Grouping.allCases) { grouping in
-                Text(grouping.title).tag(grouping)
-            }
-        }
+        HistoryGroupingPicker()
         if Platform.choosesHistoryRowSize {
             Picker("Row Size", selection: $preferences.rowSize) {
                 ForEach(HistoryPreferences.RowSize.allCases) { size in
@@ -42,6 +38,19 @@ struct HistoryRowOptions: View {
             Toggle("Show Author", isOn: $preferences.showsAuthor)
         }
         Toggle("Show Commit Date", isOn: $preferences.showsDate)
+    }
+}
+
+/// The headings that split a history by day, week or month, or none.
+struct HistoryGroupingPicker: View {
+    @Bindable private var preferences = HistoryPreferences.shared
+
+    var body: some View {
+        Picker("Group By", selection: $preferences.grouping) {
+            ForEach(HistoryPreferences.Grouping.allCases) { grouping in
+                Text(grouping.title).tag(grouping)
+            }
+        }
     }
 }
 

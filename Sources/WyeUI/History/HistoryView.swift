@@ -8,6 +8,8 @@ struct HistoryView: View {
     @State private var isCreatingBranch = false
     @FocusState private var isSearchFocused: Bool
     @Environment(\.openCommitWindow) private var openCommitWindow
+    /// Compact, rows are on two lines and have no columns to name.
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     private var preferences: HistoryPreferences { .shared }
 
@@ -37,37 +39,24 @@ struct HistoryView: View {
                                 await search.loadMore()
                             }
                     }
+                } else if sizeClass != .compact {
+                    // The header stays at the top as the rows scroll under it.
+                    Section {
+                        commitRows(history)
+                    } header: {
+                        HistoryColumnHeader(columns: preferences.columns, leading: rowLeading)
+                            .textCase(nil)
+                            #if os(macOS)
+                            // A section header takes no row insets on the
+                            // Mac, though it has the rows' margins: as padding.
+                            .padding(.leading, Self.rowInsets.leading)
+                            .padding(.trailing, Self.rowInsets.trailing)
+                            #else
+                            .listRowInsets(Self.rowInsets)
+                            #endif
+                    }
                 } else {
-                    ForEach(history.items) { item in
-                        switch item {
-                        case .heading(let date, let grouping, _, let lines):
-                            HeadingRow(date: date, grouping: grouping, lines: lines, graphWidth: graphWidth)
-                                .selectionDisabled()
-                        case .commit(let row):
-                            CommitRow(row: row, labels: model.refLabels[row.id] ?? [], graphWidth: graphWidth,
-                                      showsGraph: preferences.showsGraph, columns: preferences.columns,
-                                      size: rowSize,
-                                      isHead: row.id == headID, hasNote: history.notes.hasNote(row.id)) {
-                                Task { await history.toggleFold(of: row.id) }
-                            }
-                                .tag(row.id)
-                                // Onto a branch in the sidebar, to cherry-pick.
-                                .draggable(drag(for: row.commit))
-                        }
-                    }
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 14))
-                    .listRowSeparator(.hidden)
-
-                    if !history.isComplete, !history.items.isEmpty {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                            .listRowSeparator(.hidden)
-                            .selectionDisabled()
-                            // Runs again as rows arrive, for as long as it stays on screen.
-                            .task(id: history.items.count) {
-                                await history.loadMore()
-                            }
-                    }
+                    commitRows(history)
                 }
             }
             #if os(macOS)
@@ -171,6 +160,51 @@ struct HistoryView: View {
         .historyFilterSheets(search)
     }
 
+    /// The history's rows: its headings and commits, and a spinner while
+    /// more are read.
+    @ViewBuilder
+    private func commitRows(_ history: HistoryModel) -> some View {
+        ForEach(history.items) { item in
+            switch item {
+            case .heading(let date, let grouping, _, let lines):
+                HeadingRow(date: date, grouping: grouping, lines: lines, graphWidth: graphWidth)
+                    .selectionDisabled()
+            case .commit(let row):
+                CommitRow(row: row, labels: model.refLabels[row.id] ?? [], graphWidth: graphWidth,
+                          showsGraph: preferences.showsGraph, columns: preferences.columns,
+                          widths: preferences.columnWidths, size: rowSize,
+                          isHead: row.id == headID, hasNote: history.notes.hasNote(row.id)) {
+                    Task { await history.toggleFold(of: row.id) }
+                }
+                    .tag(row.id)
+                    // Onto a branch in the sidebar, to cherry-pick.
+                    .draggable(drag(for: row.commit))
+            }
+        }
+        .listRowInsets(Self.rowInsets)
+        .listRowSeparator(.hidden)
+
+        if !history.isComplete, !history.items.isEmpty {
+            ProgressView()
+                .frame(maxWidth: .infinity)
+                .listRowSeparator(.hidden)
+                .selectionDisabled()
+                // Runs again as rows arrive, for as long as it stays on screen.
+                .task(id: history.items.count) {
+                    await history.loadMore()
+                }
+        }
+    }
+
+    /// The rows' insets, which the column header shares so its titles
+    /// stand over their columns.
+    private static let rowInsets = EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 14)
+
+    /// Where a row's text starts: after the graph and a gap.
+    private var rowLeading: CGFloat {
+        preferences.showsGraph ? GraphCell.width(forLanes: graphWidth) + 6 : 0
+    }
+
     /// The context menu for the commits it was opened on: one commit's
     /// actions, or those for several, then what the rows show. Opened on
     /// no commit, it has all the ways the history is shown.
@@ -179,10 +213,16 @@ struct HistoryView: View {
         let commits = model.history.commits(ids)
         if commits.count == 1, let commit = commits.first {
             CommitActionsMenu(model: model, commit: commit)
-            Section { HistoryRowOptions() }
+            Section {
+                HistoryRowOptions()
+                HistoryGroupingPicker()
+            }
         } else if commits.count > 1 {
             MultipleCommitsMenu(model: model, commits: commits)
-            Section { HistoryRowOptions() }
+            Section {
+                HistoryRowOptions()
+                HistoryGroupingPicker()
+            }
         } else {
             HistoryViewOptions()
         }
@@ -283,6 +323,7 @@ private struct CommitRow: View {
     var graphWidth: Int
     var showsGraph: Bool
     var columns: HistoryColumns
+    var widths: HistoryColumnWidths
     var size: HistoryPreferences.RowSize
     /// `HEAD`'s commit is bold, in place of a badge.
     var isHead = false
@@ -307,21 +348,20 @@ private struct CommitRow: View {
                 }
                 .padding(.vertical, 7)
             } else {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    if columns.hash { hash }
+                // The columns the header names, as wide as it has them.
+                HStack(alignment: .firstTextBaseline, spacing: HistoryColumnWidths.spacing) {
+                    if columns.hash {
+                        hash.frame(width: widths.hash, alignment: .leading)
+                    }
                     summary
-                    Spacer(minLength: 8)
-                    // Columns as wide in every row, so they line up.
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     if columns.author {
                         author
                             .foregroundStyle(.secondary)
-                            .frame(width: 130, alignment: .leading)
+                            .frame(width: widths.author, alignment: .leading)
                     }
                     if columns.date {
-                        ZStack(alignment: .trailing) {
-                            Self.dateText(Self.widestDate).hidden().accessibilityHidden(true)
-                            date
-                        }
+                        date.frame(width: widths.date, alignment: .leading)
                     }
                 }
                 .font(size == .compact ? .callout : nil)
@@ -363,22 +403,15 @@ private struct CommitRow: View {
         Text(row.commit.id.abbreviated())
             .font(.smallCode)
             .foregroundStyle(.secondary)
+            .lineLimit(1)
     }
 
     private var date: some View {
-        Self.dateText(row.commit.author.date)
-    }
-
-    private static func dateText(_ date: Date) -> some View {
-        Text(date, format: .dateTime.day().month(.defaultDigits).year(.twoDigits))
+        Text(row.commit.author.date, format: .dateTime.day().month(.defaultDigits).year(.twoDigits))
             .font(.callout.monospacedDigit())
             .foregroundStyle(.secondary)
+            .lineLimit(1)
     }
-
-    /// A date with two digits in each place, which the date column is as
-    /// wide as.
-    private static let widestDate = Calendar(identifier: .gregorian)
-        .date(from: DateComponents(year: 2028, month: 12, day: 28)) ?? .now
 }
 
 /// Asks for a new branch's name.

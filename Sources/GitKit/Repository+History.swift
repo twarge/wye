@@ -63,6 +63,15 @@ public struct HistoryOptions: Hashable, Sendable, Codable {
 /// Owns a libgit2 revision walk.
 final class Walk {
     let pointer: OpaquePointer
+    /// Whether it follows first parents only, where a merge stands for the
+    /// branch it brought in.
+    var firstParentOnly = false
+    /// For a contents search, how often its text occurs in each blob read
+    /// so far, or `nil` for one not searched: a commit's version of a file
+    /// is its child's parent version too, so each is read once.
+    var contentCounts: [OID: Int?] = [:]
+    /// The text those counts are for.
+    var countedText: String?
 
     init(pointer: OpaquePointer) {
         self.pointer = pointer
@@ -81,6 +90,7 @@ extension Repository {
         let walk = try makeWalk(scope, sorting: options.sorting, options: options)
         if options.firstParentOnly {
             try check(git_revwalk_simplify_first_parent(walk.pointer))
+            walk.firstParentOnly = true
         }
         let cursor = HistoryCursor()
         walks[cursor] = walk

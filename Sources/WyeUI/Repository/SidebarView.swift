@@ -16,8 +16,6 @@ struct SidebarView: View {
     @AppStorage("sidebar.archivedExpanded") private var archivedExpanded = false
     @AppStorage(BranchPreferences.staleMonthsKey) private var staleMonths = 3
     @AppStorage(BranchPreferences.autoArchiveMonthsKey) private var autoArchiveMonths = 0
-    /// What the filter field narrows the lists to.
-    @State private var filterText = ""
     /// Folders and remotes closed by hand while filtering, when everything
     /// else opens to show its matches. Dropped with the filter, so the
     /// expansion from before comes back.
@@ -195,7 +193,6 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
-        .searchable(text: $filterText, placement: .sidebar, prompt: "Filter")
         .onChange(of: isFiltering) {
             closedWhileFiltering = []
         }
@@ -252,6 +249,12 @@ struct SidebarView: View {
     }
 
     // MARK: Filtering
+
+    /// What the lists are narrowed to: the history's search text, while
+    /// its field is in the toolbar. The sidebar has no field of its own.
+    private var filterText: String {
+        model.selection?.historyScope == nil ? "" : model.history.search.text
+    }
 
     private var isFiltering: Bool {
         !filterText.trimmingCharacters(in: .whitespaces).isEmpty

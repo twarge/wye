@@ -1311,6 +1311,9 @@
     "Has conflicts" : {
       "extractionState" : "manual"
     },
+    "Hash" : {
+      "extractionState" : "manual"
+    },
     "Head" : {
       "extractionState" : "manual"
     },
@@ -2406,6 +2409,9 @@
       "extractionState" : "manual"
     },
     "Reset %@ to Here…" : {
+      "extractionState" : "manual"
+    },
+    "Reset Column Widths" : {
       "extractionState" : "manual"
     },
     "Reset to Revision…" : {

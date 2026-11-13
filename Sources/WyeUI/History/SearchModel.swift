@@ -143,6 +143,7 @@ extension HistoryQuery.Field: Identifiable {
         case .author: "Author"
         case .hash: "Hash"
         case .path: "Path"
+        case .contents: "Contents"
         }
     }
 
@@ -152,6 +153,7 @@ extension HistoryQuery.Field: Identifiable {
         case .author: "Search authors"
         case .hash: "Search hashes"
         case .path: "Search changed paths"
+        case .contents: "Search changed lines"
         }
     }
 }

@@ -12,6 +12,9 @@ public struct HistoryQuery: Hashable, Sendable {
         case hash
         /// Commits that changed a file, or anything inside a folder.
         case path
+        /// Commits that added or removed a line holding the text, ignoring
+        /// case, as `git log -G` finds them for a plain string.
+        case contents
     }
 
     public var field: Field
@@ -27,7 +30,7 @@ public struct HistoryQuery: Hashable, Sendable {
     var term: String {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         switch field {
-        case .message, .author: return trimmed
+        case .message, .author, .contents: return trimmed
         case .hash: return trimmed.lowercased()
         case .path: return trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         }
@@ -93,10 +96,11 @@ public struct SearchPage: Hashable, Sendable {
 
 extension Repository {
     /// Searches on through a history opened with `openHistory`, keeping its
-    /// order. Returns after `limit` matches or `examining` commits, whichever
-    /// comes first, so a search for something rare in a large repository
-    /// still hands the actor back between pages and can be abandoned by
-    /// closing the cursor.
+    /// order. Returns after `limit` matches, `examining` commits or `within`
+    /// time, whichever comes first, so a search for something rare in a
+    /// large repository, or one through every commit's changes, still hands
+    /// the actor back between pages and can be abandoned by closing the
+    /// cursor.
     ///
     /// A path matches a commit whose version of it differs from each of its
     /// parents'. For ordinary commits that is `git log --full-history --
@@ -104,16 +108,25 @@ extension Repository {
     /// resolving a conflict there, rather than whenever one side brought in a
     /// change: those changes are listed already, as the commits that made them.
     ///
+    /// Contents match as `changesContent(_:in:)` describes.
+    ///
     /// `filter` narrows the matches further, by date and author.
     public func nextMatches(
         from cursor: HistoryCursor, matching query: HistoryQuery, filter: HistoryFilter = HistoryFilter(),
-        limit: Int, examining budget: Int = 2_000
+        limit: Int, examining budget: Int = 2_000, within duration: Duration = .milliseconds(150)
     ) throws -> SearchPage {
         guard let walk = walks[cursor] else { return SearchPage(matches: [], examined: 0, isComplete: true) }
         let term = query.term
+        let contents = query.field == .contents ? ContentMatcher(term) : nil
+        if contents != nil, walk.countedText != term || walk.contentCounts.count > 500_000 {
+            walk.contentCounts = [:]
+            walk.countedText = term
+        }
+        let clock = ContinuousClock()
+        let deadline = clock.now + duration
         var page = SearchPage(matches: [], examined: 0, isComplete: false)
         var oid = git_oid()
-        while page.matches.count < limit, page.examined < budget {
+        while page.matches.count < limit, page.examined < budget, page.examined == 0 || clock.now < deadline {
             let code = git_revwalk_next(&oid, walk.pointer)
             if code == GIT_ITEROVER.rawValue {
                 page.isComplete = true
@@ -128,14 +141,16 @@ extension Repository {
                                                 committer: Signature(git_commit_committer(commit!).pointee)) {
                 continue
             }
-            if try term.isEmpty || matches(commit!, field: query.field, term: term) {
+            if try term.isEmpty || matches(commit!, field: query.field, term: term, contents: contents, walk: walk) {
                 page.matches.append(Commit(commit!))
             }
         }
         return page
     }
 
-    private func matches(_ commit: OpaquePointer, field: HistoryQuery.Field, term: String) throws -> Bool {
+    private func matches(
+        _ commit: OpaquePointer, field: HistoryQuery.Field, term: String, contents: ContentMatcher?, walk: Walk
+    ) throws -> Bool {
         switch field {
         case .message:
             let message = git_commit_message(commit).map { String(cString: $0) } ?? ""
@@ -147,6 +162,8 @@ extension Repository {
             return OID(git_commit_id(commit)).hex.hasPrefix(term)
         case .path:
             return try changes(term, in: commit)
+        case .contents:
+            return try contents.map { try changesContent($0, in: commit, walk: walk) } ?? false
         }
     }
 

@@ -48,6 +48,9 @@ final class HistoryPreferences {
         static let showsHash = "history.showsHash"
         static let showsAuthor = "history.showsAuthor"
         static let showsDate = "history.showsDate"
+        static let hashWidth = "history.hashWidth"
+        static let authorWidth = "history.authorWidth"
+        static let dateWidth = "history.dateWidth"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -86,6 +89,15 @@ final class HistoryPreferences {
         didSet { defaults.set(showsDate, forKey: Key.showsDate) }
     }
 
+    /// How wide the columns are, as dragged in the header.
+    var columnWidths: HistoryColumnWidths {
+        didSet {
+            defaults.set(Double(columnWidths.hash), forKey: Key.hashWidth)
+            defaults.set(Double(columnWidths.author), forKey: Key.authorWidth)
+            defaults.set(Double(columnWidths.date), forKey: Key.dateWidth)
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         showsGraph = defaults.object(forKey: Key.showsGraph) as? Bool ?? true
@@ -95,8 +107,17 @@ final class HistoryPreferences {
         grouping = defaults.string(forKey: Key.grouping).flatMap(Grouping.init) ?? .month
         rowSize = defaults.string(forKey: Key.rowSize).flatMap(RowSize.init) ?? .regular
         showsHash = defaults.object(forKey: Key.showsHash) as? Bool ?? true
-        showsAuthor = defaults.bool(forKey: Key.showsAuthor)
+        showsAuthor = defaults.object(forKey: Key.showsAuthor) as? Bool ?? true
         showsDate = defaults.object(forKey: Key.showsDate) as? Bool ?? true
+        let standard = HistoryColumnWidths()
+        func width(_ key: String, _ fallback: CGFloat) -> CGFloat {
+            (defaults.object(forKey: key) as? Double).map { CGFloat($0) } ?? fallback
+        }
+        columnWidths = HistoryColumnWidths(
+            hash: width(Key.hashWidth, standard.hash),
+            author: width(Key.authorWidth, standard.author),
+            date: width(Key.dateWidth, standard.date)
+        )
     }
 
     /// What a row shows beside the summary, all together.
@@ -116,11 +137,11 @@ final class HistoryPreferences {
     }
 }
 
-/// What a history's row shows beside its summary. Rows a column wide show
-/// the author only when asked; those on two lines, on an iPhone, always do.
+/// What a history's row shows beside its summary. Rows on two lines, on
+/// an iPhone, show the author whatever this says.
 struct HistoryColumns: Hashable {
     var hash = true
-    var author = false
+    var author = true
     var date = true
 }
 
