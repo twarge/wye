@@ -1,23 +1,26 @@
 import GitKit
 import SwiftUI
 
-/// How the context menus name things in their items: in curly quotes, as
-/// in Check Out “main”.
+/// How the menus name things in their items: as they are, without quotes,
+/// as in Merge into main…. A context menu never names what it was opened
+/// on: it calls it Here, as in Rebase main onto Here…, or leaves it out,
+/// as in Check Out.
 enum MenuNames {
-    static func quoted(_ name: String) -> String {
-        "“\(name)”"
+    static func name(_ name: String) -> String {
+        name
     }
 
     /// A commit by its short hash.
-    static func quoted(_ id: OID) -> String {
-        quoted(id.abbreviated())
+    static func name(_ id: OID) -> String {
+        id.abbreviated()
     }
 
-    /// The checked-out branch, or "Current" when `HEAD` is detached, as
-    /// in Merge “topic” into “main”….
+    /// The checked-out branch, or `HEAD` when it is detached, as in Merge
+    /// topic into main…. Unquoted, a word such as "Current" would read as
+    /// a branch's name.
     @MainActor
     static func current(_ model: RepositoryModel) -> String {
-        model.headBranchName.map(quoted) ?? "Current"
+        model.headBranchName ?? "HEAD"
     }
 }
 
@@ -32,14 +35,13 @@ struct ReferenceFooterItems: View {
     var copyTitle: String
 
     var body: some View {
-        let quoted = MenuNames.quoted(name)
         Section {
-            Button("Export Files from \(quoted)…", systemImage: "archivebox") {
+            Button("Export Files from Here…", systemImage: "archivebox") {
                 if let target { Task { await model.exportFiles(of: target, named: name) } }
             }
             .disabled(target == nil)
             .help("Save the files at this revision as a zip archive")
-            Button("Compare \(quoted) With…", systemImage: "arrow.left.arrow.right") {
+            Button("Compare With…", systemImage: "arrow.left.arrow.right") {
                 model.present(.pickRevision(.compare(name)))
             }
         }

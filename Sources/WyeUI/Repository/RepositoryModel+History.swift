@@ -21,9 +21,35 @@ extension RepositoryModel {
         if let scope = selection?.historyScope {
             await history.show(scope)
         }
-        if await !history.reveal(id) {
+        if await !history.reveal(id), !Task.isCancelled {
             report(NotInHistory())
         }
+    }
+
+    /// The commit the branch or tag just selected in the sidebar points at,
+    /// once the snapshot lists it: one selected inside an operation is
+    /// listed only by the refresh after it.
+    var commitToReveal: OID? {
+        switch referenceToReveal {
+        case .branch(let id):
+            snapshot?.branches.first { $0.id == id }?.target
+        case .remoteBranch(let id):
+            snapshot?.remotes.lazy.flatMap(\.branches).first { $0.id == id }?.target
+        case .tag(let id):
+            snapshot?.tags.first { $0.id == id }?.target
+        default:
+            nil
+        }
+    }
+
+    /// Selects the commit the branch or tag just selected in the sidebar
+    /// points at in the full history, and scrolls to it.
+    func revealSelectedReference() async {
+        guard let reference = referenceToReveal, let target = commitToReveal else { return }
+        await history.select(target)
+        // Arrowing on through the sidebar has selected another one.
+        guard !Task.isCancelled, referenceToReveal == reference else { return }
+        referenceToReveal = nil
     }
 
     /// Selects the commit `HEAD` points at: in the history on screen when it

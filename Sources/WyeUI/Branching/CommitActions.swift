@@ -172,8 +172,9 @@ struct RewordSheet: View {
     @State private var pushedTo: String?
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Edit Message") {
             Form {
+                SheetTitleSection()
                 Section {
                     TextEditor(text: $message)
                         .font(.body)
@@ -189,7 +190,6 @@ struct RewordSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Edit Message")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

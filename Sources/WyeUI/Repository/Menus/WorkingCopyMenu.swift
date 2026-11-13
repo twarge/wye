@@ -38,7 +38,7 @@ struct WorkingCopyRowMenu: View {
 
         Section {
             if let current, current.upstream == nil {
-                Button("Publish \(MenuNames.quoted(current.name))…", systemImage: "icloud.and.arrow.up") {
+                Button("Publish \(MenuNames.name(current.name))…", systemImage: "icloud.and.arrow.up") {
                     model.remotes.sheet = .pushTo(branch: current.id)
                 }
                 .disabled(!model.hasRemotes || isTransferring)

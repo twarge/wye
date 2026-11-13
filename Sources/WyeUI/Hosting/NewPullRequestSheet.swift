@@ -26,8 +26,9 @@ struct NewPullRequestSheet: View {
         let target = model.hostingTargets.first { $0.remote == targetRemote }
         let availability = model.hostingAvailability(for: target)
         let source = PullRequestSource.of(headBranch, in: model)
-        NavigationStack {
+        SheetStack("New \(target?.kind.pullRequestTerm ?? "Pull Request")") {
             Form {
+                SheetTitleSection()
                 Section {
                     if model.hostingTargets.count > 1 {
                         Picker("Into", selection: $targetRemote) {
@@ -74,7 +75,6 @@ struct NewPullRequestSheet: View {
             }
             .formStyle(.grouped)
             .disabled(isCreating)
-            .navigationTitle("New \(target?.kind.pullRequestTerm ?? "Pull Request")")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

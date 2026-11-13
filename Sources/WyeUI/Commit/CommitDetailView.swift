@@ -1,18 +1,34 @@
 import GitKit
 import SwiftUI
 
-/// A commit's details and what it changed, or the files it holds. A file's
-/// history, its blame and the file itself open on top of it.
+/// A commit's details and what it changed, or the files it holds. On macOS
+/// a file, its history and its blame show beside the list of files, so
+/// nothing opens on top and there is no Back; on iOS they open on top.
 struct CommitDetailView: View {
     var model: RepositoryModel
     var commitID: OID?
     var emptyTitle: LocalizedStringKey = "No Commit Selected"
+    /// Names the window after the commit, in a window of its own.
+    var titlesWindow = false
+    /// Where a parent's hash in the header goes: by default, to that commit
+    /// in the history.
+    var selectCommit: ((OID) -> Void)?
 
+    @State private var mode = CommitDetailMode.changes
+    /// What shows beside the list of files, on macOS.
+    @State private var file: FileFocus?
+    @State private var aspect = FileAspect.contents
+    #if !os(macOS)
     @State private var path: [CommitRoute] = []
+    #endif
 
     var body: some View {
+        #if os(macOS)
+        content
+            .environment(\.openCommitRoute, OpenCommitRouteAction { show($0) })
+        #else
         NavigationStack(path: $path) {
-            CommitDetailContent(model: model, commitID: commitID, emptyTitle: emptyTitle)
+            content
                 .navigationDestination(for: CommitRoute.self) { $0.destination(model) }
         }
         .environment(\.openCommitRoute, OpenCommitRouteAction { path.append($0) })
@@ -20,25 +36,56 @@ struct CommitDetailView: View {
         .onChange(of: commitID) {
             path = []
         }
+        #endif
     }
+
+    private var content: some View {
+        CommitDetailContent(
+            model: model, commitID: commitID, emptyTitle: emptyTitle, titlesWindow: titlesWindow,
+            selectCommit: selectCommit ?? { model.history.selection = $0 },
+            mode: $mode, file: $file, aspect: $aspect
+        )
+    }
+
+    /// Shows a file, its history or its blame beside the list of files.
+    private func show(_ route: CommitRoute) {
+        let (path, commit, aspect): (String, OID, FileAspect) = switch route {
+        case .file(let path, let commit): (path, commit, .contents)
+        case .fileHistory(let path, let commit): (path, commit, .history)
+        case .blame(let path, let commit): (path, commit, .blame)
+        }
+        if commit != commitID {
+            (selectCommit ?? { model.history.selection = $0 })(commit)
+        }
+        // A folder's history keeps the folder chosen.
+        if file?.path != path || aspect != .history {
+            file = FileFocus(path: path)
+        }
+        self.aspect = aspect
+        mode = .files
+    }
+}
+
+enum CommitDetailMode: Hashable {
+    case changes
+    case files
 }
 
 private struct CommitDetailContent: View {
     var model: RepositoryModel
     var commitID: OID?
     var emptyTitle: LocalizedStringKey
+    var titlesWindow: Bool
+    var selectCommit: (OID) -> Void
+    @Binding var mode: CommitDetailMode
+    @Binding var file: FileFocus?
+    @Binding var aspect: FileAspect
 
     @Environment(\.openCommitRoute) private var open
     @State private var loaded: Loaded?
     @State private var collapsed: Set<String> = []
-    @State private var mode = Mode.changes
     /// The parent a merge is compared with, remembered for that merge only.
     @State private var parentChoice: (commit: OID, index: Int)?
-
-    private enum Mode: Hashable {
-        case changes
-        case files
-    }
 
     private struct Loaded {
         var commit: Commit
@@ -62,8 +109,8 @@ private struct CommitDetailContent: View {
             if let loaded, loaded.commit.id == commitID {
                 VStack(spacing: 0) {
                     Picker("Show", selection: $mode) {
-                        Text("Changes").tag(Mode.changes)
-                        Text("Files").tag(Mode.files)
+                        Text("Changes").tag(CommitDetailMode.changes)
+                        Text("Files").tag(CommitDetailMode.files)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
@@ -75,9 +122,10 @@ private struct CommitDetailContent: View {
                     case .changes:
                         changes(loaded)
                     case .files:
-                        TreeBrowserView(model: model, commitID: loaded.commit.id)
+                        CommitFilesView(model: model, commitID: loaded.commit.id, file: $file, aspect: $aspect)
                     }
                 }
+                .modifier(WindowTitle(isOn: titlesWindow, commit: loaded.commit, repository: model.name))
             } else if commitID == nil {
                 ContentUnavailableView(emptyTitle, systemImage: "smallcircle.filled.circle")
             } else {
@@ -93,9 +141,8 @@ private struct CommitDetailContent: View {
     private func changes(_ loaded: Loaded) -> some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                CommitHeader(commit: loaded.commit, labels: model.refLabels[loaded.commit.id] ?? []) {
-                    model.history.selection = $0
-                }
+                CommitHeader(commit: loaded.commit, labels: model.refLabels[loaded.commit.id] ?? [],
+                             showCommit: selectCommit)
                 .textSelection(.enabled)
                 .overlay(alignment: .bottomTrailing) { CommitSignatureBadge(model: model, commitID: loaded.commit.id) }
                 Divider()
@@ -280,5 +327,23 @@ private struct CommitHeader: View {
             .font(.code)
             .lineLimit(1)
             .truncationMode(.middle)
+    }
+}
+
+/// A commit window's title: the commit's summary, over its hash and the
+/// repository's name.
+private struct WindowTitle: ViewModifier {
+    var isOn: Bool
+    var commit: Commit
+    var repository: String
+
+    func body(content: Content) -> some View {
+        if isOn {
+            content
+                .navigationTitle(commit.summary)
+                .navigationSubtitle("\(commit.id.abbreviated()) · \(repository)")
+        } else {
+            content
+        }
     }
 }

@@ -15,10 +15,8 @@ struct ConflictResolverView: View {
     @State private var isConfirmingCancel = false
 
     var body: some View {
-        NavigationStack {
+        SheetStack(path.splitPath.name, subtitle: path.splitPath.folder, placement: .above(inset: 16)) {
             content
-                .navigationTitle(path.splitPath.name)
-                .navigationSubtitle(path.splitPath.folder)
                 .toolbarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {

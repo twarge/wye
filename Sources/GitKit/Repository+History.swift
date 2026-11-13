@@ -167,19 +167,140 @@ extension Repository {
             _ = git_revwalk_hide_ref(walk.pointer, name)
         }
         switch scope {
-        case .allReferences where !options.includedReferences.isEmpty:
-            for name in options.includedReferences {
-                _ = git_revwalk_push_ref(walk.pointer, name)
-            }
         case .allReferences:
-            for glob in ["refs/heads", "refs/remotes", "refs/tags"] {
-                try check(git_revwalk_push_glob(walk.pointer, glob))
+            for tip in try startingCommits(of: scope, options: options).reversed() {
+                var id = tip.id.raw
+                try check(git_revwalk_push(walk.pointer, &id))
             }
-            // Fails on a branch with no commits, which then has no history.
-            _ = git_revwalk_push_head(walk.pointer)
         case .reference(let name):
             try check(git_revwalk_push_ref(walk.pointer, name))
         }
         return walk
+    }
+
+    /// What a history of every reference starts from, newest commit first:
+    /// the branches, remote branches and tags, and `HEAD`, or the references
+    /// the options keep to. Names that lead to no commit, such as a branch
+    /// with no commits or a tag of a tree, are passed over.
+    ///
+    /// The walk takes these in this order, as git takes them for
+    /// `git log --topo-order`: lines of history then come out newest first,
+    /// and a stale one beside the commit it left, not ahead of everything
+    /// because of its name.
+    private func startingCommits(of scope: HistoryScope, options: HistoryOptions) throws -> [(id: OID, time: Int64)] {
+        let names: [String]
+        switch scope {
+        case .allReferences where !options.includedReferences.isEmpty:
+            names = options.includedReferences
+        case .allReferences:
+            var all = git_strarray()
+            try check(git_reference_list(&all, pointer))
+            defer { git_strarray_dispose(&all) }
+            let listed = strings(in: all).sorted()
+            names = ["refs/heads/", "refs/remotes/", "refs/tags/"].flatMap { prefix in
+                listed.filter { $0.hasPrefix(prefix) }
+            } + ["HEAD"]
+        case .reference(let name):
+            names = [name]
+        }
+        var tips: [(id: OID, time: Int64)] = []
+        var seen: Set<OID> = []
+        for name in names {
+            var reference: OpaquePointer?
+            guard git_reference_lookup(&reference, pointer, name) == 0 else { continue }
+            defer { git_reference_free(reference) }
+            var commit: OpaquePointer?
+            guard git_reference_peel(&commit, reference, GIT_OBJECT_COMMIT) == 0 else { continue }
+            defer { git_object_free(commit) }
+            let id = OID(git_object_id(commit))
+            guard seen.insert(id).inserted else { continue }
+            tips.append((id, git_commit_time(commit)))
+        }
+        // Stable, so commits of the same second keep the names' order, as in git.
+        return tips.enumerated()
+            .sorted { $0.element.time != $1.element.time ? $0.element.time > $1.element.time : $0.offset < $1.offset }
+            .map(\.element)
+    }
+}
+
+extension Repository {
+    /// The commit whose line of first parents a graph of this history keeps
+    /// straight in its first lane (see `CommitGraph.init(mainLine:)`): for a
+    /// history of every reference, `HEAD`, raised to the newest branch or
+    /// tag whose first parents lead down to it, such as a branch started on
+    /// top of it or a remote branch it is behind; for a history of one
+    /// reference, that reference. `nil` when the history does not list it.
+    public func mainLine(of scope: HistoryScope, options: HistoryOptions = HistoryOptions()) throws -> OID? {
+        let base: OID
+        switch scope {
+        case .allReferences:
+            guard let head = try headCommit() else { return nil }
+            base = OID(git_commit_id(head))
+            git_commit_free(head)
+        case .reference(let name):
+            // Through a tag object, for a tag's history.
+            var id = git_oid()
+            guard git_reference_name_to_id(&id, pointer, name) == 0,
+                  let commit = try? peeledCommit(OID(id)) else { return nil }
+            base = commit
+        }
+        let tips = try startingCommits(of: scope, options: options)
+        // Listed only when something the history starts from leads to it,
+        // and nothing hidden does.
+        guard tips.contains(where: { $0.id == base })
+                || tips.contains(where: { isDescendant($0.id, of: base) }) else { return nil }
+        for name in options.hiddenReferences {
+            var id = git_oid()
+            guard git_reference_name_to_id(&id, pointer, name) == 0 else { continue }
+            let hidden = (try? peeledCommit(OID(id))) ?? OID(id)
+            if hidden == base || isDescendant(hidden, of: base) { return nil }
+        }
+        let baseTime = try commitTime(base)
+        // Newest first, so the first that leads down to it is the one.
+        for tip in tips where tip.id != base && tip.time >= baseTime {
+            if try firstParents(of: tip.id, reach: base, notOlderThan: baseTime) {
+                return tip.id
+            }
+        }
+        return base
+    }
+
+    /// Whether following first parents down from `start` comes to `target`,
+    /// giving up once the commits are older than `time` allows (a day of
+    /// slack, for clocks that disagree).
+    private func firstParents(of start: OID, reach target: OID, notOlderThan time: Int64) throws -> Bool {
+        var next: OID? = start
+        for _ in 0..<10_000 {
+            guard let id = next else { return false }
+            if id == target { return true }
+            let commit = try lookupCommit(id)
+            defer { git_commit_free(commit) }
+            guard git_commit_time(commit) >= time - 86_400 else { return false }
+            next = git_commit_parent_id(commit, 0).map { OID($0.pointee) }
+        }
+        return false
+    }
+
+    private func isDescendant(_ id: OID, of ancestor: OID) -> Bool {
+        var commit = id.raw, base = ancestor.raw
+        return git_graph_descendant_of(pointer, &commit, &base) == 1
+    }
+
+    private func commitTime(_ id: OID) throws -> Int64 {
+        let commit = try lookupCommit(id)
+        defer { git_commit_free(commit) }
+        return git_commit_time(commit)
+    }
+
+    /// The commit an object leads to, through any tag objects.
+    private func peeledCommit(_ id: OID) throws -> OID {
+        var raw = id.raw
+        var object: OpaquePointer?
+        try check(git_object_lookup(&object, pointer, &raw, GIT_OBJECT_ANY))
+        defer { git_object_free(object) }
+        var commit: OpaquePointer?
+        try check(git_object_peel(&commit, object, GIT_OBJECT_COMMIT))
+        defer { git_object_free(commit) }
+        return OID(git_object_id(commit))
     }
 }

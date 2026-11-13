@@ -7,12 +7,24 @@ import Observation
 @MainActor
 @Observable
 final class RebaseRequests {
-    /// An interactive rebase from this commit, which the sheet plans.
-    var interactive: OID?
+    /// An interactive rebase, which the sheet plans.
+    var interactive: InteractiveRebasePlan?
     /// Rebase onto: the new base to start with, if the menu named one.
     var onto: RebaseOntoRequest?
     /// An earlier commit whose message or author is being edited.
     var edit: CommitEditRequest?
+}
+
+/// Which commits an interactive rebase replays, and onto what.
+enum InteractiveRebasePlan: Identifiable, Hashable {
+    /// This commit and every one after it up to `HEAD`, replayed where
+    /// they are: `git rebase -i <commit>^`.
+    case from(OID)
+    /// The commits `HEAD` has and this commit lacks, replayed onto it:
+    /// `git rebase -i <commit>`.
+    case onto(OID)
+
+    var id: Self { self }
 }
 
 struct RebaseOntoRequest: Identifiable, Hashable {

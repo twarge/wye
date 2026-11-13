@@ -8,8 +8,12 @@ struct BlameView: View {
     var model: RepositoryModel
     var path: String
     var commitID: OID
+    /// Beside a commit's list of files, whose bar names the file, rather
+    /// than on top of the commit with its name as the title.
+    var isBesideList = false
 
     @State private var blame: Blame?
+    @State private var failure: String?
     @State private var selection: OID?
     @State private var syntax = TextSyntaxLoader()
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -49,16 +53,20 @@ struct BlameView: View {
                         }
                     }
                 }
+            } else if let failure {
+                ContentUnavailableView("No Blame", systemImage: "person.text.rectangle", description: Text(failure))
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle(path.splitPath.name)
-        .navigationSubtitle("Blame at \(commitID.abbreviated())")
+        .modifier(PushedTitle(isOn: !isBesideList, title: path.splitPath.name,
+                              subtitle: String(localized: "Blame at \(commitID.abbreviated())")))
         .task(id: commitID) {
             do {
                 blame = try await model.repository.blame(of: path, at: commitID)
+            } catch where isBesideList {
+                failure = String(localized: "This commit has no file at this path to blame.")
             } catch {
                 model.report(error)
             }

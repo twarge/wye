@@ -5,11 +5,15 @@ import SwiftUI
 /// selected commit's change to it below.
 struct FileHistoryView: View {
     var model: RepositoryModel
+    /// Beside a commit's list of files, whose bar names the file: Show
+    /// Commit sits by the selected commit, not in the toolbar.
+    var isBesideList: Bool
     @State private var history: FileHistoryModel
     @State private var isCollapsed = false
 
-    init(model: RepositoryModel, path: String, commitID: OID) {
+    init(model: RepositoryModel, path: String, commitID: OID, isBesideList: Bool = false) {
         self.model = model
+        self.isBesideList = isBesideList
         _history = State(initialValue: FileHistoryModel(repository: model.repository, path: path, startID: commitID))
     }
 
@@ -40,15 +44,12 @@ struct FileHistoryView: View {
             Divider()
             diff
         }
-        .navigationTitle(history.path.splitPath.name)
-        .navigationSubtitle("History")
+        .modifier(PushedTitle(isOn: !isBesideList, title: history.path.splitPath.name,
+                              subtitle: String(localized: "History")))
         .toolbar {
-            if let entry = history.selectedEntry {
+            if !isBesideList, let entry = history.selectedEntry {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Show Commit", systemImage: "arrow.right.circle") {
-                        model.showInHistory(entry.commit.id)
-                    }
-                    .help("Show this commit in the history")
+                    showCommitButton(entry)
                 }
             }
         }
@@ -68,12 +69,20 @@ struct FileHistoryView: View {
         if let entry = history.selectedEntry {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(entry.commit.summary)
-                            .font(.headline)
-                        Text("\(entry.commit.author.name), \(entry.commit.author.date.formatted(date: .abbreviated, time: .shortened))")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(entry.commit.summary)
+                                .font(.headline)
+                            Text("\(entry.commit.author.name), \(entry.commit.author.date.formatted(date: .abbreviated, time: .shortened))")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
+                        if isBesideList {
+                            Spacer(minLength: 8)
+                            showCommitButton(entry)
+                                .labelStyle(.iconOnly)
+                                .buttonStyle(.borderless)
+                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
@@ -90,6 +99,13 @@ struct FileHistoryView: View {
             ContentUnavailableView("No Commit Selected", systemImage: "smallcircle.filled.circle")
                 .frame(maxHeight: .infinity)
         }
+    }
+
+    private func showCommitButton(_ entry: FileHistoryEntry) -> some View {
+        Button("Show Commit", systemImage: "arrow.right.circle") {
+            model.showInHistory(entry.commit.id)
+        }
+        .help("Show this commit in the history")
     }
 
     private func run(_ operation: () async throws -> Void) async {

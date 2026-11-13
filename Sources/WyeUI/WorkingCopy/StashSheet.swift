@@ -14,8 +14,9 @@ struct StashSheet: View {
     @State private var keepIndex = false
 
     var body: some View {
-        NavigationStack {
+        SheetStack(title) {
             Form {
+                SheetTitleSection()
                 if let paths {
                     Section {
                         ForEach(paths.prefix(8), id: \.self) { path in
@@ -45,7 +46,6 @@ struct StashSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(title)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

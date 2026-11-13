@@ -18,12 +18,22 @@ enum SidebarItem: Hashable {
     /// The pull requests (merge requests on GitLab) of the repository's hosting service.
     case pullRequests
 
-    /// The history this item lists, for the items that list one.
+    /// The history this item lists, for the items that list one. A branch
+    /// or tag lists the full history, with the commit it points at selected
+    /// there.
     var historyScope: HistoryScope? {
         switch self {
-        case .history: .allReferences
-        case .branch(let name), .remoteBranch(let name), .tag(let name): .reference(name)
+        case .history, .branch, .remoteBranch, .tag: .allReferences
         case .workingCopy, .stashes, .reflog, .submodule, .worktree, .pullRequests: nil
+        }
+    }
+
+    /// Whether this is a branch, remote branch or tag, which the history
+    /// shows as the commit it points at.
+    var isReference: Bool {
+        switch self {
+        case .branch, .remoteBranch, .tag: true
+        default: false
         }
     }
 }
@@ -79,7 +89,21 @@ final class RepositoryModel: Identifiable {
     /// Fetch, pull and push: the one under way and what it asks of the user.
     let remotes = RemoteOperations()
 
-    var selection: SidebarItem? = .history
+    var selection: SidebarItem? = .history {
+        didSet {
+            // Selecting a branch or tag again, from Quick Open or a link,
+            // goes back to its commit too.
+            referenceToReveal = selection?.isReference == true ? selection : nil
+            // At once, where the full history is on screen already, so Back
+            // and Forward see one step; `revealSelectedReference()` scrolls to it.
+            if let commit = commitToReveal, history.scope == .allReferences {
+                history.selection = commit
+            }
+        }
+    }
+    /// The branch or tag just selected in the sidebar, until the history has
+    /// selected the commit it points at. See `revealSelectedReference()`.
+    var referenceToReveal: SidebarItem?
     var selectedStash: OID?
     var workingCopy = WorkingCopyState()
     /// What went wrong and what operations left behind, for the strip at

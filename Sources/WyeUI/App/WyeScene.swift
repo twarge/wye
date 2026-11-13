@@ -33,7 +33,19 @@ public struct WyeScene: Scene {
         .defaultSize(width: 1240, height: 780)
         .commands {
             WyeCommands(library: library)
+            #if os(macOS)
+            // View ▸ Show and Hide Inspector, for the details on the right.
+            InspectorCommands()
+            #endif
         }
+
+        WindowGroup("Commit", id: Self.commitWindowID, for: CommitWindowTarget.self) { $target in
+            if let target {
+                CommitWindow(target: target)
+                    .environment(library)
+            }
+        }
+        .defaultSize(width: 1080, height: 760)
 
         #if os(macOS)
         Window("Activity", id: Self.activityWindowID) {

@@ -139,8 +139,9 @@ private struct EntryEditor: View {
     @State private var addsValue = true
 
     var body: some View {
-        NavigationStack {
+        SheetStack(isNew ? "New Entry" : "Edit Entry") {
             Form {
+                SheetTitleSection()
                 Section {
                     TextField("Key", text: $name, prompt: Text("section.name"))
                         .font(.code)
@@ -169,7 +170,6 @@ private struct EntryEditor: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(isNew ? "New Entry" : "Edit Entry")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

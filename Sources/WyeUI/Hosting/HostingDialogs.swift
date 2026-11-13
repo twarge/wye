@@ -87,8 +87,9 @@ struct RemoteAccountSheet: View {
         let host = hosted?.host ?? ""
         let accounts = AccountStore.shared.accounts(forHost: host)
         let fallback = AccountStore.shared.defaultAccount(forHost: host)
-        NavigationStack {
+        SheetStack("Account") {
             Form {
+                SheetTitleSection()
                 Section {
                     Picker("Account", selection: $choice) {
                         Text("Default" + (fallback.map { " (\($0.login))" } ?? "")).tag(UUID?.none)
@@ -106,7 +107,6 @@ struct RemoteAccountSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Account")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

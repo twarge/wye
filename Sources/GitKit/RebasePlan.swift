@@ -84,12 +84,19 @@ public struct RebaseTodo: Hashable, Sendable {
     /// the commits they name and marked, as `--autosquash` does; `nil` when
     /// there are none.
     public let autosquashed: [RebaseStep]?
+    /// Whether `onto` is outside the commits' own history, as when they move
+    /// onto another branch: the plan changes the branch even left as it is.
+    public let changesBase: Bool
 
-    public init(onto: OID?, candidates: [RebaseCandidate], skippedMerges: Int, autosquashed: [RebaseStep]?) {
+    public init(
+        onto: OID?, candidates: [RebaseCandidate], skippedMerges: Int, autosquashed: [RebaseStep]?,
+        changesBase: Bool = false
+    ) {
         self.onto = onto
         self.candidates = candidates
         self.skippedMerges = skippedMerges
         self.autosquashed = autosquashed
+        self.changesBase = changesBase
     }
 
     /// Every commit picked, in order.

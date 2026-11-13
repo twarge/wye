@@ -110,6 +110,35 @@ import Testing
         }
     }
 
+    /// Deleting a branch a worktree has goes worktree first, then branch:
+    /// once the worktree is removed, its branch is free to delete, and the
+    /// commits only it has are counted as git counts them.
+    @Test func deletesABranchOnceItsWorktreeIsRemoved() async throws {
+        defer { remove() }
+        let repository = try fixture.open()
+        let path = folder.appending(path: "feature")
+        try fixture.git("worktree", "add", "--quiet", path.path, "-b", "feature")
+        let worktree = Fixture(existing: path)
+        try worktree.commit("b.txt", "only here\n", message: "Feature")
+
+        #expect(try await repository.worktreeHolding(branch: "refs/heads/feature")?.name == "feature")
+        let listed = try await repository.snapshot().branches.first { $0.id == "refs/heads/feature" }
+        #expect(listed?.worktreePath.map { real(URL(filePath: $0)) } == real(path))
+        #expect(try await repository.unmergedCommitCount(of: "refs/heads/feature") == 1)
+        await #expect(throws: WorktreeError.self) { try await repository.deleteBranch("refs/heads/feature", force: true) }
+
+        try await repository.removeWorktree("feature", force: true)
+        #expect(try await repository.worktreeHolding(branch: "refs/heads/feature") == nil)
+        #expect(try await repository.snapshot().branches.first { $0.id == "refs/heads/feature" }?.worktreePath == nil)
+        // Its commit is still only on it, so an unforced delete is refused, as `git branch -d` refuses it.
+        await #expect(throws: BranchingError.notMerged(branch: "feature", commits: 1)) {
+            try await repository.deleteBranch("refs/heads/feature")
+        }
+        #expect(throws: (any Error).self) { try fixture.git("branch", "-d", "feature") }
+        try await repository.deleteBranch("refs/heads/feature", force: true)
+        #expect(try fixture.git("branch", "--list", "feature").isEmpty)
+    }
+
     @Test func locksMovesRemovesAndPrunesAsGitDoes() async throws {
         defer { remove() }
         let repository = try fixture.open()

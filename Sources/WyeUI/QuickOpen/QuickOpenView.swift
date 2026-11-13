@@ -17,7 +17,7 @@ struct QuickOpenView: View {
 
     var body: some View {
         let results = self.results
-        NavigationStack {
+        SheetStack(purpose.title(currentBranch: currentBranch), placement: .above(inset: 14)) {
             ScrollViewReader { proxy in
                 List {
                     if query.allSatisfy(\.isWhitespace) {
@@ -59,7 +59,6 @@ struct QuickOpenView: View {
                     }
                 }
             }
-            .navigationTitle(purpose.title(currentBranch: currentBranch))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

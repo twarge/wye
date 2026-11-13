@@ -87,3 +87,21 @@ extension View {
         }
     }
 }
+
+/// The title of a screen opened on top of commit detail, which the same
+/// screen beside a commit's list of files leaves to the bar above it.
+struct PushedTitle: ViewModifier {
+    var isOn: Bool
+    var title: String
+    var subtitle: String
+
+    func body(content: Content) -> some View {
+        if isOn {
+            content
+                .navigationTitle(title)
+                .navigationSubtitle(subtitle)
+        } else {
+            content
+        }
+    }
+}

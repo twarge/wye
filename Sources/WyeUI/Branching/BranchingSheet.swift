@@ -21,6 +21,8 @@ enum BranchingSheet: Identifiable, Hashable {
     case compare(from: String, to: String)
     /// Two of the working tree, the index and `HEAD`.
     case compareWorkingTree(WorkingTreeComparison)
+    /// A commit and the working tree, staged or not.
+    case compareLocalChanges(to: OID)
     /// Make a local branch that tracks a remote branch, by full name.
     case trackRemoteBranch(String)
     case snapshot
@@ -68,6 +70,8 @@ private struct BranchingSheets: ViewModifier {
                 CompareView(model: model, from: from, to: to)
             case .compareWorkingTree(let comparison):
                 WorkingTreeCompareView(model: model, comparison: comparison)
+            case .compareLocalChanges(let commit):
+                WorkingTreeCompareView(model: model, comparingWorkingTreeTo: commit)
             case .trackRemoteBranch(let branch):
                 TrackRemoteBranchSheet(model: model, remoteBranch: branch)
             case .snapshot:
@@ -96,25 +100,29 @@ struct BranchingSheetForm<Content: View>: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            Form {
-                content
-            }
-            .formStyle(.grouped)
-            .navigationTitle(title)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", role: .cancel) { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(confirmTitle, role: isDestructive ? .destructive : nil) {
-                        dismiss()
-                        confirm()
-                    }
-                    .disabled(!canConfirm)
-                }
-            }
+        SheetStack(title) {
+            form
         }
         .frame(minWidth: 400)
+    }
+
+    private var form: some View {
+        Form {
+            SheetTitleSection()
+            content
+        }
+        .formStyle(.grouped)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel", role: .cancel) { dismiss() }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button(confirmTitle, role: isDestructive ? .destructive : nil) {
+                    dismiss()
+                    confirm()
+                }
+                .disabled(!canConfirm)
+            }
+        }
     }
 }

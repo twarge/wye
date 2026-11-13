@@ -11,6 +11,9 @@ final class SearchModel {
     var field: HistoryQuery.Field = .message
     /// Dates, authors and branches, shown as tokens in the search field.
     var filters = HistoryFilters()
+    /// Whether the sheet that picks the filter's first and last days is on
+    /// screen. Here rather than in the menu, which closes before it shows.
+    var isChoosingDates = false
 
     /// The matches so far, in the history's order.
     private(set) var results: [Commit] = []

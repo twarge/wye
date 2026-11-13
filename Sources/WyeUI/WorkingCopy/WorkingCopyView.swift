@@ -92,6 +92,8 @@ struct WorkingCopyView: View {
             }
         }
         .listStyle(.plain)
+        // The window follows changes on disk; iOS sees only some of them.
+        .refreshable { await model.refresh() }
         .workingCopyDrops(model)
         .overlay {
             if model.workingCopy.entries.isEmpty && ignored.isEmpty && assumed.isEmpty {
@@ -176,10 +178,6 @@ struct WorkingCopyView: View {
                     }
                 }
                 .help("Stash or discard the local changes, and choose which files show")
-                Button("Refresh", systemImage: "arrow.clockwise") {
-                    Task { await model.refresh() }
-                }
-                .help("Read the repository again")
             }
         }
         .confirmationDialog(

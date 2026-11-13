@@ -41,8 +41,9 @@ struct PublishSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        SheetStack(kind.map { "Publish to \($0.shortTitle)" } ?? "Publish") {
             Form {
+                SheetTitleSection()
                 if accounts.isEmpty {
                     Section {
                         Text("Sign in to \(kind?.title ?? "a hosting service") to publish this repository there.")
@@ -90,7 +91,6 @@ struct PublishSheet: View {
             }
             .formStyle(.grouped)
             .disabled(isPublishing)
-            .navigationTitle(kind.map { "Publish to \($0.shortTitle)" } ?? "Publish")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

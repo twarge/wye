@@ -96,6 +96,8 @@ final class HistoryModel {
     private let pageSize = 300
     private var cursor: HistoryCursor?
     private var graph = CommitGraph()
+    /// Where the line the graph keeps straight in its first lane starts.
+    private var mainLine: OID?
     private var lastPeriod: DateComponents?
     /// Every commit read so far, hidden or not, to lay out again when a
     /// merge folds or unfolds.
@@ -146,6 +148,7 @@ final class HistoryModel {
 
         // The list keeps showing what it has until the first page arrives.
         let page: [Commit]
+        var mainLine: OID?
         do {
             let cursor = try await repository.openHistory(scope, options: options)
             guard generation == self.generation else {
@@ -154,6 +157,7 @@ final class HistoryModel {
             }
             self.cursor = cursor
             page = try await repository.nextCommits(from: cursor, limit: pageSize)
+            mainLine = try? await repository.mainLine(of: scope, options: options)
         } catch {
             // A branch with no commits, or a reference that has gone.
             page = []
@@ -161,6 +165,7 @@ final class HistoryModel {
         guard generation == self.generation else { return }
 
         commitsRead = []
+        self.mainLine = mainLine
         resetLayout()
         append(page)
         if let selection, !contains(selection) {
@@ -216,7 +221,8 @@ final class HistoryModel {
 
     private func resetLayout() {
         items = []
-        graph = CommitGraph()
+        // None where a folded merge hides where it starts.
+        graph = CommitGraph(mainLine: mainLine.flatMap { hidden.contains($0) ? nil : $0 })
         lastPeriod = nil
         graphWidth = 1
     }
@@ -234,15 +240,29 @@ final class HistoryModel {
             for merge in holding { folded[merge] = nil }
             layOutAgain()
         }
-        while !contains(id), !isComplete, rowCount < limit {
+        // Until another reveal takes its place.
+        while !contains(id), !isComplete, rowCount < limit, !Task.isCancelled {
             let count = items.count
             await loadMore()
             if items.count == count { break }
         }
-        guard contains(id) else { return false }
+        guard contains(id), !Task.isCancelled else { return false }
         selection = id
         scrollTarget = id
         return true
+    }
+
+    /// Selects a commit and scrolls to it: where the list shows it already,
+    /// leaving the search and branch filters as they are; otherwise as
+    /// `reveal(_:)` does.
+    @discardableResult
+    func select(_ id: OID) async -> Bool {
+        if !search.isActive, contains(id) {
+            selection = id
+            scrollTarget = id
+            return true
+        }
+        return await reveal(id)
     }
 
     func didScroll() {

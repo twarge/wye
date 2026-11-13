@@ -10,10 +10,9 @@ struct RemoteMenu: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        let name = MenuNames.quoted(remote.name)
         let isTransferring = model.isTransferring
         Section {
-            Button("Fetch \(name)", systemImage: "arrow.triangle.2.circlepath") {
+            Button("Fetch", systemImage: "arrow.triangle.2.circlepath") {
                 Task { await model.fetch(remote: remote.name, prune: FetchPreferences.prune, tags: .automatic) }
             }
             .disabled(isTransferring)
@@ -27,34 +26,34 @@ struct RemoteMenu: View {
             .help("Remove the remote branches that are gone from the remote, without fetching anything")
         }
         Section {
-            Button("Push All Tags to \(name)", systemImage: "tag") {
+            Button("Push All Tags", systemImage: "tag") {
                 Task { await model.pushAllTags(to: remote.name) }
             }
             .disabled(isTransferring || model.snapshot?.tags.isEmpty != false)
         }
         Section {
-            Button("Edit \(name)…", systemImage: "slider.horizontal.3") {
+            Button("Edit…", systemImage: "slider.horizontal.3") {
                 model.remotes.sheet = .editRemote(remote)
             }
             .help("Change its name, URL and push URL")
             if model.hostedRepository(remote: remote.name) != nil {
-                Button("Account for \(name)…", systemImage: "person.crop.circle") {
+                Button("Account…", systemImage: "person.crop.circle") {
                     model.hosting.sheet = .account(remote: remote.name)
                 }
                 .help("Choose the account this remote signs in with")
             }
         }
         Section {
-            Button("Rename \(name)…", systemImage: "character.cursor.ibeam") {
+            Button("Rename…", systemImage: "character.cursor.ibeam") {
                 model.remotes.sheet = .renameRemote(remote)
             }
-            Button("Remove \(name)…", systemImage: "trash", role: .destructive) {
+            Button("Remove…", systemImage: "trash", role: .destructive) {
                 model.remotes.sheet = .removeRemote(remote)
             }
         }
         if let url = model.webURL(forRemote: remote.name) {
             Section {
-                Button("Open \(name) on Web", systemImage: "safari") { openURL(url) }
+                Button("Open on Web", systemImage: "safari") { openURL(url) }
             }
         }
     }
@@ -73,7 +72,6 @@ struct RemoteBranchMenu: View {
 
     var body: some View {
         let id = branch.id
-        let name = MenuNames.quoted(branch.name)
         let current = MenuNames.current(model)
         let isTransferring = model.isTransferring
 
@@ -83,34 +81,34 @@ struct RemoteBranchMenu: View {
             }
             .disabled(model.isBusy)
             .help("Check out a local branch of the same name that tracks it, making one if there is none")
-            Button("Pull \(name) into \(current)", systemImage: "arrow.down") {
+            Button("Pull into \(current)", systemImage: "arrow.down") {
                 Task { await model.pull(remoteBranch: id) }
             }
             .disabled(isTransferring || model.isBusy || model.headBranchName == nil)
         }
 
         Section {
-            Button("Merge \(name) into \(current)…", systemImage: "arrow.triangle.merge") {
+            Button("Merge into \(current)…", systemImage: "arrow.triangle.merge") {
                 model.present(.merge(id))
             }
             .disabled(model.isBusy)
-            Button("Rebase \(current) onto \(name)…", systemImage: "arrow.triangle.pull") {
+            Button("Rebase \(current) onto Here…", systemImage: "arrow.triangle.pull") {
                 model.present(.rebase(onto: id))
             }
             .disabled(model.isBusy || model.headBranchName == nil)
         }
 
         Section {
-            Button("Track \(name)…", systemImage: "arrow.triangle.branch") {
+            Button("New Tracking Branch…", systemImage: "arrow.triangle.branch") {
                 model.present(.trackRemoteBranch(id))
             }
             .help("Make a local branch that tracks it, with a name you choose")
-            Button("New Branch from \(name)…", systemImage: "plus") {
+            Button("New Branch from Here…", systemImage: "plus") {
                 model.present(.newBranch(at: branch.target))
             }
             let url = model.pullRequestURL(forRemoteBranch: id)
             PullRequestButton(
-                title: "New Pull Request from \(name)…", url: url,
+                title: "New Pull Request from Here…", url: url,
                 unavailable: url == nil ? RepositoryModel.unknownHostReason : nil
             )
         }

@@ -9,63 +9,119 @@ struct RepositoryView: View {
 
     @Environment(WindowActions.self) private var actions: WindowActions?
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// Whether the detail is open on the right, on macOS.
+    @SceneStorage("showsDetail") private var showsDetail = true
 
     var body: some View {
+        columns
+            .focusedSceneValue(model)
+            .opensCommitWindows(model)
+            // For diffs that read more than their lines, such as images.
+            .environment(\.diffRepository, model.repository)
+            .repositoryWindowServices(model)
+            .modifier(notices(perColumn: false))
+            .branchingSheets(model)
+            .remoteDialogs(for: model)
+            .fileRequestDialogs(model)
+            .nestedDialogs(model)
+            .hostingDialogs(model)
+            .commitNotePresenters(model)
+            .rebasePresenters(model)
+            .background {
+                // The sidebar's menus ask for them too, so they do not wait
+                // for the history to be on screen; on a view of their own,
+                // whose file dialogs then take no others' place.
+                Color.clear.commitActionPresenters(model)
+            }
+            .task {
+                await model.refresh()
+            }
+            .task {
+                // Until the window closes or shows another repository.
+                await model.watchForChanges()
+            }
+            .task(id: HistoryKey(selection: model.selection, referenceCommit: model.commitToReveal)) {
+                // One after the other, so the reveal reads the history shown.
+                if let scope = model.selection?.historyScope {
+                    await model.history.show(scope)
+                }
+                await model.revealSelectedReference()
+            }
+    }
+
+    /// The sidebar, the list, and the detail of what it selects. On macOS
+    /// the detail is an inspector, which the toolbar's button and
+    /// View ▸ Hide Inspector close: a split view's last column cannot be.
+    @ViewBuilder
+    private var columns: some View {
+        #if os(macOS)
         NavigationSplitView {
-            SidebarView(model: model)
-                .modifier(notices(perColumn: true))
-                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 380)
+            sidebar
+        } detail: {
+            list
                 .toolbar {
-                    ToolbarItem(placement: .navigation) {
-                        Button("Repositories", systemImage: "square.grid.2x2", action: close)
-                            .help("Show all repositories")
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            showsDetail.toggle()
+                        } label: {
+                            Label(showsDetail ? "Hide Details" : "Show Details", systemImage: "sidebar.right")
+                        }
+                        .help(showsDetail ? "Hide the details on the right" : "Show the details on the right")
                     }
                 }
+                .inspector(isPresented: $showsDetail) {
+                    detailColumn
+                        .inspectorColumnWidth(min: 320, ideal: 560, max: 1600)
+                }
+        }
+        #else
+        NavigationSplitView {
+            sidebar
         } content: {
-            content
-                .modifier(notices(perColumn: true))
+            list
                 .navigationSplitViewColumnWidth(min: 320, ideal: 500)
-                // The window stands for the repository's folder: on macOS the
-                // title gets the folder's icon, to drag, and a menu of the
-                // folders that enclose it.
-                .navigationDocument(model.repository.url)
-                // On the content column, so it shows whatever the sidebar selects.
-                .remoteControls(for: model)
-                .undoControls(for: model)
         } detail: {
-            detail
-                .modifier(notices(perColumn: true))
+            detailColumn
         }
-        .focusedSceneValue(model)
-        // For diffs that read more than their lines, such as images.
-        .environment(\.diffRepository, model.repository)
-        .repositoryWindowServices(model)
-        .modifier(notices(perColumn: false))
-        .branchingSheets(model)
-        .remoteDialogs(for: model)
-        .fileRequestDialogs(model)
-        .nestedDialogs(model)
-        .hostingDialogs(model)
-        .commitNotePresenters(model)
-        .rebasePresenters(model)
-        .background {
-            // The sidebar's menus ask for them too, so they do not wait
-            // for the history to be on screen; on a view of their own,
-            // whose file dialogs then take no others' place.
-            Color.clear.commitActionPresenters(model)
-        }
-        .task {
-            await model.refresh()
-        }
-        .task {
-            // Until the window closes or shows another repository.
-            await model.watchForChanges()
-        }
-        .task(id: model.selection) {
-            if let scope = model.selection?.historyScope {
-                await model.history.show(scope)
+        #endif
+    }
+
+    private var sidebar: some View {
+        SidebarView(model: model)
+            .modifier(notices(perColumn: true))
+            // Opens at its narrowest.
+            .navigationSplitViewColumnWidth(min: 150, ideal: 150, max: 380)
+            .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Button("Repositories", systemImage: "square.grid.2x2", action: close)
+                        .help("Show all repositories")
+                }
             }
-        }
+    }
+
+    private var list: some View {
+        content
+            .modifier(notices(perColumn: true))
+            // The window stands for the repository's folder: on macOS the
+            // title gets the folder's icon, to drag, and a menu of the
+            // folders that enclose it.
+            .navigationDocument(model.repository.url)
+            // On the list's column, so it shows whatever the sidebar selects.
+            .remoteControls(for: model)
+            .undoControls(for: model)
+    }
+
+    private var detailColumn: some View {
+        detail
+            .modifier(notices(perColumn: true))
+    }
+
+    /// What the history on screen depends on: the sidebar's selection and,
+    /// for a branch or tag, the commit it points at, which one selected
+    /// inside an operation gets only once the refresh after it lists it.
+    private struct HistoryKey: Hashable {
+        var selection: SidebarItem?
+        var referenceCommit: OID?
     }
 
     /// The strip of notices, over the whole window where the columns sit

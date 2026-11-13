@@ -1,13 +1,12 @@
 import GitKit
 import SwiftUI
 
-/// The toolbar menu that filters the history by date, author and branch.
-/// Each filter then shows as a token in the search field.
+/// The menu that filters the history by date, author and branch, in the
+/// toolbar's More menu. Each filter then shows as a token in the search
+/// field. The history shows its date sheet (`historyFilterSheets(_:)`).
 struct HistoryFilterMenu: View {
     var model: RepositoryModel
     @Bindable var search: SearchModel
-
-    @State private var isChoosingDates = false
 
     var body: some View {
         Menu("Filter", systemImage: search.filters.isEmpty
@@ -20,7 +19,7 @@ struct HistoryFilterMenu: View {
                     }
                 }
                 Divider()
-                Button("Choose Dates…") { isChoosingDates = true }
+                Button("Choose Dates…") { search.isChoosingDates = true }
                 if search.filters.since != nil || search.filters.until != nil {
                     Divider()
                     Button("Any Date") {
@@ -79,12 +78,6 @@ struct HistoryFilterMenu: View {
             .disabled(!search.hasAnything)
         }
         .help("Filter the history by date, author or branch")
-        .sheet(isPresented: $isChoosingDates) {
-            DateRangeSheet(since: search.filters.since, until: search.filters.until) { since, until in
-                search.filters.since = since
-                search.filters.until = until
-            }
-        }
     }
 
     /// The authors of the commits read so far, and any already chosen.
@@ -95,6 +88,26 @@ struct HistoryFilterMenu: View {
         let seen = HistoryFilters.authors(of: Array(history.loadedCommits.prefix(3_000)) + history.search.results)
         let chosen = search.filters.authors.subtracting(seen).sorted()
         return chosen + seen
+    }
+}
+
+extension View {
+    /// The sheet the filter menu's Choose Dates… asks for.
+    func historyFilterSheets(_ search: SearchModel) -> some View {
+        modifier(HistoryFilterSheets(search: search))
+    }
+}
+
+private struct HistoryFilterSheets: ViewModifier {
+    @Bindable var search: SearchModel
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: $search.isChoosingDates) {
+            DateRangeSheet(since: search.filters.since, until: search.filters.until) { since, until in
+                search.filters.since = since
+                search.filters.until = until
+            }
+        }
     }
 }
 
@@ -118,8 +131,9 @@ private struct DateRangeSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Dates") {
             Form {
+                SheetTitleSection()
                 Section {
                     Toggle("From", isOn: $hasStart)
                     if hasStart {
@@ -135,7 +149,6 @@ private struct DateRangeSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Dates")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

@@ -140,6 +140,9 @@ struct WyeCommands: Commands {
                 .keyboardShortcut("r")
                 .disabled(model == nil)
             }
+            Section {
+                SidebarListCommands(model: model)
+            }
         }
 
         CommandGroup(after: .windowArrangement) {

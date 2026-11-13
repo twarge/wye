@@ -24,8 +24,9 @@ struct CloneSheet: View {
     @State private var isBrowsingAccounts = false
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Clone Repository") {
             Form {
+                SheetTitleSection()
                 Section {
                     TextField("URL", text: $url, prompt: Text("https://example.com/owner/project.git or git@example.com:owner/project.git"))
                         .textContentType(.URL)
@@ -68,7 +69,6 @@ struct CloneSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Clone Repository")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) {

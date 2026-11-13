@@ -20,8 +20,9 @@ struct NewRepositorySheet: View {
     @State private var error: Notice?
 
     var body: some View {
-        NavigationStack {
+        SheetStack("New Repository") {
             Form {
+                SheetTitleSection()
                 Section {
                     TextField("Name", text: $name, prompt: Text("project"))
                         .autocorrectionDisabled()
@@ -62,7 +63,6 @@ struct NewRepositorySheet: View {
             }
             .formStyle(.grouped)
             .disabled(isCreating)
-            .navigationTitle("New Repository")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

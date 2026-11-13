@@ -46,6 +46,39 @@ private func interleaved(_ fixture: Fixture) throws {
     try fixture.commit("a.txt", "8\n", message: "Main 8", minutes: 8)
 }
 
+/// A main line with a branch on top of it, an unmerged branch and a newer
+/// one off its middle, and an old one-commit stub that only a tag keeps:
+/// the shape of a history whose stale lines came out first when the walk
+/// took its tips in the order of their names rather than their dates.
+private struct Stubs {
+    /// `HEAD`'s line, newest first, from the branch on top of it down.
+    var mainLine: [String]
+    var feature: String
+    var newest: String
+    var stub: String
+}
+
+@discardableResult
+private func stubs(_ fixture: Fixture) throws -> Stubs {
+    let base = try fixture.commit("a.txt", "0\n", message: "Base", minutes: 0)
+    let first = try fixture.commit("a.txt", "1\n", message: "Main 1", minutes: 1)
+    try fixture.git("checkout", "--quiet", "--detach")
+    let stub = try fixture.commit("s.txt", "2\n", message: "Stub 2", minutes: 2)
+    try fixture.git("tag", "v1")
+    try fixture.git("checkout", "--quiet", "main")
+    let middle = try fixture.commit("a.txt", "3\n", message: "Main 3", minutes: 3)
+    try fixture.git("checkout", "--quiet", "-b", "feature")
+    let feature = try fixture.commit("f.txt", "4\n", message: "Feature 4", minutes: 4)
+    try fixture.git("checkout", "--quiet", "main")
+    let head = try fixture.commit("a.txt", "5\n", message: "Main 5", minutes: 5)
+    try fixture.git("checkout", "--quiet", "-b", "ahead")
+    let ahead = try fixture.commit("a.txt", "6\n", message: "Ahead 6", minutes: 6)
+    try fixture.git("checkout", "--quiet", "-b", "newest", middle)
+    let newest = try fixture.commit("n.txt", "7\n", message: "Newest 7", minutes: 7)
+    try fixture.git("checkout", "--quiet", "main")
+    return Stubs(mainLine: [ahead, head, middle, first, base], feature: feature, newest: newest, stub: stub)
+}
+
 @Suite struct HistoryOptionsTests {
     private func walk(_ fixture: Fixture, _ scope: HistoryScope, _ options: HistoryOptions) async throws -> [String] {
         let repository = try fixture.open()
@@ -127,5 +160,59 @@ private func interleaved(_ fixture: Fixture) throws {
             #expect(row.width == 1)
         }
         await repository.closeHistory(cursor)
+    }
+
+    @Test func topologicalOrderOfEveryBranchMatchesGit() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        try stubs(fixture)
+        // Each line newest first, the stub beside the commit it left, not
+        // ahead of everything for its name.
+        #expect(try await walk(fixture, .allReferences, HistoryOptions(order: .topological))
+            == gitLog(fixture, "--topo-order", "--branches", "--tags", "HEAD"))
+        #expect(try await walk(fixture, .allReferences, HistoryOptions(order: .date))
+            == gitLog(fixture, "--date-order", "--branches", "--tags", "HEAD"))
+    }
+
+    @Test func theMainLineRisesFromHeadToTheBranchOnTopOfIt() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let shape = try stubs(fixture)
+        let repository = try fixture.open()
+        let ahead = OID(hex: shape.mainLine[0])
+        // Not the newest branch, which left the main line lower down.
+        #expect(try await repository.mainLine(of: .allReferences) == ahead)
+        #expect(try await repository.mainLine(of: .allReferences, options: HistoryOptions(
+            includedReferences: ["refs/heads/ahead"]
+        )) == ahead)
+        #expect(try await repository.mainLine(of: .reference("refs/heads/feature")) == OID(hex: shape.feature))
+        // A history that does not list HEAD has none.
+        #expect(try await repository.mainLine(of: .allReferences, options: HistoryOptions(
+            includedReferences: ["refs/heads/newest"]
+        )) == nil)
+        #expect(try await repository.mainLine(of: .allReferences, options: HistoryOptions(
+            hiddenReferences: ["refs/heads/main"]
+        )) == nil)
+    }
+
+    @Test func theMainLineStaysStraightInTheFirstLane() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let shape = try stubs(fixture)
+        let repository = try fixture.open()
+        for order in HistoryOptions.Order.allCases {
+            let options = HistoryOptions(order: order)
+            let cursor = try await repository.openHistory(.allReferences, options: options)
+            var graph = CommitGraph(mainLine: try await repository.mainLine(of: .allReferences, options: options))
+            var lanes: [String: Int] = [:]
+            for commit in try await repository.nextCommits(from: cursor, limit: 100) {
+                lanes[commit.id.hex] = graph.append(commit.id, parents: commit.parentIDs).lane
+            }
+            await repository.closeHistory(cursor)
+            let mainLine = Set(shape.mainLine)
+            #expect(lanes.filter { mainLine.contains($0.key) }.values.allSatisfy { $0 == 0 }, "\(order)")
+            #expect(lanes.filter { !mainLine.contains($0.key) }.values.allSatisfy { $0 > 0 }, "\(order)")
+            #expect(lanes.count == 8)
+        }
     }
 }

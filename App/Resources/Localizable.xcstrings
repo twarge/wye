@@ -54,9 +54,6 @@
         }
       }
     },
-    "%@ Actions" : {
-      "extractionState" : "manual"
-    },
     "%@ Settings" : {
       "extractionState" : "manual"
     },
@@ -245,6 +242,9 @@
     "A snapshot: its changes were left in place when it was made" : {
       "extractionState" : "manual"
     },
+    "A tag named “%@” already exists." : {
+      "extractionState" : "manual"
+    },
     "A work identity can sign with its own key, which you add to that account’s hosting service." : {
       "extractionState" : "manual"
     },
@@ -272,10 +272,10 @@
     "Account" : {
       "extractionState" : "manual"
     },
-    "Account for %@…" : {
+    "Accounts" : {
       "extractionState" : "manual"
     },
-    "Accounts" : {
+    "Account…" : {
       "extractionState" : "manual"
     },
     "Acknowledgements" : {
@@ -406,7 +406,13 @@
     "Also %@, at the same commit" : {
       "extractionState" : "manual"
     },
+    "Also Delete Branch “%@”" : {
+      "extractionState" : "manual"
+    },
     "Also Delete “%@”" : {
+      "extractionState" : "manual"
+    },
+    "Also Remove Worktree “%@”" : {
       "extractionState" : "manual"
     },
     "Also on Cellular and Low Data Networks" : {
@@ -481,7 +487,7 @@
     "Approve" : {
       "extractionState" : "manual"
     },
-    "Archive %@" : {
+    "Archive" : {
       "extractionState" : "manual"
     },
     "Archive Automatically After" : {
@@ -589,6 +595,12 @@
     "Cannot Rebase from Here" : {
       "extractionState" : "manual"
     },
+    "Cannot Rebase onto Here" : {
+      "extractionState" : "manual"
+    },
+    "Can’t Open the Commit" : {
+      "extractionState" : "manual"
+    },
     "Can’t Open the Conflict" : {
       "extractionState" : "manual"
     },
@@ -616,12 +628,6 @@
     "Check Out" : {
       "extractionState" : "manual"
     },
-    "Check Out %@" : {
-      "extractionState" : "manual"
-    },
-    "Check Out %@ in New Worktree…" : {
-      "extractionState" : "manual"
-    },
     "Check Out Branch" : {
       "extractionState" : "manual"
     },
@@ -629,6 +635,9 @@
       "extractionState" : "manual"
     },
     "Check Out as Local Branch" : {
+      "extractionState" : "manual"
+    },
+    "Check Out in New Worktree…" : {
       "extractionState" : "manual"
     },
     "Check out ${branch} in ${repository}" : {
@@ -661,7 +670,7 @@
     "Checks out a branch of a repository in Wye. A branch that is only on a remote is checked out as a local branch that tracks it." : {
       "extractionState" : "manual"
     },
-    "Cherry-Pick %@" : {
+    "Cherry-Pick" : {
       "extractionState" : "manual"
     },
     "Cherry-Pick %lld Commits" : {
@@ -679,10 +688,10 @@
     "Choose a branch or tag" : {
       "extractionState" : "manual"
     },
-    "Choose how the history is shown" : {
+    "Choose the account this remote signs in with" : {
       "extractionState" : "manual"
     },
-    "Choose the account this remote signs in with" : {
+    "Choose which of the current branch’s commits to replay on top of this commit, and how" : {
       "extractionState" : "manual"
     },
     "Choose whose reflog to show" : {
@@ -817,16 +826,16 @@
     "Compare" : {
       "extractionState" : "manual"
     },
-    "Compare %@ With…" : {
-      "extractionState" : "manual"
-    },
     "Compare First and Last" : {
       "extractionState" : "manual"
     },
-    "Compare the oldest selected commit with the newest" : {
+    "Compare With Local Changes" : {
       "extractionState" : "manual"
     },
-    "Compare the selected commit with another commit, branch or tag" : {
+    "Compare With…" : {
+      "extractionState" : "manual"
+    },
+    "Compare the oldest selected commit with the newest" : {
       "extractionState" : "manual"
     },
     "Compared with" : {
@@ -853,6 +862,9 @@
       "extractionState" : "manual"
     },
     "Connect only if this is the fingerprint the host publishes. The hosting services list theirs in their documentation." : {
+      "extractionState" : "manual"
+    },
+    "Contents" : {
       "extractionState" : "manual"
     },
     "Context Lines" : {
@@ -949,12 +961,6 @@
       "extractionState" : "manual"
     },
     "Delete" : {
-      "extractionState" : "manual"
-    },
-    "Delete %@ from Remote…" : {
-      "extractionState" : "manual"
-    },
-    "Delete %@…" : {
       "extractionState" : "manual"
     },
     "Delete Group" : {
@@ -1059,9 +1065,6 @@
     "Edit" : {
       "extractionState" : "manual"
     },
-    "Edit %@…" : {
-      "extractionState" : "manual"
-    },
     "Edit Author" : {
       "extractionState" : "manual"
     },
@@ -1125,7 +1128,7 @@
     "Expanded" : {
       "extractionState" : "manual"
     },
-    "Export Files from %@…" : {
+    "Export Files from Here…" : {
       "extractionState" : "manual"
     },
     "Extensions Settings…" : {
@@ -1170,9 +1173,6 @@
     "Fetch new commits, and remove remote branches that are gone from the remote" : {
       "extractionState" : "manual"
     },
-    "Fetch “%@”" : {
-      "extractionState" : "manual"
-    },
     "Fetches every remote of a repository in Wye, without changing its branches." : {
       "extractionState" : "manual"
     },
@@ -1198,6 +1198,9 @@
       "extractionState" : "manual"
     },
     "Filter" : {
+      "extractionState" : "manual"
+    },
+    "Filter and arrange the history; pull and fetch with options, sync, push elsewhere, force push, tags, remotes and submodules" : {
       "extractionState" : "manual"
     },
     "Filter the history by date, author or branch" : {
@@ -1293,12 +1296,6 @@
     "Give up the %@ and return to where it started" : {
       "extractionState" : "manual"
     },
-    "Go back to what this window showed before" : {
-      "extractionState" : "manual"
-    },
-    "Go forward again" : {
-      "extractionState" : "manual"
-    },
     "Group By" : {
       "extractionState" : "manual"
     },
@@ -1327,6 +1324,9 @@
       "extractionState" : "manual"
     },
     "Hide the commits this merge brought in" : {
+      "extractionState" : "manual"
+    },
+    "Hide the details on the right" : {
       "extractionState" : "manual"
     },
     "Hide “Merged” Mark" : {
@@ -1479,6 +1479,9 @@
     "List only the commits these branches lead to" : {
       "extractionState" : "manual"
     },
+    "List only the first remote branches and tags again, after Show All" : {
+      "extractionState" : "manual"
+    },
     "Lists the repositories in Wye with commits not pushed or changes not committed, as of when Wye last read them. Does not fetch." : {
       "extractionState" : "manual"
     },
@@ -1542,18 +1545,10 @@
     "Merge" : {
       "extractionState" : "manual"
     },
-    "Merge %@ into %@…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Merge %1$@ into %2$@…"
-          }
-        }
-      }
-    },
     "Merge With Revision…" : {
+      "extractionState" : "manual"
+    },
+    "Merge into %@…" : {
       "extractionState" : "manual"
     },
     "Merge it on %@" : {
@@ -1578,9 +1573,6 @@
       "extractionState" : "manual"
     },
     "More" : {
-      "extractionState" : "manual"
-    },
-    "More Remote Actions" : {
       "extractionState" : "manual"
     },
     "Move" : {
@@ -1640,7 +1632,7 @@
     "New Branch" : {
       "extractionState" : "manual"
     },
-    "New Branch from %@…" : {
+    "New Branch from Here…" : {
       "extractionState" : "manual"
     },
     "New Branch from Stash…" : {
@@ -1679,7 +1671,10 @@
     "New Tab" : {
       "extractionState" : "manual"
     },
-    "New Tag on %@…" : {
+    "New Tag Here…" : {
+      "extractionState" : "manual"
+    },
+    "New Tracking Branch…" : {
       "extractionState" : "manual"
     },
     "Next" : {
@@ -1714,6 +1709,9 @@
     "No Authors Yet" : {
       "extractionState" : "manual"
     },
+    "No Blame" : {
+      "extractionState" : "manual"
+    },
     "No Commit Selected" : {
       "extractionState" : "manual"
     },
@@ -1727,6 +1725,9 @@
       "extractionState" : "manual"
     },
     "No Conflicting Lines" : {
+      "extractionState" : "manual"
+    },
+    "No Contents" : {
       "extractionState" : "manual"
     },
     "No Earlier Messages" : {
@@ -1852,7 +1853,18 @@
     "On %@" : {
       "extractionState" : "manual"
     },
-    "Once made, the tag is pushed to each remote in turn. Undo deletes it here but not on a remote." : {
+    "Once made, the tag is pushed to %@. Undo deletes it here but not on %@." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Once made, the tag is pushed to %1$@. Undo deletes it here but not on %2$@."
+          }
+        }
+      }
+    },
+    "Once made, the tag is pushed to each remote in turn. Undo deletes it here but not on the remotes." : {
       "extractionState" : "manual"
     },
     "Only people you give access can see it." : {
@@ -1924,6 +1936,9 @@
     "Open in Browser Instead" : {
       "extractionState" : "manual"
     },
+    "Open in New Window" : {
+      "extractionState" : "manual"
+    },
     "Open it on %@" : {
       "extractionState" : "manual"
     },
@@ -1934,9 +1949,6 @@
       "extractionState" : "manual"
     },
     "Open this repository" : {
-      "extractionState" : "manual"
-    },
-    "Open “%@” on Web" : {
       "extractionState" : "manual"
     },
     "Opens Wye’s clone sheet with an address filled in, to choose where the clone goes." : {
@@ -1995,7 +2007,7 @@
     "Personal Access Token" : {
       "extractionState" : "manual"
     },
-    "Pin %@" : {
+    "Pin" : {
       "extractionState" : "manual"
     },
     "Pop" : {
@@ -2046,22 +2058,14 @@
     "Publish to Hosting Service…" : {
       "extractionState" : "manual"
     },
+    "Publish…" : {
+      "extractionState" : "manual"
+    },
     "Pull" : {
       "extractionState" : "manual"
     },
     "Pull ${repository}" : {
       "extractionState" : "manual"
-    },
-    "Pull %@ into %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Pull %1$@ into %2$@"
-          }
-        }
-      }
     },
     "Pull All" : {
       "extractionState" : "manual"
@@ -2078,13 +2082,13 @@
     "Pull Requests" : {
       "extractionState" : "manual"
     },
-    "Pull and fetch with options, sync, push elsewhere, force push, tags and remotes" : {
-      "extractionState" : "manual"
-    },
     "Pull by %@" : {
       "extractionState" : "manual"
     },
     "Pull every repository and report what did not work" : {
+      "extractionState" : "manual"
+    },
+    "Pull into %@" : {
       "extractionState" : "manual"
     },
     "Pull, then push" : {
@@ -2127,23 +2131,6 @@
     "Push ${repository}" : {
       "extractionState" : "manual"
     },
-    "Push %@ To" : {
-      "extractionState" : "manual"
-    },
-    "Push %@ To…" : {
-      "extractionState" : "manual"
-    },
-    "Push %@ to %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Push %1$@ to %2$@"
-          }
-        }
-      }
-    },
     "Push %lld" : {
       "extractionState" : "manual"
     },
@@ -2153,13 +2140,16 @@
     "Push All Tags to %@" : {
       "extractionState" : "manual"
     },
-    "Push All Tags to “%@”" : {
-      "extractionState" : "manual"
-    },
     "Push Repository" : {
       "extractionState" : "manual"
     },
     "Push Revision To…" : {
+      "extractionState" : "manual"
+    },
+    "Push To" : {
+      "extractionState" : "manual"
+    },
+    "Push To…" : {
       "extractionState" : "manual"
     },
     "Push URL" : {
@@ -2169,6 +2159,9 @@
       "extractionState" : "manual"
     },
     "Push these commits to %@" : {
+      "extractionState" : "manual"
+    },
+    "Push to %@" : {
       "extractionState" : "manual"
     },
     "Push to…" : {
@@ -2186,9 +2179,6 @@
     "Quit Wye" : {
       "extractionState" : "manual"
     },
-    "Read the repository again" : {
-      "extractionState" : "manual"
-    },
     "Reading repositories…" : {
       "extractionState" : "manual"
     },
@@ -2198,27 +2188,14 @@
     "Rebase" : {
       "extractionState" : "manual"
     },
-    "Rebase %@ Onto %@ From…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Rebase %1$@ Onto %2$@ From…"
-          }
-        }
-      }
+    "Rebase %@ Interactively onto Here…" : {
+      "extractionState" : "manual"
     },
-    "Rebase %@ onto %@…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Rebase %1$@ onto %2$@…"
-          }
-        }
-      }
+    "Rebase %@ onto Here From…" : {
+      "extractionState" : "manual"
+    },
+    "Rebase %@ onto Here…" : {
+      "extractionState" : "manual"
     },
     "Rebase Interactively from Here…" : {
       "extractionState" : "manual"
@@ -2289,9 +2266,6 @@
     "Remove %@?" : {
       "extractionState" : "manual"
     },
-    "Remove %@…" : {
-      "extractionState" : "manual"
-    },
     "Remove Account" : {
       "extractionState" : "manual"
     },
@@ -2351,9 +2325,6 @@
     "Remove…" : {
       "extractionState" : "manual"
     },
-    "Rename %@…" : {
-      "extractionState" : "manual"
-    },
     "Rename Group…" : {
       "extractionState" : "manual"
     },
@@ -2367,6 +2338,9 @@
       "extractionState" : "manual"
     },
     "Renamed from %@" : {
+      "extractionState" : "manual"
+    },
+    "Rename…" : {
       "extractionState" : "manual"
     },
     "Reopen" : {
@@ -2385,6 +2359,9 @@
       "extractionState" : "manual"
     },
     "Replace the last commit with the staged changes and this message" : {
+      "extractionState" : "manual"
+    },
+    "Replay the current branch’s commits on top of this commit" : {
       "extractionState" : "manual"
     },
     "Repositories" : {
@@ -2428,16 +2405,8 @@
     "Request Changes" : {
       "extractionState" : "manual"
     },
-    "Reset %@ to %@…" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Reset %1$@ to %2$@…"
-          }
-        }
-      }
+    "Reset %@ to Here…" : {
+      "extractionState" : "manual"
     },
     "Reset to Revision…" : {
       "extractionState" : "manual"
@@ -2463,7 +2432,7 @@
     "Reveal in History" : {
       "extractionState" : "manual"
     },
-    "Revert %@" : {
+    "Revert" : {
       "extractionState" : "manual"
     },
     "Revert %lld Commits" : {
@@ -2544,6 +2513,9 @@
     "Say what needs changing in the comment first" : {
       "extractionState" : "manual"
     },
+    "Search" : {
+      "extractionState" : "manual"
+    },
     "Searched %@ commits" : {
       "extractionState" : "manual"
     },
@@ -2622,10 +2594,16 @@
     "Show all repositories" : {
       "extractionState" : "manual"
     },
+    "Show how the working tree, staged or not, differs from this commit" : {
+      "extractionState" : "manual"
+    },
     "Show the commits that changed this file" : {
       "extractionState" : "manual"
     },
     "Show the commits this merge brought in" : {
+      "extractionState" : "manual"
+    },
+    "Show the details on the right" : {
       "extractionState" : "manual"
     },
     "Show the files as a list or under their folders" : {
@@ -2638,6 +2616,9 @@
       "extractionState" : "manual"
     },
     "Show this commit" : {
+      "extractionState" : "manual"
+    },
+    "Show this commit in a window of its own; double-click it to do the same" : {
       "extractionState" : "manual"
     },
     "Show this commit in the history" : {
@@ -2701,6 +2682,12 @@
       "extractionState" : "manual"
     },
     "Sort By" : {
+      "extractionState" : "manual"
+    },
+    "Sort Remote Branches By" : {
+      "extractionState" : "manual"
+    },
+    "Sort Tags By" : {
       "extractionState" : "manual"
     },
     "Sort the files" : {
@@ -2901,6 +2888,9 @@
     "The branch a repository created in Wye starts on." : {
       "extractionState" : "manual"
     },
+    "The commit’s name is not a hash." : {
+      "extractionState" : "manual"
+    },
     "The description is Markdown. Wye wrote these from the branch’s commits." : {
       "extractionState" : "manual"
     },
@@ -2929,6 +2919,9 @@
       "extractionState" : "manual"
     },
     "The remote’s default" : {
+      "extractionState" : "manual"
+    },
+    "The repository is no longer in the library." : {
       "extractionState" : "manual"
     },
     "The server said: %@" : {
@@ -2976,6 +2969,12 @@
     "This commit has a note" : {
       "extractionState" : "manual"
     },
+    "This commit has no file at this path to blame." : {
+      "extractionState" : "manual"
+    },
+    "This commit has no file at this path." : {
+      "extractionState" : "manual"
+    },
     "This is not an Ed25519 or ECDSA public key." : {
       "extractionState" : "manual"
     },
@@ -3003,9 +3002,6 @@
     "Topology" : {
       "extractionState" : "manual"
     },
-    "Track %@…" : {
-      "extractionState" : "manual"
-    },
     "Track the Remote Branch" : {
       "extractionState" : "manual"
     },
@@ -3024,7 +3020,7 @@
     "URL" : {
       "extractionState" : "manual"
     },
-    "Unarchive %@" : {
+    "Unarchive" : {
       "extractionState" : "manual"
     },
     "Uncommitted Changes That Will Be Lost" : {
@@ -3045,7 +3041,7 @@
     "Unlock" : {
       "extractionState" : "manual"
     },
-    "Unpin %@" : {
+    "Unpin" : {
       "extractionState" : "manual"
     },
     "Unpushed Work" : {
@@ -3103,9 +3099,6 @@
       "extractionState" : "manual"
     },
     "Value" : {
-      "extractionState" : "manual"
-    },
-    "View Options" : {
       "extractionState" : "manual"
     },
     "Waiting for you to enter the code…" : {
@@ -3166,6 +3159,9 @@
       "extractionState" : "manual"
     },
     "Worktree" : {
+      "extractionState" : "manual"
+    },
+    "Worktrees" : {
       "extractionState" : "manual"
     },
     "Write a message for what is staged, on this device" : {

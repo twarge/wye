@@ -25,8 +25,9 @@ struct SignInSheet: View {
     @State private var task: Task<Void, Never>?
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Add Account") {
             Form {
+                SheetTitleSection()
                 Section {
                     Picker("Service", selection: $kind) {
                         ForEach(HostingKind.allCases) { kind in
@@ -70,7 +71,6 @@ struct SignInSheet: View {
             }
             .formStyle(.grouped)
             .disabled(isWorking && device == nil)
-            .navigationTitle("Add Account")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) {

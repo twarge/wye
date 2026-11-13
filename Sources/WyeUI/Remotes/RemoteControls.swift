@@ -76,6 +76,23 @@ private struct RemoteDialogs: ViewModifier {
     }
 }
 
+/// The history's part of the toolbar's More menu, while it is on screen:
+/// filter it, choose its order and look, and apply a patch.
+private struct HistoryMoreItems: View {
+    var model: RepositoryModel
+
+    var body: some View {
+        Section {
+            HistoryFilterMenu(model: model, search: model.history.search)
+            HistoryViewOptions()
+        }
+        Section {
+            Button("Apply Patch…", systemImage: "doc.badge.plus") { model.history.requests.isImportingPatch = true }
+                .disabled(model.snapshot?.state ?? .clean != .clean)
+        }
+    }
+}
+
 private struct RemoteButtons: View {
     var model: RepositoryModel
 
@@ -115,7 +132,10 @@ private struct RemoteButtons: View {
         .contextMenu { pushMenu(upstream) }
         .help(pushHelp(upstream))
 
-        Menu("More Remote Actions", systemImage: "ellipsis") {
+        Menu("More", systemImage: "ellipsis") {
+            if model.selection?.historyScope != nil {
+                HistoryMoreItems(model: model)
+            }
             Section {
                 Button("Fetch…", systemImage: "arrow.triangle.2.circlepath") { model.remotes.sheet = .fetchOptions }
                     .disabled(isBusy || !model.hasRemotes)
@@ -135,27 +155,33 @@ private struct RemoteButtons: View {
             }
             Section {
                 if let remote = model.defaultRemoteName {
-                    Button("Push All Tags to “\(remote)”", systemImage: "tag") {
+                    Button("Push All Tags to \(remote)", systemImage: "tag") {
                         Task { await model.pushAllTags(to: remote) }
                     }
                     .disabled(isBusy || model.snapshot?.tags.isEmpty != false)
                     if let url = model.webURL(forRemote: remote) {
-                        Button("Open “\(remote)” on Web", systemImage: "safari") { openURL(url) }
+                        Button("Open \(remote) on Web", systemImage: "safari") { openURL(url) }
                     }
                 }
                 Button("Remotes…", systemImage: "server.rack") {
                     model.remotes.isManagingRemotes = true
                 }
             }
+            Section {
+                Button("Add Submodule…", systemImage: "shippingbox") {
+                    model.nested.sheet = .addSubmodule
+                }
+                .disabled(model.repository.isBare)
+            }
         }
-        .help("Pull and fetch with options, sync, push elsewhere, force push, tags and remotes")
+        .help("Filter and arrange the history; pull and fetch with options, sync, push elsewhere, force push, tags, remotes and submodules")
     }
 
     @ViewBuilder
     private var fetchMenu: some View {
         Button("Fetch…", systemImage: "slider.horizontal.3") { model.remotes.sheet = .fetchOptions }
         ForEach(model.remoteNames, id: \.self) { remote in
-            Button("Fetch “\(remote)”") {
+            Button("Fetch \(remote)") {
                 Task { await model.fetch(remote: remote, prune: FetchPreferences.prune, tags: .automatic) }
             }
         }

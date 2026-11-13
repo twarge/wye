@@ -53,6 +53,15 @@ import Testing
         #expect(names(files) == expected)
     }
 
+    @Test func aCommitComparedWithTheWorkingTreeListsWhatGitDiffLists() async throws {
+        defer { fixture.remove() }
+        let first = try #require(OID(hex: fixture.git("rev-parse", "HEAD~2")))
+        let files = try await fixture.open().changes(since: first)
+        #expect(names(files) == (try gitNames("HEAD~2")))
+        let a = try #require(files.first { $0.path == "a.txt" })
+        #expect((a.additions, a.deletions) == (2, 1))
+    }
+
     @Test func linesMatchGit() async throws {
         defer { fixture.remove() }
         let repository = try fixture.open()

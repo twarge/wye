@@ -32,7 +32,7 @@ struct CloneFromAccountSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Clone from Account") {
             Group {
                 if accounts.isEmpty {
                     ContentUnavailableView {
@@ -46,7 +46,6 @@ struct CloneFromAccountSheet: View {
                     list
                 }
             }
-            .navigationTitle("Clone from Account")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }
@@ -70,6 +69,7 @@ struct CloneFromAccountSheet: View {
     private var list: some View {
         VStack(spacing: 0) {
             Form {
+                SheetTitleSection()
                 Picker("Account", selection: Binding { account?.id } set: { accountID = $0 }) {
                     ForEach(accounts) { account in
                         Text(account.title).tag(UUID?.some(account.id))
@@ -84,6 +84,10 @@ struct CloneFromAccountSheet: View {
                     Text("SSH").tag(true)
                 }
                 .pickerStyle(.segmented)
+                #if os(macOS)
+                // In the form: a Mac sheet has no bar for a search field.
+                TextField("Search", text: $query, prompt: Text("Name"))
+                #endif
             }
             .formStyle(.grouped)
             .fixedSize(horizontal: false, vertical: true)
@@ -113,7 +117,9 @@ struct CloneFromAccountSheet: View {
                     }
                 }
             }
+            #if !os(macOS)
             .searchable(text: $query, prompt: "Name")
+            #endif
         }
         .task(id: "\(account?.id.uuidString ?? "")|\(filter.rawValue)|\(query)") {
             // Typing settles before a search goes out.

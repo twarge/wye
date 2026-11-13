@@ -46,15 +46,35 @@ extension Repository {
         let first = try lookupCommit(start)
         defer { git_commit_free(first) }
         let onto = git_commit_parentcount(first) > 0 ? OID(git_commit_parent_id(first, 0)) : nil
+        let parents = (0..<git_commit_parentcount(first)).map { git_commit_parent_id(first, $0).pointee }
+        return try rebaseTodo(onto: onto, tip: tip, hiding: parents)
+    }
 
+    /// The commits an interactive rebase onto `base` replays: those `HEAD`
+    /// has and `base` lacks, oldest first, leaving out merge commits, as
+    /// `git rebase -i base` lists them. `base` may be on another branch,
+    /// which the commits then move onto.
+    public func interactiveRebaseTodo(onto base: OID) throws -> RebaseTodo {
+        guard let head = try head().target else { throw InteractiveRebaseError.notInHistory }
+        var tip = head.raw
+        var hidden = base.raw
+        let isInHistory = head == base || git_graph_descendant_of(pointer, &tip, &hidden) == 1
+        return try rebaseTodo(onto: base, tip: tip, hiding: [hidden], changesBase: !isInHistory)
+    }
+
+    /// The commits from `tip` back to, and not including, those reachable
+    /// from `hidden`, as an interactive rebase onto `onto` replays them.
+    private func rebaseTodo(
+        onto: OID?, tip: git_oid, hiding hidden: [git_oid], changesBase: Bool = false
+    ) throws -> RebaseTodo {
         var walker: OpaquePointer?
         try check(git_revwalk_new(&walker, pointer))
         defer { git_revwalk_free(walker) }
         git_revwalk_sorting(walker, GIT_SORT_TOPOLOGICAL.rawValue | GIT_SORT_REVERSE.rawValue)
+        var tip = tip
         try check(git_revwalk_push(walker, &tip))
-        for index in 0..<git_commit_parentcount(first) {
-            var parent = git_commit_parent_id(first, index).pointee
-            try check(git_revwalk_hide(walker, &parent))
+        for var commit in hidden {
+            try check(git_revwalk_hide(walker, &commit))
         }
 
         var candidates: [RebaseCandidate] = []
@@ -71,7 +91,9 @@ extension Repository {
             candidates.append(RebaseCandidate(commit: Commit(commit), message: message))
         }
         let autosquashed = RebaseTodo.autosquash(candidates) { [self] name in resolveCommitName(name) }
-        return RebaseTodo(onto: onto, candidates: candidates, skippedMerges: merges, autosquashed: autosquashed)
+        return RebaseTodo(
+            onto: onto, candidates: candidates, skippedMerges: merges, autosquashed: autosquashed, changesBase: changesBase
+        )
     }
 
     // MARK: Running

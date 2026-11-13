@@ -95,8 +95,9 @@ struct HostKeySheet: View {
     private var host: String { prompt.hostKey.host }
 
     var body: some View {
-        NavigationStack {
+        SheetStack(prompt.hasChanged ? "Host Key Changed" : "Unknown Host") {
             Form {
+                SheetTitleSection()
                 Section {
                     if prompt.hasChanged {
                         Label {
@@ -126,7 +127,6 @@ struct HostKeySheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(prompt.hasChanged ? "Host Key Changed" : "Unknown Host")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { broker.decline() }

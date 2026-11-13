@@ -32,7 +32,7 @@ struct CompareView: View {
     private let comparesAtOnce: Bool
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Compare", placement: .above(inset: 16)) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     fields
@@ -42,7 +42,6 @@ struct CompareView: View {
                 }
                 .padding(.bottom, 20)
             }
-            .navigationTitle("Compare")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }

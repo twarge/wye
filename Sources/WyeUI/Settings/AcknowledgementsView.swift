@@ -12,9 +12,8 @@ struct AcknowledgementsButton: View {
     var body: some View {
         Button("Acknowledgements") { isPresented = true }
             .sheet(isPresented: $isPresented) {
-                NavigationStack {
+                SheetStack("Acknowledgements", placement: .above(inset: 16)) {
                     AcknowledgementsView()
-                        .navigationTitle("Acknowledgements")
                         #if os(iOS)
                         .navigationBarTitleDisplayMode(.inline)
                         #endif

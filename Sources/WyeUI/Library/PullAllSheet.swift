@@ -9,7 +9,7 @@ struct PullAllSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Pull All", placement: .above(inset: 16)) {
             List {
                 Section {
                     ForEach(PullAllReport.sorted(model.results)) { result in
@@ -37,7 +37,6 @@ struct PullAllSheet: View {
                     )
                 }
             }
-            .navigationTitle("Pull All")
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

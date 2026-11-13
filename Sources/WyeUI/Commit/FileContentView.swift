@@ -7,11 +7,50 @@ struct FileContentView: View {
     var model: RepositoryModel
     var path: String
     var commitID: OID
+    /// Beside the commit's list of files, whose bar names it and offers its
+    /// history and blame, rather than on top of the commit.
+    var isBesideList = false
 
     @State private var content: FileContent?
+    /// Why there is nothing to show beside the list, such as a file this
+    /// commit deleted.
+    @State private var failure: String?
     @Environment(\.openCommitRoute) private var open
 
     var body: some View {
+        if isBesideList {
+            if let failure {
+                ContentUnavailableView("No Contents", systemImage: "doc", description: Text(failure))
+            } else {
+                contents
+            }
+        } else {
+            contents
+                .navigationTitle(path.splitPath.name)
+                .navigationSubtitle(commitID.abbreviated())
+                .toolbar {
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        actions
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        Button("History", systemImage: "clock.arrow.circlepath") {
+            open(.fileHistory(path: path, commit: commitID))
+        }
+        .help("Show the commits that changed this file")
+        if case .text = content?.contents {
+            Button("Blame", systemImage: "person.text.rectangle") {
+                open(.blame(path: path, commit: commitID))
+            }
+            .help("Show who last changed each line")
+        }
+    }
+
+    private var contents: some View {
         Group {
             if let content {
                 switch content.contents {
@@ -36,25 +75,11 @@ struct FileContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationTitle(path.splitPath.name)
-        .navigationSubtitle(commitID.abbreviated())
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button("History", systemImage: "clock.arrow.circlepath") {
-                    open(.fileHistory(path: path, commit: commitID))
-                }
-                .help("Show the commits that changed this file")
-                if case .text = content?.contents {
-                    Button("Blame", systemImage: "person.text.rectangle") {
-                        open(.blame(path: path, commit: commitID))
-                    }
-                    .help("Show who last changed each line")
-                }
-            }
-        }
         .task(id: commitID) {
             do {
                 content = try await model.repository.fileContent(at: path, in: commitID)
+            } catch where isBesideList {
+                failure = String(localized: "This commit has no file at this path.")
             } catch {
                 model.report(error)
             }

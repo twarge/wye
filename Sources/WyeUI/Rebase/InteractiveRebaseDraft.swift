@@ -153,7 +153,7 @@ final class InteractiveRebaseDraft {
     /// Whether running the plan would change nothing: every commit picked,
     /// in its order.
     var isUnchanged: Bool {
-        rows.map(\.id) == todo.candidates.map(\.id) && rows.allSatisfy { $0.action == .pick }
+        !todo.changesBase && rows.map(\.id) == todo.candidates.map(\.id) && rows.allSatisfy { $0.action == .pick }
     }
 
     var droppedCount: Int {

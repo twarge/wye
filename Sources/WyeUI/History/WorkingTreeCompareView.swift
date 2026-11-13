@@ -28,11 +28,14 @@ extension WorkingTreeComparison {
     }
 }
 
-/// The working tree, the index and `HEAD` compared as a whole: every file
-/// that differs, with its diff. Untracked files are left out, as git
-/// leaves them out of these diffs.
+/// The working tree, the index and `HEAD` compared as a whole, or the
+/// working tree and a commit: every file that differs, with its diff.
+/// Untracked files are left out, as git leaves them out of these diffs.
 struct WorkingTreeCompareView: View {
     var model: RepositoryModel
+    /// The commit the working tree is compared with, in place of the
+    /// comparisons the picker offers.
+    private var commit: OID?
 
     @Environment(\.dismiss) private var dismiss
     @State private var comparison: WorkingTreeComparison
@@ -47,19 +50,27 @@ struct WorkingTreeCompareView: View {
         _comparison = State(initialValue: comparison)
     }
 
+    /// Compares the working tree, staged or not, with a commit.
+    init(model: RepositoryModel, comparingWorkingTreeTo commit: OID) {
+        self.init(model: model, comparison: .workingTreeToHead)
+        self.commit = commit
+    }
+
     var body: some View {
-        NavigationStack {
+        SheetStack(title, placement: .above(inset: 16)) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Picker("Compare", selection: $comparison) {
-                            ForEach(WorkingTreeComparison.allCases) { comparison in
-                                Text(comparison.shortTitle).tag(comparison)
+                        if commit == nil {
+                            Picker("Compare", selection: $comparison) {
+                                ForEach(WorkingTreeComparison.allCases) { comparison in
+                                    Text(comparison.shortTitle).tag(comparison)
+                                }
                             }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
                         }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        Text(comparison.explanation)
+                        Text(explanation)
                             .font(.callout)
                             .foregroundStyle(.secondary)
                         if let failure {
@@ -84,7 +95,6 @@ struct WorkingTreeCompareView: View {
                 .padding(.bottom, 20)
             }
             .findInDiffs((files ?? []).map { FindableDiff($0) })
-            .navigationTitle(comparison.title)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
@@ -102,10 +112,25 @@ struct WorkingTreeCompareView: View {
         var revision: Int
     }
 
+    private var title: String {
+        commit.map { "Working Tree to \($0.abbreviated())" } ?? comparison.title
+    }
+
+    private var explanation: String {
+        guard let commit else { return comparison.explanation }
+        let hash = commit.abbreviated()
+        return "Everything in the working tree that differs from \(hash), staged or not, as git diff \(hash) shows it."
+    }
+
     private func load() async {
         let comparison = comparison
+        let options = DiffPreferences.shared.options
         do {
-            let files = try await model.repository.changes(in: comparison, options: DiffPreferences.shared.options)
+            let files = if let commit {
+                try await model.repository.changes(since: commit, options: options)
+            } else {
+                try await model.repository.changes(in: comparison, options: options)
+            }
             guard comparison == self.comparison else { return }
             // Long lists start folded, so the list of files shows first.
             if folded != comparison {

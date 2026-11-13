@@ -15,28 +15,27 @@ struct BranchMenu: View {
 
     var body: some View {
         let id = branch.id
-        let name = MenuNames.quoted(branch.name)
         let current = MenuNames.current(model)
         let interface = model.interface
         let isTransferring = model.isTransferring
 
         Section {
-            Button("Check Out \(name)", systemImage: "arrow.uturn.down") {
+            Button("Check Out", systemImage: "arrow.uturn.down") {
                 Task { await model.checkOutBranch(id) }
             }
             .disabled(branch.isHead || model.isBusy || branch.worktreePath != nil)
-            Button("Check Out \(name) in New Worktree…", systemImage: "square.on.square") {
+            Button("Check Out in New Worktree…", systemImage: "square.on.square") {
                 model.nested.sheet = .addWorktree(.branch(id))
             }
             .disabled(branch.isHead || branch.worktreePath != nil)
         }
 
         Section {
-            Button("Merge \(name) into \(current)…", systemImage: "arrow.triangle.merge") {
+            Button("Merge into \(current)…", systemImage: "arrow.triangle.merge") {
                 model.present(.merge(id))
             }
             .disabled(branch.isHead || model.isBusy)
-            Button("Rebase \(current) onto \(name)…", systemImage: "arrow.triangle.pull") {
+            Button("Rebase \(current) onto Here…", systemImage: "arrow.triangle.pull") {
                 model.present(.rebase(onto: id))
             }
             .disabled(branch.isHead || model.isBusy || model.headBranchName == nil)
@@ -45,21 +44,21 @@ struct BranchMenu: View {
 
         Section {
             if marks.isPinned {
-                Button("Unpin \(name)", systemImage: "pin.slash") { interface.setPinned(id, false) }
+                Button("Unpin", systemImage: "pin.slash") { interface.setPinned(id, false) }
             } else {
-                Button("Pin \(name)", systemImage: "pin") { interface.setPinned(id, true) }
+                Button("Pin", systemImage: "pin") { interface.setPinned(id, true) }
                     .help("Keep this branch at the top of the Branches section")
             }
         }
 
         Section {
             if branch.upstream == nil {
-                Button("Publish \(name)…", systemImage: "icloud.and.arrow.up") {
+                Button("Publish…", systemImage: "icloud.and.arrow.up") {
                     model.remotes.sheet = .pushTo(branch: id)
                 }
                 .disabled(!model.hasRemotes || isTransferring)
             }
-            Button("Push \(name) To…", systemImage: "arrow.up.to.line") {
+            Button("Push To…", systemImage: "arrow.up.to.line") {
                 model.remotes.sheet = .pushTo(branch: id)
             }
             .disabled(!model.hasRemotes || isTransferring)
@@ -76,14 +75,14 @@ struct BranchMenu: View {
 
         Section {
             if isArchived {
-                Button("Unarchive \(name)", systemImage: "archivebox") {
+                Button("Unarchive", systemImage: "archivebox") {
                     interface.unarchive(id, wasAutomatic: marks.isAutoArchived)
                 }
                 .help(marks.isAutoArchived
                       ? "Bring it back to the Branches section and stop archiving it automatically"
                       : "Bring it back to the Branches section")
             } else {
-                Button("Archive \(name)", systemImage: "archivebox") { interface.setArchived(id, true) }
+                Button("Archive", systemImage: "archivebox") { interface.setArchived(id, true) }
                     .disabled(branch.isHead)
                     .help("Move it to Archived Branches. The branch itself is not changed.")
             }
@@ -100,24 +99,24 @@ struct BranchMenu: View {
         }
 
         Section {
-            Button("Rename \(name)…", systemImage: "pencil") {
+            Button("Rename…", systemImage: "pencil") {
                 model.present(.renameBranch(id))
             }
-            Button("Delete \(name)…", systemImage: "trash", role: .destructive) {
+            Button("Delete…", systemImage: "trash", role: .destructive) {
                 model.present(.deleteBranch(id))
             }
-            .disabled(branch.isHead || branch.worktreePath != nil)
+            .disabled(!model.canDelete(branch))
         }
 
         Section {
-            Button("New Branch from \(name)…", systemImage: "arrow.triangle.branch") {
+            Button("New Branch from Here…", systemImage: "arrow.triangle.branch") {
                 model.present(.newBranch(at: branch.target))
             }
-            Button("New Tag on \(name)…", systemImage: "tag") {
+            Button("New Tag Here…", systemImage: "tag") {
                 model.present(.newTag(at: branch.target))
             }
             PullRequestButton(
-                title: "New Pull Request from \(name)…",
+                title: "New Pull Request from Here…",
                 url: model.pullRequestURL(forBranch: id),
                 unavailable: model.pullRequestUnavailableReason(forBranch: id),
                 inApp: model.pullRequestTarget == nil ? nil : { model.hosting.sheet = .newPullRequest(head: id) }

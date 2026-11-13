@@ -1,13 +1,13 @@
 import GitKit
 import SwiftUI
 
-/// Plans an interactive rebase from a commit: the commits from it to `HEAD`,
-/// oldest first as git's todo list has them, each to pick, reword, squash,
-/// fix up or drop, in an order changed by dragging or by Move Up and Move
-/// Down.
+/// Plans an interactive rebase: the commits from a commit to `HEAD`, or
+/// those `HEAD` has that another commit lacks, oldest first as git's todo
+/// list has them, each to pick, reword, squash, fix up or drop, in an
+/// order changed by dragging or by Move Up and Move Down.
 struct InteractiveRebaseSheet: View {
     var model: RepositoryModel
-    var start: OID
+    var plan: InteractiveRebasePlan
 
     @Environment(\.dismiss) private var dismiss
     @State private var draft: InteractiveRebaseDraft?
@@ -18,7 +18,7 @@ struct InteractiveRebaseSheet: View {
     @State private var publishedOn: String?
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Interactive Rebase", placement: .above(inset: 16)) {
             Group {
                 if let draft {
                     PlanList(draft: draft, selection: $selection) { row in
@@ -27,14 +27,13 @@ struct InteractiveRebaseSheet: View {
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) { footer(draft) }
                 } else if let failure {
-                    ContentUnavailableView("Cannot Rebase from Here", systemImage: "exclamationmark.triangle",
+                    ContentUnavailableView(failureTitle, systemImage: "exclamationmark.triangle",
                                            description: Text(failure))
                 } else {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .navigationTitle("Interactive Rebase")
             .toolbar { toolbar }
         }
         .sheetMinimumSize(width: 620, height: 480)
@@ -55,18 +54,33 @@ struct InteractiveRebaseSheet: View {
             Button("Rebase") { run() }
                 .disabled(draft == nil || draft?.problem != nil || draft?.isUnchanged != false)
         }
+        #if !os(macOS)
         ToolbarItemGroup(placement: .secondaryAction) {
-            Button("Move Up", systemImage: "arrow.up") { moveSelection(by: -1) }
-                .keyboardShortcut(.upArrow, modifiers: [.command, .option])
-                .disabled(!canMoveSelection(by: -1))
-            Button("Move Down", systemImage: "arrow.down") { moveSelection(by: 1) }
-                .keyboardShortcut(.downArrow, modifiers: [.command, .option])
-                .disabled(!canMoveSelection(by: 1))
+            moveButtons
         }
+        #endif
+    }
+
+    /// In the toolbar on iOS; a Mac sheet has no bar for them, so there
+    /// they head the footer.
+    @ViewBuilder
+    private var moveButtons: some View {
+        Button("Move Up", systemImage: "arrow.up") { moveSelection(by: -1) }
+            .keyboardShortcut(.upArrow, modifiers: [.command, .option])
+            .disabled(!canMoveSelection(by: -1))
+        Button("Move Down", systemImage: "arrow.down") { moveSelection(by: 1) }
+            .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+            .disabled(!canMoveSelection(by: 1))
     }
 
     private func footer(_ draft: InteractiveRebaseDraft) -> some View {
         VStack(alignment: .leading, spacing: 6) {
+            #if os(macOS)
+            HStack {
+                moveButtons
+            }
+            .buttonStyle(.borderless)
+            #endif
             if draft.todo.autosquashed != nil {
                 Toggle("Autosquash", isOn: Binding { draft.autosquash } set: { draft.autosquash = $0 })
                     .help("Move fixup!, squash! and amend! commits after the commits they name, and mark them")
@@ -87,6 +101,11 @@ struct InteractiveRebaseSheet: View {
 
     private func explanation(_ draft: InteractiveRebaseDraft) -> String {
         var parts = ["Oldest first. Commits are replayed from the top; drag or use Move Up and Move Down to reorder."]
+        if case .onto(let base) = plan {
+            parts.append(draft.todo.changesBase
+                         ? "They move onto \(base.abbreviated()), which the branch does not have yet."
+                         : "They are replayed onto \(base.abbreviated()).")
+        }
         if draft.todo.skippedMerges > 0 {
             let count = draft.todo.skippedMerges
             parts.append("\(count) merge \(count == 1 ? "commit is" : "commits are") left out, so the history becomes a line.")
@@ -98,15 +117,30 @@ struct InteractiveRebaseSheet: View {
         return parts.joined(separator: " ")
     }
 
+    private var failureTitle: LocalizedStringKey {
+        switch plan {
+        case .from: "Cannot Rebase from Here"
+        case .onto: "Cannot Rebase onto Here"
+        }
+    }
+
     private func load() async {
+        let repository = model.repository
         do {
-            let todo = try await model.repository.interactiveRebaseTodo(from: start)
-            guard !todo.candidates.isEmpty else {
-                failure = "There are no commits to replay from here."
+            let todo = switch plan {
+            case .from(let start): try await repository.interactiveRebaseTodo(from: start)
+            case .onto(let base): try await repository.interactiveRebaseTodo(onto: base)
+            }
+            guard let oldest = todo.candidates.first else {
+                failure = switch plan {
+                case .from: "There are no commits to replay from here."
+                case .onto: "The current branch has no commits that this one lacks."
+                }
                 return
             }
             draft = InteractiveRebaseDraft(todo: todo)
-            publishedOn = try? await model.repository.remoteBranch(containing: start)
+            let start = if case .from(let start) = plan { start } else { oldest.id }
+            publishedOn = try? await repository.remoteBranch(containing: start)
         } catch {
             failure = error.localizedDescription
         }
@@ -238,8 +272,9 @@ struct MessageEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        SheetStack(title) {
             Form {
+                SheetTitleSection()
                 Section {
                     TextEditor(text: $text)
                         .font(.body)
@@ -247,7 +282,6 @@ struct MessageEditorSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(title)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

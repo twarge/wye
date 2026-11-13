@@ -1,28 +1,42 @@
 import GitKit
 import SwiftUI
 
-/// The menu of one commit in a history, top to bottom: copy it, check it
-/// out, move the current branch to it or take its changes, name it, write
-/// it out or compare it, and open it on the web.
+/// The menu of one commit in a history, top to bottom: the menus of the
+/// branches and tags at it, copy it, check it out, merge it into the
+/// current branch or rebase that onto it, move the current branch to it or
+/// take its changes, name it, write it out or compare it, and open it on
+/// the web.
 struct CommitActionsMenu: View {
     var model: RepositoryModel
     var commit: Commit
 
     @Environment(\.openURL) private var openURL
+    @Environment(\.openCommitWindow) private var openCommitWindow
 
     var body: some View {
         let requests = model.history.requests
-        let hash = MenuNames.quoted(commit.id)
+        ReferenceSubmenus(model: model, commit: commit)
+
+        if let openCommitWindow {
+            Section {
+                Button("Open in New Window", systemImage: "macwindow.badge.plus") { openCommitWindow(commit.id) }
+                    .help("Show this commit in a window of its own; double-click it to do the same")
+            }
+        }
+
         Section {
             Button("Copy Hash", systemImage: "doc.on.doc") {
                 Platform.copyToClipboard(commit.id.hex)
             }
+            #if os(macOS)
+            // What Copy does in the history, shown here; see HistoryView.
+            .keyboardShortcut("c")
+            #endif
             Button("Copy Commit Info", systemImage: "info.circle") {
                 Platform.copyToClipboard(commit.info)
             }
-            // Where the list is not the full history: a search, or one
-            // branch's or tag's history.
-            if model.history.search.isActive || model.selection != .history {
+            // Where the list is not the full history: a search's results.
+            if model.history.search.isActive || model.history.scope != .allReferences {
                 Button("Reveal in History", systemImage: "scope") {
                     Task { await model.revealInFullHistory(commit.id) }
                 }
@@ -30,7 +44,7 @@ struct CommitActionsMenu: View {
         }
 
         Section {
-            Button("Check Out \(hash)", systemImage: "arrow.uturn.down") {
+            Button("Check Out", systemImage: "arrow.uturn.down") {
                 Task { await model.checkOutCommit(commit.id) }
             }
             .disabled(isHead)
@@ -38,16 +52,35 @@ struct CommitActionsMenu: View {
         }
 
         Section {
-            Button("Reset \(MenuNames.current(model)) to \(hash)…", systemImage: "arrow.counterclockwise") {
+            let revision = branchingRevision
+            let current = MenuNames.current(model)
+            Button("Merge into \(current)…", systemImage: "arrow.triangle.merge") {
+                model.present(.merge(revision))
+            }
+            .disabled(isHead || model.isBusy)
+            Button("Rebase \(current) onto Here…", systemImage: "arrow.triangle.pull") {
+                model.present(.rebase(onto: revision))
+            }
+            .disabled(isHead || model.isBusy || model.headBranchName == nil)
+            .help("Replay the current branch’s commits on top of this commit")
+            Button("Rebase \(current) Interactively onto Here…", systemImage: "list.number") {
+                model.rebasing.interactive = .onto(commit.id)
+            }
+            .disabled(isHead || model.isBusy || !model.canStartMerge)
+            .help("Choose which of the current branch’s commits to replay on top of this commit, and how")
+        }
+
+        Section {
+            Button("Reset \(MenuNames.current(model)) to Here…", systemImage: "arrow.counterclockwise") {
                 model.present(.reset(to: commit.id))
             }
             .disabled(isHead || model.snapshot?.head.target == nil)
-            Button("Revert \(hash)", systemImage: "arrow.uturn.backward") {
+            Button("Revert", systemImage: "arrow.uturn.backward") {
                 Task { await model.revert([commit.id]) }
             }
             .disabled(model.isBusy)
             .help("Make a new commit that undoes this one’s changes")
-            Button("Cherry-Pick \(hash)", systemImage: "arrow.down.to.line") {
+            Button("Cherry-Pick", systemImage: "arrow.down.to.line") {
                 Task { await model.cherryPick([commit.id]) }
             }
             .disabled(isHead || model.isBusy)
@@ -63,10 +96,10 @@ struct CommitActionsMenu: View {
         RebaseCommitItems(model: model, commit: commit)
 
         Section {
-            Button("New Branch from \(hash)…", systemImage: "arrow.triangle.branch") {
+            Button("New Branch from Here…", systemImage: "arrow.triangle.branch") {
                 model.present(.newBranch(at: commit.id))
             }
-            Button("New Tag on \(hash)…", systemImage: "tag") {
+            Button("New Tag Here…", systemImage: "tag") {
                 model.present(.newTag(at: commit.id))
             }
         }
@@ -85,13 +118,17 @@ struct CommitActionsMenu: View {
                     preview: SharePreview(commit.summary, icon: Image(systemName: "doc.badge.gearshape"))
                 )
             }
-            Button("Export Files from \(hash)…", systemImage: "archivebox") {
+            Button("Export Files from Here…", systemImage: "archivebox") {
                 Task { await model.exportFiles(of: commit.id, named: commit.id.abbreviated()) }
             }
             .help("Save the files at this commit as a zip archive")
-            Button("Compare \(hash) With…", systemImage: "arrow.left.arrow.right") {
+            Button("Compare With…", systemImage: "arrow.left.arrow.right") {
                 model.present(.pickRevision(.compare(commit.id.abbreviated())))
             }
+            Button("Compare With Local Changes", systemImage: "arrow.left.arrow.right.square") {
+                model.present(.compareLocalChanges(to: commit.id))
+            }
+            .help("Show how the working tree, staged or not, differs from this commit")
             Button("Apply Patch…", systemImage: "doc.badge.plus") {
                 requests.isImportingPatch = true
             }
@@ -108,6 +145,60 @@ struct CommitActionsMenu: View {
 
     private var isHead: Bool {
         model.snapshot?.head.target == commit.id
+    }
+
+    /// What Merge and Rebase are given: the one local branch at this
+    /// commit, or else the one remote branch, so a merge commit's message
+    /// names the branch as git's would; otherwise the commit itself.
+    private var branchingRevision: String {
+        let snapshot = model.snapshot
+        let local = snapshot?.branches.filter { $0.target == commit.id && !$0.isHead } ?? []
+        let remote = snapshot?.remotes.flatMap(\.branches)
+            .filter { $0.target == commit.id && $0.nameWithoutRemote != "HEAD" } ?? []
+        if let branch = local.count == 1 ? local.first : local.isEmpty && remote.count == 1 ? remote.first : nil {
+            return branch.id
+        }
+        return commit.id.hex
+    }
+}
+
+/// A submenu for each branch, remote branch and tag at a commit, holding
+/// the menu the sidebar gives it.
+private struct ReferenceSubmenus: View {
+    var model: RepositoryModel
+    var commit: Commit
+
+    var body: some View {
+        let snapshot = model.snapshot
+        let branches = snapshot?.branches.filter { $0.target == commit.id } ?? []
+        let remoteBranches = snapshot?.remotes.flatMap(\.branches)
+            .filter { $0.target == commit.id && $0.nameWithoutRemote != "HEAD" } ?? []
+        let tags = snapshot?.tags.filter { $0.target == commit.id } ?? []
+        if !branches.isEmpty || !remoteBranches.isEmpty || !tags.isEmpty {
+            let listing = model.branchListing(
+                staleMonths: BranchPreferences.staleMonths, autoArchiveMonths: BranchPreferences.autoArchiveMonths
+            )
+            Section {
+                ForEach(branches) { branch in
+                    Menu(branch.name, systemImage: "arrow.triangle.branch") {
+                        BranchMenu(
+                            model: model, branch: branch, marks: listing.marks[branch.id] ?? .init(),
+                            isArchived: listing.archived.contains { $0.id == branch.id }
+                        )
+                    }
+                }
+                ForEach(remoteBranches) { branch in
+                    Menu(branch.name, systemImage: "cloud") {
+                        RemoteBranchMenu(model: model, branch: branch)
+                    }
+                }
+                ForEach(tags) { tag in
+                    Menu(tag.name, systemImage: "tag") {
+                        TagMenu(model: model, tag: tag)
+                    }
+                }
+            }
+        }
     }
 }
 

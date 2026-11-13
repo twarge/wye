@@ -188,8 +188,9 @@ private struct ProfileEditor: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        SheetStack(profile.name.isEmpty ? "New Identity" : profile.name) {
             Form {
+                SheetTitleSection()
                 Section {
                     TextField("Name", text: $profile.name)
                         .textContentType(.name)
@@ -215,7 +216,6 @@ private struct ProfileEditor: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(profile.name.isEmpty ? "New Identity" : profile.name)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }
@@ -248,8 +248,9 @@ private struct SignerEditor: View {
             principal: principal.trimmingCharacters(in: .whitespaces),
             publicKey: publicKey.split(whereSeparator: \.isWhitespace).prefix(2).joined(separator: " ")
         )
-        NavigationStack {
+        SheetStack("Add Signer") {
             Form {
+                SheetTitleSection()
                 TextField("Email", text: $principal, prompt: Text("someone@example.com"))
                     .autocorrectionDisabled()
                     .noAutocapitalization()
@@ -266,7 +267,6 @@ private struct SignerEditor: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Add Signer")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

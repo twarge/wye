@@ -14,8 +14,8 @@ private struct RebasePresenters: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(item: Binding { requests.interactive.map(InteractiveStart.init) } set: { requests.interactive = $0?.id }) { start in
-                InteractiveRebaseSheet(model: model, start: start.id)
+            .sheet(item: $requests.interactive) { plan in
+                InteractiveRebaseSheet(model: model, plan: plan)
             }
             .sheet(item: $requests.onto) { request in
                 RebaseOntoSheet(model: model, newBase: request.newBase)
@@ -24,10 +24,6 @@ private struct RebasePresenters: ViewModifier {
                 EditCommitSheet(model: model, request: request)
             }
     }
-}
-
-private struct InteractiveStart: Identifiable {
-    let id: OID
 }
 
 /// The commit menu's rebasing items: rebase from it, aim staged changes at
@@ -42,7 +38,7 @@ struct RebaseCommitItems: View {
         let canRewrite = model.canStartMerge
         Section {
             Button("Rebase Interactively from Here…", systemImage: "list.number") {
-                requests.interactive = commit.id
+                requests.interactive = .from(commit.id)
             }
             .disabled(!canRewrite || commit.isMerge)
             .help("Reorder, reword, squash, fix up or drop this commit and the ones after it")
@@ -76,7 +72,7 @@ struct RebaseMenuItems: View {
 
     var body: some View {
         Button("Rebase Interactively…") {
-            if let model, let start = model.interactiveRebaseStart { model.rebasing.interactive = start }
+            if let model, let start = model.interactiveRebaseStart { model.rebasing.interactive = .from(start) }
         }
         .disabled(model?.canStartMerge != true || model?.interactiveRebaseStart == nil)
         Button("Rebase Onto…") { model?.rebasing.onto = RebaseOntoRequest(newBase: "") }
@@ -91,7 +87,7 @@ struct RebaseOntoMenuItem: View {
     var newBase: String
 
     var body: some View {
-        Button("Rebase \(MenuNames.current(model)) Onto \(MenuNames.quoted(RepositoryModel.displayName(ofReference: newBase))) From…",
+        Button("Rebase \(MenuNames.current(model)) onto Here From…",
                systemImage: "arrow.triangle.branch") {
             model.rebasing.onto = RebaseOntoRequest(newBase: RepositoryModel.displayName(ofReference: newBase))
         }

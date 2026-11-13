@@ -12,7 +12,7 @@ struct RemoteListSheet: View {
     private var remotes: [Remote] { model.snapshot?.remotes ?? [] }
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Remotes", placement: .above(inset: 16)) {
             List {
                 ForEach(remotes) { remote in
                     Button {
@@ -48,11 +48,22 @@ struct RemoteListSheet: View {
                     )
                 }
             }
-            .navigationTitle("Remotes")
+            #if os(macOS)
+            // Under the list, as a Mac sheet has no bar for it.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Button("Add Remote…", systemImage: "plus") { editing = .new }
+                    .buttonStyle(.borderless)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            #endif
             .toolbar {
+                #if !os(macOS)
                 ToolbarItem(placement: .primaryAction) {
                     Button("Add Remote", systemImage: "plus") { editing = .new }
                 }
+                #endif
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
@@ -103,8 +114,9 @@ struct RemoteEditor: View {
     @State private var pushURL = ""
 
     var body: some View {
-        NavigationStack {
+        SheetStack(isNew ? "New Remote" : "Edit Remote") {
             Form {
+                SheetTitleSection()
                 TextField("Name", text: $name)
                     .autocorrectionDisabled()
                     .noAutocapitalization()
@@ -122,7 +134,6 @@ struct RemoteEditor: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(isNew ? "New Remote" : "Edit Remote")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

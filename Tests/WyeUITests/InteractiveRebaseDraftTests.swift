@@ -36,6 +36,16 @@ import Testing
         #expect(!draft.isUnchanged)
     }
 
+    /// Moving the commits onto another branch changes the branch even with
+    /// every commit picked in order.
+    @Test func aPlanOntoANewBaseIsNeverUnchanged() {
+        let candidates = [Self.candidate(1, "One"), Self.candidate(2, "Two")]
+        let draft = InteractiveRebaseDraft(todo: RebaseTodo(
+            onto: Self.id(8), candidates: candidates, skippedMerges: 0, autosquashed: nil, changesBase: true
+        ))
+        #expect(!draft.isUnchanged)
+    }
+
     @Test func aSquashOffersGitsCombinedMessageAndKeepsAnEditedOne() throws {
         let draft = draft()
         draft.setAction(.squash, for: Self.id(2))

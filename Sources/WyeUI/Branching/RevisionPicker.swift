@@ -137,7 +137,7 @@ struct RevisionPickerSheet: View {
 
     var body: some View {
         let matches = RevisionChoice.matching(query, in: RevisionChoice.choices(in: model.snapshot))
-        NavigationStack {
+        SheetStack(purpose.title, placement: .above(inset: 12)) {
             List(selection: $selection) {
                 ForEach(matches) { choice in
                     Label {
@@ -184,7 +184,6 @@ struct RevisionPickerSheet: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(.bar)
             }
-            .navigationTitle(purpose.title)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

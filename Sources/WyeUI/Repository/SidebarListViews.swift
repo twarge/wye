@@ -15,9 +15,9 @@ struct ShowAllRow: View {
     }
 }
 
-/// The sort choices in a sidebar section's menu.
+/// The sort choices for a sidebar section, in the View menu.
 struct SidebarSortPicker: View {
-    var title: String
+    var title: LocalizedStringKey
     var selection: SidebarSort
     var choose: (SidebarSort) -> Void
 
@@ -27,6 +27,36 @@ struct SidebarSortPicker: View {
                 Text(sort.title).tag(sort)
             }
         }
-        .pickerStyle(.inline)
+        .pickerStyle(.menu)
+    }
+}
+
+/// View ▸ the sidebar's sort orders, and putting a long list back to its
+/// first few after Show All.
+struct SidebarListCommands: View {
+    var model: RepositoryModel?
+
+    var body: some View {
+        let lists = model?.interface.sidebarLists ?? SidebarListOptions()
+        SidebarSortPicker(title: "Sort Remote Branches By", selection: lists.remoteBranchSort) {
+            var lists = lists
+            lists.remoteBranchSort = $0
+            model?.interface.setSidebarLists(lists)
+        }
+        .disabled(model == nil)
+        SidebarSortPicker(title: "Sort Tags By", selection: lists.tagSort) {
+            var lists = lists
+            lists.tagSort = $0
+            model?.interface.setSidebarLists(lists)
+        }
+        .disabled(model == nil)
+        Button("Show First \(SidebarListOptions.limit) Only") {
+            var lists = lists
+            lists.remotesShowingAll = []
+            lists.showsAllTags = false
+            model?.interface.setSidebarLists(lists)
+        }
+        .disabled(lists.remotesShowingAll.isEmpty && !lists.showsAllTags)
+        .help("List only the first remote branches and tags again, after Show All")
     }
 }

@@ -106,6 +106,10 @@ final class RepositoryNavigation {
         isMoving = true
         defer { isMoving = false }
         model.selection = location.sidebar
+        if location.commit != nil {
+            // The commit it had selected, not the one a branch or tag points at now.
+            model.referenceToReveal = nil
+        }
         switch location.sidebar {
         case .workingCopy:
             model.workingCopy.selection = location.file

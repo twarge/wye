@@ -132,20 +132,8 @@ struct SidebarView: View {
                             }
                         }
                     } header: {
-                        SidebarSectionHeader(title: "Remotes") {
-                            SidebarSortPicker(title: "Sort Remote Branches By", selection: lists.remoteBranchSort) {
-                                var lists = lists
-                                lists.remoteBranchSort = $0
-                                model.interface.setSidebarLists(lists)
-                            }
-                            if !lists.remotesShowingAll.isEmpty {
-                                Button("Show First \(SidebarListOptions.limit) Only") {
-                                    var lists = lists
-                                    lists.remotesShowingAll = []
-                                    model.interface.setSidebarLists(lists)
-                                }
-                            }
-                        }
+                        // Its sort order is in the View menu.
+                        Text("Remotes")
                     }
                 }
 
@@ -167,22 +155,11 @@ struct SidebarView: View {
                             }
                         }
                     } header: {
-                        SidebarSectionHeader(title: "Tags") {
-                            SidebarSortPicker(title: "Sort Tags By", selection: lists.tagSort) {
-                                var lists = lists
-                                lists.tagSort = $0
-                                model.interface.setSidebarLists(lists)
-                            }
-                            if lists.showsAllTags {
-                                Button("Show First \(SidebarListOptions.limit) Only") {
-                                    var lists = lists
-                                    lists.showsAllTags = false
-                                    model.interface.setSidebarLists(lists)
-                                }
-                            }
-                        }
-                        // A commit or branch dropped here is tagged.
-                        .contentShape(.rect)
+                        // Its sort order is in the View menu. A commit or
+                        // branch dropped here is tagged.
+                        Text("Tags")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(.rect)
                         .dropDestination(for: String.self) { items, _ in
                             propose(items, onto: .tags)
                         }
@@ -197,7 +174,8 @@ struct SidebarView: View {
                                 .tag(SidebarItem.submodule(submodule.name))
                         }
                     } header: {
-                        SidebarSectionHeader(title: "Submodules") { AllSubmodulesActions(model: model) }
+                        // Its actions are in the Repository menu.
+                        Text("Submodules")
                     }
                 }
 
@@ -210,7 +188,8 @@ struct SidebarView: View {
                                 .tag(SidebarItem.worktree(worktree.name))
                         }
                     } header: {
-                        SidebarSectionHeader(title: "Worktrees") { AllWorktreesActions(model: model) }
+                        // Its actions are in the Repository menu.
+                        Text("Worktrees")
                     }
                 }
             }

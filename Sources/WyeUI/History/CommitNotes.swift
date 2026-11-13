@@ -128,13 +128,13 @@ private struct NoteEditor: View {
     var save: (CommitNotes.Draft) -> Void
 
     var body: some View {
-        NavigationStack {
+        // Set in to the editor's text: its padding and its own margin.
+        SheetStack(draft.isEditing ? "Edit Note" : "Add Note", subtitle: draft.commit.abbreviated(),
+                   placement: .above(inset: 13)) {
             TextEditor(text: $draft.text)
                 .font(.body)
                 .padding(8)
                 .frame(minWidth: 380, minHeight: 200)
-                .navigationTitle(draft.isEditing ? "Edit Note" : "Add Note")
-                .navigationSubtitle(draft.commit.abbreviated())
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel", role: .cancel, action: cancel)

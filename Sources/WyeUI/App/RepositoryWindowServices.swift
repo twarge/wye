@@ -2,7 +2,7 @@ import GitKit
 import SwiftUI
 
 /// What a repository window keeps beside its model: where it has been, for
-/// Back and Forward, and whether its settings are on screen.
+/// View ▸ Back and Forward, and whether its settings are on screen.
 @MainActor
 @Observable
 final class RepositoryWindowState {
@@ -11,8 +11,9 @@ final class RepositoryWindowState {
 }
 
 extension View {
-    /// The app-wide services a repository window takes part in: Back and
-    /// Forward, its settings sheet, and the status the widgets show.
+    /// The app-wide services a repository window takes part in: the places
+    /// View ▸ Back and Forward go, its settings sheet, and the status the
+    /// widgets show.
     func repositoryWindowServices(_ model: RepositoryModel) -> some View {
         modifier(RepositoryWindowServices(model: model))
     }
@@ -25,20 +26,6 @@ private struct RepositoryWindowServices: ViewModifier {
         @Bindable var state = model.windowState
         let navigation = state.navigation
         content
-            .toolbar {
-                ToolbarItemGroup(placement: .navigation) {
-                    Button("Back", systemImage: "chevron.backward") {
-                        Task { await navigation.goBack(in: model) }
-                    }
-                    .disabled(!navigation.canGoBack)
-                    .help("Go back to what this window showed before")
-                    Button("Forward", systemImage: "chevron.forward") {
-                        Task { await navigation.goForward(in: model) }
-                    }
-                    .disabled(!navigation.canGoForward)
-                    .help("Go forward again")
-                }
-            }
             .onChange(of: model.location, initial: true) {
                 navigation.record(model.location)
             }

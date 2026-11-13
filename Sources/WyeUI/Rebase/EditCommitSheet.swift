@@ -21,8 +21,9 @@ struct EditCommitSheet: View {
     @State private var later: Int?
 
     var body: some View {
-        NavigationStack {
+        SheetStack(request.part == .message ? "Edit Message" : "Edit Author") {
             Form {
+                SheetTitleSection()
                 switch request.part {
                 case .message:
                     Section {
@@ -49,7 +50,6 @@ struct EditCommitSheet: View {
             }
             .formStyle(.grouped)
             .disabled(!isLoaded)
-            .navigationTitle(request.part == .message ? "Edit Message" : "Edit Author")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

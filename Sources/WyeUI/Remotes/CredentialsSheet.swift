@@ -18,8 +18,9 @@ struct CredentialsSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Sign In") {
             Form {
+                SheetTitleSection()
                 Section {
                     TextField("Username", text: $username)
                         .textContentType(.username)
@@ -41,7 +42,6 @@ struct CredentialsSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Sign In")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { broker.decline() }

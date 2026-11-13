@@ -97,24 +97,4 @@ struct AllSubmodulesActions: View {
     }
 }
 
-/// A sidebar section's heading with a menu of the section's own actions.
-struct SidebarSectionHeader<Actions: View>: View {
-    var title: String
-    @ViewBuilder var actions: Actions
 
-    var body: some View {
-        HStack {
-            Text(title)
-            Spacer(minLength: 4)
-            Menu {
-                actions
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .accessibilityLabel("\(title) Actions")
-            }
-            .buttonStyle(.borderless)
-            .menuIndicator(.hidden)
-            .fixedSize()
-        }
-    }
-}

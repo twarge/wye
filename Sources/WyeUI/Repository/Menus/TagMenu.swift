@@ -9,29 +9,28 @@ struct TagMenu: View {
     var tag: Tag
 
     var body: some View {
-        let name = MenuNames.quoted(tag.name)
         let remotes = model.remoteNames
         let isTransferring = model.isTransferring
 
         Section {
-            Button("Check Out \(name)", systemImage: "arrow.uturn.down") {
+            Button("Check Out", systemImage: "arrow.uturn.down") {
                 Task { await model.checkOutTag(tag.id) }
             }
             .disabled(model.isBusy)
             .help("Check out the tag’s commit with HEAD detached")
-            Button("New Branch from \(name)…", systemImage: "arrow.triangle.branch") {
+            Button("New Branch from Here…", systemImage: "arrow.triangle.branch") {
                 model.present(.newBranch(at: tag.target))
             }
         }
 
         Section {
             if remotes.count == 1, let remote = remotes.first {
-                Button("Push \(name) to \(MenuNames.quoted(remote))", systemImage: "arrow.up") {
+                Button("Push to \(MenuNames.name(remote))", systemImage: "arrow.up") {
                     Task { await model.pushTag(tag.id, to: remote) }
                 }
                 .disabled(isTransferring)
             } else if !remotes.isEmpty {
-                Menu("Push \(name) To", systemImage: "arrow.up") {
+                Menu("Push To", systemImage: "arrow.up") {
                     ForEach(remotes, id: \.self) { remote in
                         Button(remote) { Task { await model.pushTag(tag.id, to: remote) } }
                     }
@@ -41,10 +40,10 @@ struct TagMenu: View {
         }
 
         Section {
-            Button("Delete \(name)…", systemImage: "trash", role: .destructive) {
+            Button("Delete…", systemImage: "trash", role: .destructive) {
                 model.present(.deleteTag(tag.id))
             }
-            Button("Delete \(name) from Remote…", systemImage: "trash", role: .destructive) {
+            Button("Delete from Remote…", systemImage: "trash", role: .destructive) {
                 model.remotes.sheet = .deleteRemoteTag(tag.id)
             }
             .disabled(remotes.isEmpty || isTransferring)

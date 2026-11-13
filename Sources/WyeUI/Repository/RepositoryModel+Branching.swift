@@ -74,6 +74,22 @@ extension RepositoryModel {
         await deleteBranch(id, force: force)
     }
 
+    /// Deletes a local branch that a linked worktree has checked out: the
+    /// remote branch it tracks first, when that goes too, then the
+    /// worktree, then the branch. Each goes only if the one before it did.
+    func deleteBranch(
+        _ id: String, force: Bool, alsoDeleting remoteBranch: String?,
+        removingWorktree worktree: String, library: RepositoryLibrary
+    ) async {
+        if let remoteBranch {
+            guard await deleteRemoteBranch(remoteBranch) else { return }
+        }
+        // The user saw what the worktree holds before choosing to remove it,
+        // as Remove Worktree shows it.
+        guard await removeWorktree(worktree, force: true, library: library) else { return }
+        await deleteBranch(id, force: force)
+    }
+
     func deleteBranch(_ id: String, force: Bool) async {
         await perform(.deleteBranch) { repository in
             try await repository.deleteBranch(id, force: force)

@@ -7,6 +7,7 @@ struct HistoryView: View {
     @Bindable var model: RepositoryModel
     @State private var isCreatingBranch = false
     @FocusState private var isSearchFocused: Bool
+    @Environment(\.openCommitWindow) private var openCommitWindow
 
     private var preferences: HistoryPreferences { .shared }
 
@@ -67,9 +68,25 @@ struct HistoryView: View {
                     }
                 }
             }
+            #if os(macOS)
+            .contextMenu(forSelectionType: OID.self) { ids in
+                selectionMenu(ids)
+            } primaryAction: { ids in
+                // A double-click: the commit in a window of its own.
+                if ids.count == 1, let id = ids.first { openCommitWindow?(id) }
+            }
+            #else
+            // A primary action here would take over a tap, which selects.
             .contextMenu(forSelectionType: OID.self) { ids in
                 selectionMenu(ids)
             }
+            #endif
+            // The window follows changes on disk; iOS sees only some of them.
+            .refreshable { await model.refresh() }
+            #if os(macOS)
+            // Edit ▸ Copy while the list has focus: the selected commits' hashes.
+            .copyable(copiedHashes)
+            #endif
             .onChange(of: history.scrollTarget) {
                 guard let target = history.scrollTarget else { return }
                 withMotion {
@@ -125,7 +142,8 @@ struct HistoryView: View {
                             hidden: search.filters.hiddenBranches)) {
             await history.apply(preferences.layout, filters: search.filters)
         }
-        .navigationTitle(title)
+        // A branch or tag shows the full history too, with its commit selected.
+        .navigationTitle(model.name)
         .navigationSubtitle(subtitle)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -137,22 +155,7 @@ struct HistoryView: View {
                 }
                 Button("New Branch", image: .branch) { isCreatingBranch = true }
                     .help("Create a branch at the selected commit")
-                Button("Compare", systemImage: "arrow.left.arrow.right") {
-                    history.requests.compare = CompareRequest(from: history.selection?.hex ?? "HEAD", to: "HEAD")
-                }
-                .help("Compare the selected commit with another commit, branch or tag")
-                HistoryFilterMenu(model: model, search: search)
-                Menu("View Options", systemImage: "slider.horizontal.3") {
-                    HistoryViewOptions()
-                    Divider()
-                    Button("Apply Patch…", systemImage: "doc.badge.plus") { history.requests.isImportingPatch = true }
-                        .disabled(model.snapshot?.state ?? .clean != .clean)
-                }
-                .help("Choose how the history is shown")
-                Button("Refresh", systemImage: "arrow.clockwise") {
-                    Task { await model.refresh() }
-                }
-                .help("Read the repository again")
+                // Filter and the view options are in the More menu.
             }
             if Platform.selectsSeveralInEditMode {
                 ToolbarItem(placement: .primaryAction) {
@@ -163,6 +166,7 @@ struct HistoryView: View {
         .sheet(isPresented: $isCreatingBranch) {
             NewBranchSheet(model: model, startingPoint: history.selection)
         }
+        .historyFilterSheets(search)
     }
 
     /// The context menu for the commits it was opened on: one commit's
@@ -175,6 +179,13 @@ struct HistoryView: View {
         } else if commits.count > 1 {
             MultipleCommitsMenu(model: model, commits: commits)
         }
+    }
+
+    /// What Copy puts on the clipboard: the selected commits' hashes, a line
+    /// each, newest first, as Copy Hashes does.
+    private var copiedHashes: [String] {
+        let commits = model.history.commits(model.history.listSelection)
+        return commits.isEmpty ? [] : [commits.map(\.id.hex).joined(separator: "\n")]
     }
 
     private var graphWidth: Int {
@@ -210,16 +221,6 @@ struct HistoryView: View {
             return CommitDrag(repository: model.repository, commits: [commit])
         }
         return CommitDrag(repository: model.repository, commits: model.history.commits(selected))
-    }
-
-    private var title: String {
-        switch model.selection {
-        case .branch(let id): model.snapshot?.branches.first { $0.id == id }?.name ?? model.name
-        case .remoteBranch(let id):
-            model.snapshot?.remotes.flatMap(\.branches).first { $0.id == id }?.name ?? model.name
-        case .tag(let id): model.snapshot?.tags.first { $0.id == id }?.name ?? model.name
-        default: model.name
-        }
     }
 
     private var subtitle: String {
@@ -359,8 +360,9 @@ struct NewBranchSheet: View {
     @State private var checksOut = true
 
     var body: some View {
-        NavigationStack {
+        SheetStack("New Branch") {
             Form {
+                SheetTitleSection()
                 TextField("Name", text: $name)
                     .autocorrectionDisabled()
                 LabeledContent("Starting Point") {
@@ -370,7 +372,6 @@ struct NewBranchSheet: View {
                 Toggle("Check Out", isOn: $checksOut)
             }
             .formStyle(.grouped)
-            .navigationTitle("New Branch")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }

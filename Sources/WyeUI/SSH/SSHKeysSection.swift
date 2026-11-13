@@ -143,8 +143,9 @@ private struct NewSSHKeySheet: View {
     @State private var error: Notice?
 
     var body: some View {
-        NavigationStack {
+        SheetStack("New SSH Key") {
             Form {
+                SheetTitleSection()
                 if let created {
                     Section {
                         SSHPublicKeyRow(key: created)
@@ -163,7 +164,6 @@ private struct NewSSHKeySheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("New SSH Key")
             .toolbar {
                 if created == nil {
                     ToolbarItem(placement: .cancellationAction) {
@@ -206,8 +206,9 @@ private struct ImportSSHKeySheet: View {
     @State private var problem: String?
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Import SSH Key") {
             Form {
+                SheetTitleSection()
                 Section {
                     TextEditor(text: $text)
                         .font(.smallCode)
@@ -238,7 +239,6 @@ private struct ImportSSHKeySheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Import SSH Key")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }
@@ -304,7 +304,7 @@ private struct KnownHostsSheet: View {
     @State private var error: Notice?
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Known Hosts", placement: .above(inset: 16)) {
             List {
                 ForEach(entries) { entry in
                     VStack(alignment: .leading, spacing: 2) {
@@ -333,7 +333,6 @@ private struct KnownHostsSheet: View {
                     }
                 }
             }
-            .navigationTitle("Known Hosts")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

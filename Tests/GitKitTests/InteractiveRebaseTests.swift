@@ -116,6 +116,37 @@ import Testing
         #expect(todo.skippedMerges == 0)
     }
 
+    @Test func aTodoOntoAnEarlierCommitListsTheCommitsAfterIt() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        try Self.build()(fixture)
+        let ids = try Self.commits(fixture)
+        let todo = try await fixture.open().interactiveRebaseTodo(onto: ids[1])
+        #expect(todo.onto == ids[1])
+        #expect(todo.candidates.map(\.id) == Array(ids[2...]))
+        #expect(!todo.changesBase)
+    }
+
+    /// As `git rebase -i other` lists and replays them.
+    @Test func aTodoOntoAnotherBranchMovesTheCommitsItLacks() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        try Self.build()(fixture)
+        try fixture.git("checkout", "--quiet", "-b", "other", "main")
+        let other = try #require(OID(hex: try fixture.commit("o.txt", "o\n", message: "Add o")))
+        try fixture.git("checkout", "--quiet", "topic")
+        let repository = try fixture.open()
+
+        let todo = try await repository.interactiveRebaseTodo(onto: other)
+        #expect(todo.onto == other)
+        #expect(todo.candidates.map(\.id) == (try Self.commits(fixture)))
+        #expect(todo.changesBase)
+
+        #expect(try await repository.interactiveRebase(onto: todo.onto, steps: todo.plainSteps) == .finished)
+        #expect(try fixture.logFormat("%s") == ["Add d", "Add c", "Add b", "Add a", "Add o", "Base"])
+        #expect(try fixture.git("symbolic-ref", "HEAD") == "refs/heads/topic")
+    }
+
     // MARK: Autosquash
 
     private static func buildFixups(_ fixture: Fixture) throws {

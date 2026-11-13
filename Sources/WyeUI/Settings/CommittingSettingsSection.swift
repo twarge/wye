@@ -61,8 +61,9 @@ private struct TemplateEditor: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Template") {
             Form {
+                SheetTitleSection()
                 TextField("Name", text: $template.name)
                 Section("Message") {
                     TextEditor(text: $template.text)
@@ -71,7 +72,6 @@ private struct TemplateEditor: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Template")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

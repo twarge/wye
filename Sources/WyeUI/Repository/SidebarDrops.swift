@@ -86,8 +86,8 @@ struct SidebarDropProposal: Identifiable, Hashable {
         case (.commits(let ids), .branch(let branch)):
             // A branch checked out in another worktree cannot be checked out here.
             guard let local = snapshot.branches.first(where: { $0.id == branch }) else { return nil }
-            let what = ids.count == 1 ? "“\(ids[0].abbreviated())”" : "\(ids.count) Commits"
-            let name = quoted(branch)
+            let what = ids.count == 1 ? MenuNames.name(ids[0]) : "\(ids.count) Commits"
+            let name = menuName(branch)
             if branch == current {
                 return SidebarDropProposal(title: "Cherry-pick onto \(name)?", choices: [
                     Choice(title: "Cherry-Pick \(what) onto \(name)", action: .cherryPick(ids))
@@ -101,7 +101,7 @@ struct SidebarDropProposal: Identifiable, Hashable {
 
         case (.reference(let dragged), .branch(let branch)):
             guard dragged != branch, let local = snapshot.branches.first(where: { $0.id == branch }) else { return nil }
-            let draggedName = quoted(dragged), name = quoted(branch)
+            let draggedName = menuName(dragged), name = menuName(branch)
             let draggedIsLocal = dragged.hasPrefix("refs/heads/")
             var choices: [Choice] = []
             if branch == current {
@@ -128,7 +128,7 @@ struct SidebarDropProposal: Identifiable, Hashable {
             return SidebarDropProposal(title: "Bring \(draggedName) and \(name) together?", choices: choices)
 
         case (.reference(let dragged), .workingCopy):
-            let name = quoted(dragged)
+            let name = menuName(dragged)
             let action: Action
             if dragged.hasPrefix("refs/heads/") {
                 guard dragged != current,
@@ -143,14 +143,14 @@ struct SidebarDropProposal: Identifiable, Hashable {
 
         case (.commits(let ids), .branches):
             guard ids.count == 1, let id = ids.first else { return nil }
-            let name = "“\(id.abbreviated())”"
+            let name = MenuNames.name(id)
             return SidebarDropProposal(title: "Start a branch at \(name)?", choices: [
                 Choice(title: "New Branch from \(name)…", action: .newBranch(at: id))
             ])
 
         case (.commits(let ids), .tags):
             guard ids.count == 1, let id = ids.first else { return nil }
-            let name = "“\(id.abbreviated())”"
+            let name = MenuNames.name(id)
             return SidebarDropProposal(title: "Tag \(name)?", choices: [
                 Choice(title: "New Tag on \(name)…", action: .newTag(at: id))
             ])
@@ -159,7 +159,7 @@ struct SidebarDropProposal: Identifiable, Hashable {
             // A remote branch dropped among the local ones is checked out
             // as a local branch that tracks it.
             guard dragged.hasPrefix("refs/remotes/") else { return nil }
-            let name = quoted(dragged)
+            let name = menuName(dragged)
             return SidebarDropProposal(title: "Check out \(name)?", choices: [
                 Choice(title: "Check Out \(name) as a Local Branch", action: .trackRemoteBranch(dragged))
             ])
@@ -169,27 +169,27 @@ struct SidebarDropProposal: Identifiable, Hashable {
             guard !dragged.hasPrefix("refs/tags/"),
                   let target = (snapshot.branches + snapshot.remotes.flatMap(\.branches))
                       .first(where: { $0.id == dragged })?.target else { return nil }
-            return SidebarDropProposal(title: "Tag \(quoted(dragged))?", choices: [
-                Choice(title: "New Tag on \(quoted(dragged))…", action: .newTag(at: target))
+            return SidebarDropProposal(title: "Tag \(menuName(dragged))?", choices: [
+                Choice(title: "New Tag on \(menuName(dragged))…", action: .newTag(at: target))
             ])
 
         case (.commits(let ids), .workingCopy):
             guard ids.count == 1, let id = ids.first, id != snapshot.head.target else { return nil }
-            let name = "“\(id.abbreviated())”"
+            let name = MenuNames.name(id)
             return SidebarDropProposal(title: "Check out \(name)?", choices: [
                 Choice(title: "Check Out \(name) with HEAD Detached", action: .checkOutCommit(id))
             ])
         }
     }
 
-    /// A reference as the menus name it: `“main”` for `refs/heads/main`.
-    private static func quoted(_ reference: String) -> String {
+    /// A reference as the menus name it: `main` for `refs/heads/main`.
+    private static func menuName(_ reference: String) -> String {
         var name = reference
         for prefix in ["refs/heads/", "refs/remotes/", "refs/tags/"] where name.hasPrefix(prefix) {
             name = String(name.dropFirst(prefix.count))
             break
         }
-        return "“\(name)”"
+        return MenuNames.name(name)
     }
 }
 

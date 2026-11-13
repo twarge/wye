@@ -36,22 +36,31 @@ struct RenameBranchSheet: View {
 }
 
 /// Confirms deleting a branch, saying how many commits only it has, and
-/// offers to delete the remote branch it tracks along with it.
+/// offers to delete the remote branch it tracks along with it. A branch a
+/// linked worktree has checked out can go only with that worktree, which
+/// it offers to remove first.
 struct DeleteBranchSheet: View {
     var model: RepositoryModel
     var branch: String
 
+    @Environment(RepositoryLibrary.self) private var library
     /// Commits that nothing kept would still contain: `HEAD`, and the
     /// branch's upstream unless that is being deleted too.
     @State private var unmerged: Int?
     @State private var deletesRemoteBranch = false
+    /// Whether the worktree that has the branch checked out is removed first.
+    @State private var removesWorktree = false
+    /// How many files differ in that worktree; `nil` until counted, or when
+    /// it cannot be.
+    @State private var worktreeChanges: Int?
+    @State private var isCountingChanges = true
 
     var body: some View {
         BranchingSheetForm(
             title: "Delete Branch",
-            confirmTitle: unmerged ?? 0 > 0 ? "Delete Anyway" : "Delete",
+            confirmTitle: losesSomething ? "Delete Anyway" : "Delete",
             isDestructive: true,
-            canConfirm: unmerged != nil && !(deletesRemoteBranch && model.isTransferring),
+            canConfirm: canDelete,
             confirm: delete
         ) {
             Section {
@@ -74,6 +83,25 @@ struct DeleteBranchSheet: View {
                     }
                 }
             }
+            if let holder {
+                Section {
+                    Toggle("Also Remove Worktree “\(holder.displayName)”", isOn: $removesWorktree)
+                        .disabled(holderObstacle != nil)
+                    if removesWorktree {
+                        Label {
+                            Text(worktreeWarning(holder))
+                                .fixedSize(horizontal: false, vertical: true)
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                } footer: {
+                    if !removesWorktree {
+                        Text(worktreeExplanation(holder))
+                    }
+                }
+            }
         }
         .task(id: deletesRemoteBranch) {
             unmerged = nil
@@ -81,9 +109,59 @@ struct DeleteBranchSheet: View {
                 of: branch, countingUpstream: !deletesRemoteBranch
             )) ?? 0
         }
+        .task {
+            defer { isCountingChanges = false }
+            guard let holder, holderObstacle == nil else { return }
+            worktreeChanges = await model.changeCount(in: holder, library: library)
+        }
     }
 
     private var name: String { RepositoryModel.displayName(ofReference: branch) }
+
+    /// The linked worktree that has the branch checked out, which git
+    /// requires gone before the branch can be deleted.
+    private var holder: Worktree? { model.worktree(holding: branch) }
+
+    /// Why that worktree cannot be removed from here.
+    private var holderObstacle: String? {
+        holder.flatMap { model.removalObstacle(for: $0, library: library) }
+    }
+
+    private var canDelete: Bool {
+        guard unmerged != nil, !(deletesRemoteBranch && model.isTransferring) else { return false }
+        return holder == nil || (removesWorktree && !isCountingChanges)
+    }
+
+    /// Whether confirming loses commits, or changes in the worktree.
+    private var losesSomething: Bool {
+        unmerged ?? 0 > 0 || (removesWorktree && worktreeChanges ?? 0 > 0)
+    }
+
+    /// Why the branch cannot go as things are.
+    private func worktreeExplanation(_ holder: Worktree) -> String {
+        let held = "“\(name)” is checked out in the worktree “\(holder.displayName)”, "
+            + "and a branch can be deleted only when no worktree has it checked out."
+        guard let holderObstacle else { return "\(held) Remove the worktree to delete the branch." }
+        return "\(held) \(holderObstacle)"
+    }
+
+    /// What removing the worktree loses.
+    private func worktreeWarning(_ holder: Worktree) -> String {
+        let undo = "Undo brings the branch back, but not the worktree."
+        if holder.isMissing {
+            return "The worktree’s folder is already gone, so only the repository’s record of it is removed. \(undo)"
+        }
+        let folder = "Deletes the worktree’s folder first."
+        switch worktreeChanges {
+        case let count? where count > 0:
+            return "\(folder) It has \(count) uncommitted \(count == 1 ? "change" : "changes") or untracked "
+                + "\(count == 1 ? "file" : "files"), which \(count == 1 ? "is" : "are") lost and cannot be recovered. \(undo)"
+        case 0:
+            return "\(folder) It has no uncommitted changes. \(undo)"
+        default:
+            return "\(folder) Any uncommitted changes or untracked files in it are lost and cannot be recovered. \(undo)"
+        }
+    }
 
     /// The remote branch this one tracks, when there is one to delete.
     private var tracked: Branch? {
@@ -113,8 +191,14 @@ struct DeleteBranchSheet: View {
         let branch = branch
         let force = unmerged ?? 0 > 0
         let remoteBranch = deletesRemoteBranch ? tracked?.id : nil
+        let worktree = removesWorktree ? holder?.name : nil
+        let library = library
         Task {
-            if let remoteBranch {
+            if let worktree {
+                await model.deleteBranch(
+                    branch, force: force, alsoDeleting: remoteBranch, removingWorktree: worktree, library: library
+                )
+            } else if let remoteBranch {
                 await model.deleteBranch(branch, force: force, alsoDeleting: remoteBranch)
             } else {
                 await model.deleteBranch(branch, force: force)
@@ -166,6 +250,10 @@ struct NewTagSheet: View {
                     Text(commit.abbreviated())
                         .font(.code)
                 }
+            } footer: {
+                if exists {
+                    Text("A tag named “\(trimmedName)” already exists.")
+                }
             }
             Section {
                 Toggle("Annotated", isOn: $isAnnotated)
@@ -178,23 +266,34 @@ struct NewTagSheet: View {
                     ? "An annotated tag records who made it, when, and a message."
                     : "A lightweight tag is only a name for the commit.")
             }
-            if let pushTitle = RepositoryModel.newTagPushTitle(remotes: model.remoteNames) {
+            let remotes = model.remoteNames
+            if let pushTitle = RepositoryModel.newTagPushTitle(remotes: remotes) {
                 Section {
                     Toggle(pushTitle, isOn: $pushes)
                 } footer: {
-                    Text("Once made, the tag is pushed to each remote in turn. Undo deletes it here but not on a remote.")
+                    if remotes.count == 1 {
+                        Text("Once made, the tag is pushed to \(remotes[0]). Undo deletes it here but not on \(remotes[0]).")
+                    } else {
+                        Text("Once made, the tag is pushed to each remote in turn. Undo deletes it here but not on the remotes.")
+                    }
                 }
             }
         }
     }
 
+    private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
+
+    private var exists: Bool {
+        model.snapshot?.tags.contains { $0.name == trimmedName } == true
+    }
+
     private var canCreate: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty
+        !trimmedName.isEmpty && !exists
             && (!isAnnotated || !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     }
 
     private func create() {
-        let name = name.trimmingCharacters(in: .whitespaces)
+        let name = trimmedName
         let message = isAnnotated ? message : nil
         let commit = commit
         let pushing = pushes && model.hasRemotes

@@ -16,8 +16,9 @@ struct IgnoreRulesSheet: View {
     @State private var nowIgnoredTracked: [String] = []
 
     var body: some View {
-        NavigationStack {
+        SheetStack("Ignore Rules") {
             Form {
+                SheetTitleSection()
                 Section {
                     Picker("Rules In", selection: $file) {
                         Text(".gitignore").tag(IgnoreFile.shared)
@@ -72,7 +73,6 @@ struct IgnoreRulesSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Ignore Rules")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

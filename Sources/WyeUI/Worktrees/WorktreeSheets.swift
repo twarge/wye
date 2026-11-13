@@ -240,7 +240,8 @@ struct MoveWorktreeSheet: View {
     }
 }
 
-/// Confirms removing a worktree, saying what is lost.
+/// Confirms removing a worktree, saying what is lost, and offers to delete
+/// the local branch it has checked out along with it.
 struct RemoveWorktreeSheet: View {
     var model: RepositoryModel
     var name: String
@@ -249,12 +250,17 @@ struct RemoveWorktreeSheet: View {
     /// How many files differ in it; `nil` until counted, or when it cannot be.
     @State private var changes: Int?
     @State private var isCounting = true
+    /// Whether its branch is deleted once it is gone. Kept unless asked.
+    @State private var deletesBranch = false
+    /// Commits on that branch that neither `HEAD` nor the branch's upstream
+    /// contain: what deleting it loses. `nil` until counted.
+    @State private var unmerged: Int?
 
     var body: some View {
         let worktree = model.worktree(named: name)
         BranchingSheetForm(
-            title: "Remove Worktree", confirmTitle: changes ?? 0 > 0 ? "Remove Anyway" : "Remove",
-            isDestructive: true, canConfirm: !isCounting, confirm: remove
+            title: "Remove Worktree", confirmTitle: losesSomething ? "Remove Anyway" : "Remove",
+            isDestructive: true, canConfirm: !isCounting && !(deletesBranch && unmerged == nil), confirm: remove
         ) {
             Section {
                 LabeledContent("Worktree", value: worktree?.displayName ?? name)
@@ -265,34 +271,81 @@ struct RemoveWorktreeSheet: View {
             } footer: {
                 Text(explanation)
             }
+            if let branch {
+                Section {
+                    Toggle("Also Delete Branch “\(branch.name)”", isOn: $deletesBranch)
+                } footer: {
+                    Text(branchExplanation(branch))
+                }
+            }
         }
         .task {
             defer { isCounting = false }
-            guard let worktree, !worktree.isMissing else { return }
-            let url = URL(filePath: worktree.path, directoryHint: .isDirectory)
-            let access = library.bookmark(at: url).flatMap { try? library.access(to: $0) }
-            defer { withExtendedLifetime(access) {} }
-            if let repository = try? Repository(at: url) {
-                changes = (try? await repository.status())?.count
-            }
+            guard let worktree else { return }
+            changes = await model.changeCount(in: worktree, library: library)
+        }
+        .task(id: branch?.id) {
+            guard let id = branch?.id else { return }
+            unmerged = (try? await model.repository.unmergedCommitCount(of: id)) ?? 0
+        }
+    }
+
+    /// The local branch the worktree has checked out, which can be deleted
+    /// once the worktree is gone.
+    private var branch: Branch? {
+        guard let id = model.worktree(named: name)?.head?.branchName else { return nil }
+        return model.snapshot?.branches.first { $0.id == id && !$0.isHead }
+    }
+
+    /// Whether confirming loses changes in the worktree, or commits.
+    private var losesSomething: Bool {
+        changes ?? 0 > 0 || (deletesBranch && unmerged ?? 0 > 0)
+    }
+
+    /// What deleting the branch loses: commits merged nowhere and pushed
+    /// nowhere.
+    private func branchExplanation(_ branch: Branch) -> String {
+        switch unmerged {
+        case nil:
+            return "Checking what the branch holds…"
+        case 0:
+            return "Everything on “\(branch.name)” is merged into the current branch or its upstream, "
+                + "so deleting it loses no commits."
+        case let count?:
+            let commits = "“\(branch.name)” has \(count) \(count == 1 ? "commit" : "commits") that \(count == 1 ? "is" : "are")"
+            let nowhere = branch.upstream.map { " not merged into the current branch or pushed to “\($0.name)”." }
+                ?? " not merged into the current branch, and it tracks no remote branch."
+            return commits + nowhere + " Deleting it loses \(count == 1 ? "that commit" : "them") "
+                + "unless another branch or tag holds \(count == 1 ? "it" : "them")."
         }
     }
 
     private var explanation: String {
-        let folder = "The worktree’s folder is deleted. Its branch and commits stay in the repository."
-        switch changes {
+        let folder = switch (branch, deletesBranch) {
+        case (_?, true): "The worktree’s folder is deleted, then its branch."
+        case (_?, false): "The worktree’s folder is deleted. Its branch and commits stay in the repository."
+        case (nil, _): "The worktree’s folder is deleted. Its commits stay in the repository."
+        }
+        let lost = switch changes {
         case let count? where count > 0:
-            return "\(folder) It has \(count) uncommitted \(count == 1 ? "change" : "changes") or untracked "
+            "It has \(count) uncommitted \(count == 1 ? "change" : "changes") or untracked "
                 + "\(count == 1 ? "file" : "files"), which \(count == 1 ? "is" : "are") lost and cannot be recovered."
         case 0:
-            return "\(folder) It has no uncommitted changes."
+            "It has no uncommitted changes."
         default:
-            return "\(folder) Any uncommitted changes or untracked files in it are lost and cannot be recovered."
+            "Any uncommitted changes or untracked files in it are lost and cannot be recovered."
         }
+        let undo = branch != nil && deletesBranch ? " Undo brings the branch back, but not the worktree." : ""
+        return "\(folder) \(lost)\(undo)"
     }
 
     private func remove() {
         let name = name, library = library
-        Task { await model.removeWorktree(name, force: true, library: library) }
+        if deletesBranch, let id = branch?.id {
+            let force = unmerged ?? 0 > 0
+            Task { await model.removeWorktree(name, force: true, library: library, deletingBranch: id, forceBranch: force) }
+        } else {
+            Task { await model.removeWorktree(name, force: true, library: library) }
+        }
     }
 }
