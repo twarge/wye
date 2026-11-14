@@ -48,11 +48,13 @@ connections are made in Swift with
   ECDSA keys created in Wye or imported from an OpenSSH key file, kept in
   the Keychain; unknown or changed host keys are shown before connecting.
   RSA keys are not supported.
-- **Every repository at once:** Review lists what is not committed or
-  pushed across the whole list (⇧⌘R), along with the repositories that
-  have commits to pull, on the checked-out branch or another, or a pull
-  request waiting for your review, and Pull All (⌥⇧⌘P) brings every
-  repository up to date and reports what could not be pulled.
+- **Every repository at once:** the list of repositories says, on each
+  one's row, what is not committed or pushed there, what there is to pull,
+  on the checked-out branch or another, whether the checks of an active
+  branch failed, and which pull requests wait for your review, and folds
+  the files, commits and pull requests away beneath it; ⇧⌘R goes back to
+  it. Pull All (⌥⇧⌘P) brings every repository up to date and reports what
+  could not be pulled.
 - **Drag and drop:** a commit onto a branch to cherry-pick, onto the
   Branches or Tags heading to name it, or out of the window as a patch
   file; files out of the working copy or a commit; a patch file or other

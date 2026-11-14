@@ -35,10 +35,12 @@ struct BranchToPull: Identifiable, Hashable, Sendable {
     }
 }
 
-/// One repository's reasons to be looked at: work that exists only on this
-/// device (what is not committed, and the commits its upstream lacks), the
-/// commits there are to pull, on its branch or another, and the pull
-/// requests that wait for the account's review.
+/// One repository as the list of repositories shows it: where its `HEAD`
+/// is, and its reasons to be looked at. Those are work that exists only on
+/// this device (what is not committed, and the commits its upstream lacks),
+/// the commits there are to pull, on its branch or another, the active
+/// branches whose checks failed, and the pull requests that wait for the
+/// account's review.
 struct RepositoryReview: Identifiable, Hashable, Sendable {
     var id: UUID
     var name: String
@@ -66,6 +68,12 @@ struct RepositoryReview: Identifiable, Hashable, Sendable {
     var reviewRequests: [ReviewRequest] = []
     /// Whether the service has more of them than were read.
     var hasMoreReviewRequests = false
+    /// The active branches whose newest pushed commits failed their checks,
+    /// as the repository's hosting services last said. Empty until they
+    /// answer, and where no account is signed in.
+    var failedChecks: [FailedCheck] = []
+    /// The commit `HEAD` is detached at, abbreviated; `nil` on a branch.
+    var detachedAt: String? = nil
 
     /// A branch with commits and a remote to publish to, but no upstream.
     var isUnpublished: Bool {
@@ -78,12 +86,13 @@ struct RepositoryReview: Identifiable, Hashable, Sendable {
         !entries.isEmpty || ahead > 0 || isUnpublished
     }
 
-    /// Whether the Review lists the repository: for its work, for commits
-    /// to pull, for another branch with commits to pull, or for a pull
+    /// Whether the repository has something to look at, which its row then
+    /// says and folds away: its work, commits to pull, another branch with
+    /// commits to pull, an active branch whose checks failed, or a pull
     /// request to review. Unpushed commits on a branch that is not checked
-    /// out do not list it.
+    /// out are not among them.
     var needsAttention: Bool {
-        hasWork || behind > 0 || !otherBranches.isEmpty || !reviewRequests.isEmpty
+        hasWork || behind > 0 || !otherBranches.isEmpty || !failedChecks.isEmpty || !reviewRequests.isEmpty
     }
 
     /// Whether `query` names the repository, a branch, a changed file, a
@@ -92,15 +101,26 @@ struct RepositoryReview: Identifiable, Hashable, Sendable {
         let query = query.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return true }
         return name.localizedStandardContains(query)
-            || branch?.localizedStandardContains(query) == true
-            || entries.contains { $0.path.localizedStandardContains(query) }
+            || (branch ?? detachedAt)?.localizedStandardContains(query) == true
+            || hasFoldedMatch(for: query)
+    }
+
+    /// Whether `query` names something the row folds away, so that a search
+    /// opens the row on what it found: a changed file, an unpushed commit,
+    /// another branch, or a pull request. Not for an empty query.
+    func hasFoldedMatch(for query: String) -> Bool {
+        let query = query.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return false }
+        return entries.contains { $0.path.localizedStandardContains(query) }
             || commits.contains { $0.summary.localizedStandardContains(query) }
             || otherBranches.contains { $0.name.localizedStandardContains(query) }
+            || failedChecks.contains { $0.branch.localizedStandardContains(query) }
             || reviewRequests.contains { $0.matches(query) }
     }
 
     /// What its row says of it, folded away: "3 files changed · 2 staged ·
-    /// 1 unpushed commit · 4 commits to pull · 1 pull request to review".
+    /// 1 unpushed commit · 4 commits to pull · checks failed on main ·
+    /// 1 pull request to review".
     var summary: String {
         var parts: [String] = []
         let files = entries.count
@@ -116,6 +136,10 @@ struct RepositoryReview: Identifiable, Hashable, Sendable {
             // One branch by its name, several by how many.
             let branches = otherBranches.count == 1 ? first.name : "\(otherBranches.count) other branches"
             parts.append(Self.count(otherBranches.reduce(0) { $0 + $1.behind }, "commit") + " to pull on " + branches)
+        }
+        if let first = failedChecks.first {
+            // One branch by its name, several by how many.
+            parts.append("checks failed on " + (failedChecks.count == 1 ? first.branch : "\(failedChecks.count) branches"))
         }
         if let first = reviewRequests.first {
             let term = first.kind.pullRequestTerm.lowercased()
@@ -137,8 +161,8 @@ struct RepositoryReview: Identifiable, Hashable, Sendable {
     }
 }
 
-/// What the Review totals at its top: "12 uncommitted files, 7 unpushed
-/// commits and 2 pull requests to review in 4 repositories".
+/// What the list of repositories totals at its top: "12 uncommitted files,
+/// 7 unpushed commits and 2 pull requests to review in 4 repositories".
 struct ReviewTotals: Hashable, Sendable {
     var repositories = 0
     var files = 0
@@ -146,6 +170,8 @@ struct ReviewTotals: Hashable, Sendable {
     var commits = 0
     /// Commits to pull, on the checked-out branches and the others.
     var toPull = 0
+    /// Active branches whose checks failed.
+    var failedChecks = 0
     var reviewRequests = 0
     /// Whether every one of those is a GitLab merge request, to call them that.
     private var saysMergeRequests = false
@@ -157,6 +183,7 @@ struct ReviewTotals: Hashable, Sendable {
             files += review.entries.count
             commits += review.ahead
             toPull += review.behind + review.otherBranches.reduce(0) { $0 + $1.behind }
+            failedChecks += review.failedChecks.count
             reviewRequests += review.reviewRequests.count
             kinds.formUnion(review.reviewRequests.map(\.kind))
         }
@@ -169,6 +196,9 @@ struct ReviewTotals: Hashable, Sendable {
         if files > 0 { parts.append(RepositoryReview.count(files, "uncommitted file")) }
         if commits > 0 { parts.append(RepositoryReview.count(commits, "unpushed commit")) }
         if toPull > 0 { parts.append(RepositoryReview.count(toPull, "commit") + " to pull") }
+        if failedChecks > 0 {
+            parts.append((failedChecks == 1 ? "1 branch" : "\(failedChecks) branches") + " with failed checks")
+        }
         if reviewRequests > 0 {
             parts.append(RepositoryReview.count(reviewRequests, saysMergeRequests ? "merge request" : "pull request") + " to review")
         }
@@ -183,34 +213,52 @@ struct ReviewTotals: Hashable, Sendable {
     }
 }
 
-/// Reads every listed repository for the Review: one at a time, off the
-/// main thread, each shown as soon as it is read. Each repository's hosting
-/// service is asked, meanwhile and a few at a time, for the pull requests
-/// that wait for the account's review.
+/// Reads every listed repository for the list of repositories: one at a
+/// time, off the main thread, each shown as soon as it is read. Each
+/// repository's hosting services are asked, meanwhile and a few at a time,
+/// for the pull requests that wait for the account's review and for the
+/// checks of its active branches.
 @MainActor
 @Observable
 final class ReviewModel {
     private(set) var reviews: [UUID: RepositoryReview] = [:]
+    /// The repositories whose folders are gone, or hold no repository now.
+    private(set) var missing: Set<UUID> = []
     /// Whether the repositories are being read. Not set for the services'
-    /// answers, which the Review does not wait for.
+    /// answers, which the list does not wait for.
     private(set) var isLoading = false
-    /// Repositories being pushed from the Review, and what came of the last push.
+    /// Whether every listed repository has been read once, so that the
+    /// list can say that nothing wants looking at.
+    private(set) var hasLoaded = false
+    /// Repositories being pushed from the list, and what came of the last push.
     private(set) var pushing: Set<UUID> = []
     var notice: Notice?
 
-    /// Each repository's remotes, as last read: where its pull requests are.
+    /// Each repository's remotes, as last read: where its pull requests
+    /// and its checks are.
     @ObservationIgnored private var remotes: [UUID: [Remote]] = [:]
+    /// Each repository's active branches' tips, as last read.
+    @ObservationIgnored private var tips: [UUID: [BranchTip]] = [:]
     private let requests: ReviewRequests
+    private let checks: ReviewChecks
+    private let board: RepositoryStatusBoard?
 
     static let commitLimit = 30
 
-    /// - Parameter requests: Who asks the hosting services, and keeps
-    ///   their answers.
-    init(requests: ReviewRequests = .shared) {
+    /// - Parameters:
+    ///   - requests: Who asks the hosting services for pull requests to
+    ///     review, and keeps their answers.
+    ///   - checks: Who asks them how the checks of branch tips stand;
+    ///     `nil` for the one that asks as `requests` does.
+    ///   - board: Where each repository's status goes as it is read, for
+    ///     the widgets, the menu bar and the Finder; `nil` tells no one.
+    init(requests: ReviewRequests = .shared, checks: ReviewChecks? = nil, board: RepositoryStatusBoard? = nil) {
         self.requests = requests
+        self.checks = checks ?? requests.checks
+        self.board = board
     }
 
-    /// The repositories the Review lists, by name.
+    /// The repositories with something to look at, by name.
     var needingAttention: [RepositoryReview] {
         reviews.values.filter(\.needsAttention)
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
@@ -227,6 +275,9 @@ final class ReviewModel {
         let listed = Set(bookmarks.map(\.id))
         for id in reviews.keys where !listed.contains(id) { reviews[id] = nil }
         for id in remotes.keys where !listed.contains(id) { remotes[id] = nil }
+        for id in tips.keys where !listed.contains(id) { tips[id] = nil }
+        missing.formIntersection(listed)
+        board?.retain(listed)
         await withTaskGroup(of: Void.self) { group in
             for bookmark in bookmarks {
                 guard !Task.isCancelled else { break }
@@ -234,7 +285,9 @@ final class ReviewModel {
                 let id = bookmark.id
                 // Asked while the next repository is read.
                 group.addTask { await self.lookUpReviewRequests(for: id, asksAgain: asksAgain) }
+                group.addTask { await self.lookUpChecks(for: id, asksAgain: asksAgain) }
             }
+            if !Task.isCancelled { hasLoaded = true }
             isLoading = false
         }
     }
@@ -242,29 +295,54 @@ final class ReviewModel {
     func load(_ bookmark: RepositoryBookmark, from library: RepositoryLibrary) async {
         await read(bookmark, from: library)
         await lookUpReviewRequests(for: bookmark.id, asksAgain: false)
+        await lookUpChecks(for: bookmark.id, asksAgain: false)
     }
 
-    /// Reads one repository from its folder. Its pull requests are the ones
-    /// last heard of, until `lookUpReviewRequests` asks.
+    /// Reads one repository from its folder. Its pull requests and failed
+    /// checks are the ones last heard of, until the services are asked.
     private func read(_ bookmark: RepositoryBookmark, from library: RepositoryLibrary) async {
+        let id = bookmark.id
         guard let access = try? library.access(to: bookmark) else {
-            reviews[bookmark.id] = nil
-            remotes[bookmark.id] = nil
+            forget(id, isMissing: true)
             return
         }
-        let (id, name, url) = (bookmark.id, bookmark.name, access.url)
-        let read = await Task.detached(priority: .userInitiated) {
-            try? await Self.read(at: url, id: id, name: name)
+        let (name, url) = (bookmark.name, access.url)
+        let (reading, isMissing) = await Task.detached(priority: .userInitiated) { () -> (Reading?, Bool) in
+            guard Repository.exists(at: url) else { return (nil, true) }
+            let layout = RepositoryInterfaceState.storedLayout(of: id)
+            return (try? await Self.read(at: url, id: id, name: name, layout: layout), false)
         }.value
         // Held until the read is done: the folder is only open while it is.
         withExtendedLifetime(access) {}
-        var review = read?.review
-        if let heard = reviews[bookmark.id] {
-            review?.reviewRequests = heard.reviewRequests
-            review?.hasMoreReviewRequests = heard.hasMoreReviewRequests
+        guard var reading else {
+            forget(id, isMissing: isMissing)
+            return
         }
-        reviews[bookmark.id] = review
-        remotes[bookmark.id] = read?.remotes
+        if let heard = reviews[id] {
+            reading.review.reviewRequests = heard.reviewRequests
+            reading.review.hasMoreReviewRequests = heard.hasMoreReviewRequests
+            // Only of commits that are still tips: a push moves a branch on.
+            let commits = Set(reading.tips.map(\.commit))
+            reading.review.failedChecks = heard.failedChecks.filter { commits.contains($0.commit) }
+        }
+        reviews[id] = reading.review
+        remotes[id] = reading.remotes
+        tips[id] = reading.tips
+        missing.remove(id)
+        if let board {
+            board.record(reading.status)
+            FinderStatusPublisher.publish(
+                id: id, name: name, root: url, branch: reading.status.branch, entries: reading.review.entries
+            )
+        }
+    }
+
+    /// A repository that could not be read: nothing is known of it.
+    private func forget(_ id: UUID, isMissing: Bool) {
+        reviews[id] = nil
+        remotes[id] = nil
+        tips[id] = nil
+        if isMissing { missing.insert(id) } else { missing.remove(id) }
     }
 
     /// Takes how many times the accounts have changed, so that a service
@@ -295,6 +373,25 @@ final class ReviewModel {
         reviews[id] = review
     }
 
+    /// Asks a repository's hosting services how the checks of its active
+    /// branches' tips stand, and shows the ones that failed.
+    private func lookUpChecks(for id: UUID, asksAgain: Bool) async {
+        guard let remotes = remotes[id], let tips = tips[id], !remotes.isEmpty, !tips.isEmpty else {
+            show([], for: id)
+            return
+        }
+        let failed = await checks.failedChecks(for: remotes, tips: tips, asksAgain: asksAgain)
+        // Not shown where the repository's remotes or branches changed while it was asked.
+        guard !Task.isCancelled, self.remotes[id] == remotes, self.tips[id] == tips else { return }
+        show(failed, for: id)
+    }
+
+    private func show(_ failed: [FailedCheck], for id: UUID) {
+        guard var review = reviews[id], review.failedChecks != failed else { return }
+        review.failedChecks = failed
+        reviews[id] = review
+    }
+
     /// Pushes the checked-out branch, as the Push intent does, then reads
     /// the repository again.
     func push(_ bookmark: RepositoryBookmark, in library: RepositoryLibrary) async {
@@ -318,11 +415,25 @@ final class ReviewModel {
         await load(bookmark, from: library)
     }
 
+    /// What one read of a repository's folder gives.
+    struct Reading: Sendable {
+        var review: RepositoryReview
+        /// Where each remote is: enough to ask its service.
+        var remotes: [Remote]
+        /// The active branches' tips, whose checks are asked about.
+        var tips: [BranchTip]
+        /// The same reading as the widgets and the menu bar show it.
+        var status: RepositoryStatusSummary
+    }
+
     /// What is read of a repository in its folder: nothing is asked of a
     /// remote, so what is to pull is as of the last fetch.
+    ///
+    /// - Parameter layout: Which of its branches the sidebar has archived
+    ///   by hand, which are then not among the active ones.
     nonisolated static func read(
-        at url: URL, id: UUID, name: String
-    ) async throws -> (review: RepositoryReview, remotes: [Remote]) {
+        at url: URL, id: UUID, name: String, layout: RepositoryInterfaceState.Stored = .init()
+    ) async throws -> Reading {
         let repository = try Repository(at: url)
         let snapshot = try await repository.snapshot()
         let entries = try await repository.status()
@@ -334,20 +445,31 @@ final class ReviewModel {
             commits = (try? await repository.nextCommits(from: cursor, limit: commitLimit)) ?? []
             await repository.closeHistory(cursor)
         }
-        let branch: String? = switch snapshot.head {
+        var branch: String?
+        var detachedAt: String?
+        switch snapshot.head {
         case .branch(let name, _), .unborn(let name):
-            name.hasPrefix("refs/heads/") ? String(name.dropFirst("refs/heads/".count)) : name
-        case .detached: nil
+            branch = name.hasPrefix("refs/heads/") ? String(name.dropFirst("refs/heads/".count)) : name
+        case .detached(let commit):
+            detachedAt = commit.abbreviated()
         }
         let review = RepositoryReview(
             id: id, name: name, branch: branch, upstream: head?.upstream?.name,
             hasRemote: !snapshot.remotes.isEmpty, entries: entries, commits: commits,
             ahead: head?.upstream?.ahead ?? 0, behind: head?.upstream?.behind ?? 0,
             lastModified: lastModified(of: entries, in: url),
-            otherBranches: BranchToPull.others(in: snapshot)
+            otherBranches: BranchToPull.others(in: snapshot), detachedAt: detachedAt
         )
         // Only where each remote is: its branches are not needed to ask its service.
-        return (review, snapshot.remotes.map { Remote(name: $0.name, url: $0.url, branches: []) })
+        let remotes = snapshot.remotes.map { Remote(name: $0.name, url: $0.url, branches: []) }
+        // Tips are only worth working out where there is a service to ask.
+        var tips: [BranchTip] = []
+        if !HostingTarget.targets(for: remotes).isEmpty {
+            let dates = await repository.commitDates(of: BranchTip.commitsToDate(in: snapshot))
+            tips = BranchTip.active(in: snapshot, layout: layout, dates: dates)
+        }
+        let status = RepositoryStatusSummary(snapshot: snapshot, hasUncommittedChanges: !entries.isEmpty, id: id, name: name)
+        return Reading(review: review, remotes: remotes, tips: tips, status: status)
     }
 
     /// The newest of the changed files' modification dates, for the first

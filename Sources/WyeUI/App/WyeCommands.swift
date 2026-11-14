@@ -39,7 +39,8 @@ final class ViewRequests {
 /// | ⌃⌘N | New Repository… |
 /// | ⌘[, ⌘] | Back, Forward |
 /// | ⇧⌘O | Quick Open… |
-/// | ⌥⇧⌘P, ⇧⌘R | Pull All Repositories, Review |
+/// | ⌥⇧⌘P | Pull All Repositories |
+/// | ⇧⌘R | Close Repository: back to the list of repositories and what wants looking at in each |
 /// | ⌘F | Find in the diff or file that has focus, otherwise Find in History |
 /// | ⌘G, ⇧⌘G | Find Next, Find Previous |
 /// | ⌘Z, ⇧⌘Z | Undo, Redo (the text's while a field has focus) |
@@ -91,15 +92,13 @@ struct WyeCommands: Commands {
                 Button("Pull All Repositories") { window?.isPullingAll = true }
                     .keyboardShortcut("p", modifiers: [.command, .option, .shift])
                     .disabled(window == nil || library.listedBookmarks.isEmpty)
-                Button("Review Uncommitted and Unpushed") {
-                    window?.close()
-                    window?.isReviewing = true
-                }
-                .keyboardShortcut("r", modifiers: [.command, .shift])
-                .disabled(window == nil)
             }
             Section {
+                // Back to the list of repositories, which says what is not
+                // committed or pushed in each: the shortcut that showed
+                // that when it was a list of its own.
                 Button("Close Repository") { window?.close() }
+                    .keyboardShortcut("r", modifiers: [.command, .shift])
                     .disabled(model == nil)
             }
         }

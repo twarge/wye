@@ -44,7 +44,25 @@ final class RepositoryInterfaceState {
 
     /// The state kept for a repository in the app's own folder.
     convenience init(repositoryID: UUID) {
-        self.init(storage: .applicationSupportDirectory.appending(path: "Wye/Interface/\(repositoryID.uuidString).json"))
+        self.init(storage: Self.storage(of: repositoryID))
+    }
+
+    /// Where a repository's state is kept in the app's own folder.
+    nonisolated static func storage(of repositoryID: UUID) -> URL {
+        .applicationSupportDirectory.appending(path: "Wye/Interface/\(repositoryID.uuidString).json")
+    }
+
+    /// A repository's layout as last saved, read without opening it: for
+    /// the list of repositories, which reads them off the main thread to
+    /// know which branches are archived. Empty for one never laid out.
+    nonisolated static func storedLayout(of repositoryID: UUID) -> Stored {
+        read(from: storage(of: repositoryID)) ?? Stored()
+    }
+
+    private nonisolated static func read(from storage: URL) -> Stored? {
+        guard let data = try? Data(contentsOf: storage),
+              let decoded = try? JSONDecoder().decode(Stored.self, from: data), decoded.version == 1 else { return nil }
+        return decoded
     }
 
     func isPinned(_ branch: String) -> Bool { stored.pinned.contains(branch) }
@@ -163,8 +181,7 @@ final class RepositoryInterfaceState {
     }
 
     private func load() {
-        guard let storage, let data = try? Data(contentsOf: storage),
-              let decoded = try? JSONDecoder().decode(Stored.self, from: data), decoded.version == 1 else { return }
+        guard let storage, let decoded = Self.read(from: storage) else { return }
         stored = decoded
     }
 

@@ -1,8 +1,8 @@
 import SwiftUI
-import TipKit
 import UniformTypeIdentifiers
 
-/// The list of repositories, shown when a window has none open.
+/// The list of repositories, shown when a window has none open: each with
+/// what wants looking at in it, so there is no second list to turn to.
 struct RepositoryLibraryView: View {
     @Environment(RepositoryLibrary.self) private var library
     @Environment(WindowActions.self) private var actions
@@ -17,15 +17,9 @@ struct RepositoryLibraryView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if actions.isReviewing {
-                    ReviewView(query: query, open: open)
-                } else {
-                    RepositoryList(query: query, order: order, open: open) { naming in
-                        groupName = if case .rename(let group) = naming { group.name } else { "" }
-                        self.naming = naming
-                    }
-                }
+            RepositoryList(query: query, order: order, open: open) { naming in
+                groupName = if case .rename(let group) = naming { group.name } else { "" }
+                self.naming = naming
             }
             .overlay {
                 if library.listedBookmarks.isEmpty, library.folders.isEmpty {
@@ -76,28 +70,11 @@ struct RepositoryLibraryView: View {
                     }
                 }
             }
-            #if !os(macOS)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                modePicker
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-            }
-            // The picker says which of the two is showing, so the bar
-            // keeps a small title rather than a large one above it.
-            .toolbarTitleDisplayMode(.inline)
-            #endif
             // Inside the stack, so the strip sits under its bar, not over it.
             .noticeStrip(actions.notices)
-            .searchable(text: $query, prompt: actions.isReviewing ? "Repository, branch, file, commit or pull request" : "Name, folder or branch")
-            .navigationTitle(navigationTitle)
+            .searchable(text: $query, prompt: "Repository, branch, file, commit or pull request")
+            .navigationTitle("Repositories")
             .toolbar {
-                // In the middle of the Mac's toolbar. An iPhone's has no
-                // room beside its buttons, so there it goes under the title.
-                #if os(macOS)
-                ToolbarItem(placement: .principal) {
-                    modePicker.fixedSize()
-                }
-                #endif
                 ToolbarItem(placement: .primaryAction) {
                     Button("Pull All", systemImage: "arrow.down.to.line") { actions.isPullingAll = true }
                         .help("Pull every repository and report what did not work")
@@ -175,32 +152,6 @@ struct RepositoryLibraryView: View {
             Button("Cancel", role: .cancel) {}
             Button(naming.map(confirmTitle) ?? "OK") { saveGroup() }
                 .disabled(trimmedGroupName.isEmpty)
-        }
-    }
-
-    /// The window's title on the Mac. On iOS the picker under the bar
-    /// says which of the two is showing, and the bar, short of room beside
-    /// its buttons, names the app.
-    private var navigationTitle: String {
-        #if os(macOS)
-        actions.isReviewing ? "Review" : "Repositories"
-        #else
-        "Wye"
-        #endif
-    }
-
-    /// Chooses between the list of repositories and the Review.
-    private var modePicker: some View {
-        @Bindable var actions = actions
-        return Picker("Show", selection: $actions.isReviewing) {
-            Text("Repositories").tag(false)
-            Text("Review").tag(true)
-        }
-        .pickerStyle(.segmented)
-        .help("Review everything not committed or pushed, in every repository")
-        .popoverTip(library.listedBookmarks.count > 1 ? ReviewTip() : nil)
-        .onChange(of: actions.isReviewing) {
-            if actions.isReviewing { Task { await ReviewTip.reviewed.donate() } }
         }
     }
 

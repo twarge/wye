@@ -2,10 +2,12 @@ import GitKit
 import SwiftUI
 import WyeShared
 
-/// The repositories in their groups, filtered by a search and sorted.
-/// Rows drag onto a group's header or onto another row to move into that
-/// group; folders dragged in from outside are added, into the group they
-/// are dropped on.
+/// The repositories in their groups, filtered by a search and sorted, each
+/// with what wants looking at in it: its row says what is not committed or
+/// pushed, what there is to pull, which checks failed and what waits for
+/// review, and folds the particulars away beneath it. Rows drag onto a
+/// group's header or onto another row to move into that group; folders
+/// dragged in from outside are added, into the group they are dropped on.
 struct RepositoryList: View {
     var query: String
     var order: RepositoryListOrder
@@ -16,16 +18,39 @@ struct RepositoryList: View {
     @Environment(RepositoryLibrary.self) private var library
     @Environment(WindowActions.self) private var actions
     @Environment(\.scenePhase) private var scenePhase
-    @State private var heads = RepositoryHeads()
+    @State private var model: ReviewModel
     /// The watched folders folded shut, as their identifiers in one string.
     @AppStorage("repositoryList.collapsedFolders") private var collapsedFolders = ""
+    private var captions: ReviewCaptions { .shared }
+    private var expansion: ReviewExpansion { .shared }
+    private var accountChanges: AccountChangeCounter { .shared }
+
+    /// - Parameter model: What reads the repositories and asks their
+    ///   services; a test gives one whose services are recorded answers.
+    init(
+        query: String, order: RepositoryListOrder, open: @escaping (RepositoryBookmark) -> Void,
+        nameGroup: @escaping (GroupNaming) -> Void, model: ReviewModel = ReviewModel(board: .shared)
+    ) {
+        self.query = query
+        self.order = order
+        self.open = open
+        self.nameGroup = nameGroup
+        _model = State(initialValue: model)
+    }
 
     var body: some View {
         let sections = self.sections
         let folders = self.folderEntries
+        // Read here so the rows fold and open as it changes.
+        let _ = expansion.expanded
         List {
             if query.isEmpty {
                 FilesLocationOffer()
+                if let totals {
+                    Section {
+                        ReviewTotalsRow(totals: totals)
+                    }
+                }
             }
             ForEach(sections) { section in
                 if section.group == nil, !folders.isEmpty {
@@ -73,17 +98,42 @@ struct RepositoryList: View {
                 ContentUnavailableView.search(text: query)
             }
         }
-        .task(id: StatusKey(ids: library.listedBookmarks.map(\.id), isActive: scenePhase == .active)) {
+        // The services are asked again too, whatever they said lately.
+        .refreshable { await model.load(library.listedBookmarks, from: library, asksAgain: true) }
+        .task(id: StatusKey(
+            ids: library.listedBookmarks.map(\.id), isActive: scenePhase == .active, accounts: accountChanges.count
+        )) {
             guard scenePhase == .active else { return }
-            await heads.load(library.listedBookmarks, from: library)
+            model.accountsChanged(to: accountChanges.count)
+            await model.load(library.listedBookmarks, from: library)
+        }
+        .onChange(of: model.notice) {
+            // Said in the window's strip, with everything else.
+            guard let notice = model.notice else { return }
+            actions.notices.post(notice)
+            model.notice = nil
+        }
+        .onChange(of: library.listedBookmarks.map(\.id), initial: true) { _, ids in
+            captions.retain(Set(ids))
         }
     }
 
-    /// What the branch and folder status depend on: which repositories are
-    /// listed, read again when the app comes back to the front.
+    /// What every repository's reading depends on: which repositories are
+    /// listed, read again when the app comes back to the front or an
+    /// account is added or removed.
     private struct StatusKey: Hashable {
         var ids: [UUID]
         var isActive: Bool
+        var accounts: Int
+    }
+
+    /// What the list totals at its top: what wants looking at, or, once
+    /// every repository has been read, that nothing does. Nothing while
+    /// that is not known yet, or with no repository to say it of.
+    private var totals: ReviewTotals? {
+        let totals = ReviewTotals(Array(model.reviews.values))
+        if totals.repositories > 0 { return totals }
+        return model.hasLoaded && !library.listedBookmarks.isEmpty ? totals : nil
     }
 
     private struct ListSection: Identifiable {
@@ -157,25 +207,57 @@ struct RepositoryList: View {
         }
     }
 
+    /// Whether the search names the repository, its folder, its branch, or
+    /// something its row folds away: a changed file, a commit, a pull request.
     private func matches(_ bookmark: RepositoryBookmark) -> Bool {
         let query = query.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return true }
         return bookmark.name.localizedStandardContains(query)
             || library.path(of: bookmark)?.localizedStandardContains(query) == true
-            || heads.statuses[bookmark.id]?.branch?.localizedStandardContains(query) == true
+            || model.reviews[bookmark.id]?.matches(query) == true
     }
 
+    /// A repository's row, over what it folds away when there is anything
+    /// to look at.
+    @ViewBuilder
     private func row(_ bookmark: RepositoryBookmark) -> some View {
-        Button {
-            open(bookmark)
-        } label: {
-            RepositoryRow(
-                name: bookmark.name, path: library.path(of: bookmark), status: heads.statuses[bookmark.id],
-                summary: RepositoryStatusBoard.shared.summaries[bookmark.id]
-            )
+        let review = model.reviews[bookmark.id]
+        if let review, review.needsAttention {
+            DisclosureGroup(isExpanded: isExpanded(review)) {
+                ReviewWork(review: review) { open(bookmark) }
+            } label: {
+                label(bookmark, review: review)
+            }
+        } else {
+            label(bookmark, review: review)
         }
-        .buttonStyle(.plain)
-        .pointerHover()
+    }
+
+    /// Folded shut unless opened, or a search found something inside.
+    private func isExpanded(_ review: RepositoryReview) -> Binding<Bool> {
+        Binding {
+            review.hasFoldedMatch(for: query) || expansion.expanded.contains(review.id)
+        } set: { isExpanded in
+            if isExpanded {
+                expansion.expanded.insert(review.id)
+            } else {
+                expansion.expanded.remove(review.id)
+            }
+        }
+    }
+
+    private func label(_ bookmark: RepositoryBookmark, review: RepositoryReview?) -> some View {
+        RepositoryRow(
+            name: bookmark.name, path: library.path(of: bookmark), review: review,
+            isMissing: model.missing.contains(bookmark.id), caption: captions.caption(for: bookmark.id),
+            isPushing: model.pushing.contains(bookmark.id),
+            open: { open(bookmark) }, push: { Task { await model.push(bookmark, in: library) } }
+        )
+        // Only for rows the list shows, and again when the changes change.
+        // One with no work left drops the caption it had.
+        .task(id: review) {
+            if let review { await captions.describe(review, in: library) }
+        }
         .draggable(RepositoryDragReference.url(for: bookmark.id)) {
             Label(bookmark.name, systemImage: "folder")
                 .padding(6)
@@ -329,134 +411,140 @@ private struct WatchedFolderRow: View {
     }
 }
 
+/// An icon close before its title, within a line of text. A list's own
+/// label keeps a column for its icon, which on an iPhone leaves a branch's
+/// name little room beside the repository's and the push button.
+private struct InlineLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            configuration.icon
+            configuration.title
+        }
+    }
+}
+
+/// A repository: its name and where `HEAD` is, its folder, and, when there
+/// is something to look at, what that comes to and what the on-device model
+/// says its work is about. The row opens the repository; the button at the
+/// end of its first line pushes.
 private struct RepositoryRow: View {
     var name: String
     var path: String?
-    var status: RepositoryHeads.Status?
-    var summary: RepositoryStatusSummary?
+    /// What was read of it; `nil` until it is read, and when it cannot be.
+    var review: RepositoryReview?
+    /// Whether its folder is gone.
+    var isMissing: Bool
+    var caption: String?
+    var isPushing: Bool
+    var open: () -> Void
+    var push: () -> Void
 
     var body: some View {
-        Label {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+        Button(action: open) {
+            Label {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(name)
-                        .font(.headline)
-                    Text(isMissing ? "Folder not found" : path ?? "")
+                    HStack(spacing: 8) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(name)
+                                .font(.headline)
+                            if !isGone { head }
+                        }
+                        Spacer(minLength: 0)
+                        if let review, !isGone {
+                            marks(review)
+                            // Room on the first line for the button laid
+                            // over the row: one button cannot hold another,
+                            // and beside the row it would narrow every line.
+                            pushControl(review).hidden()
+                        }
+                    }
+                    Text(isGone ? "Folder not found" : path ?? "")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                    if let review, review.needsAttention, !isGone {
+                        Text(review.summary)
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    if let caption, !isGone {
+                        Label(caption, systemImage: "sparkles")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .help("Written on this device by Apple Intelligence")
+                            .transition(.opacity)
+                    }
                 }
-                Spacer(minLength: 8)
-                if let summary, !isMissing, summary.ahead > 0 || summary.behind > 0 {
-                    AheadBehindBadge(ahead: summary.ahead, behind: summary.behind)
-                }
-                if let branch = status?.branch {
-                    Label(branch, systemImage: status?.isDetached == true ? "smallcircle.filled.circle" : "arrow.triangle.branch")
-                        .font(.callout.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .help(status?.isDetached == true ? "Detached HEAD" : "Current branch")
-                }
+                .animation(.default, value: caption)
+            } icon: {
+                Image(systemName: isGone ? "questionmark.folder" : "folder")
+                    .foregroundStyle(isGone ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
             }
-        } icon: {
-            Image(systemName: isMissing ? "questionmark.folder" : "folder")
-                .foregroundStyle(isMissing ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .pointerHover()
+        .overlay(alignment: .topTrailing) {
+            if let review, !isGone { pushControl(review) }
         }
         .padding(.vertical, 4)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(.rect)
     }
 
-    private var isMissing: Bool {
-        path == nil || status == .missing
-    }
-}
-
-/// Commits to push and to pull, as the toolbar's buttons count them.
-private struct AheadBehindBadge: View {
-    var ahead: Int
-    var behind: Int
-
-    var body: some View {
-        HStack(spacing: 6) {
-            if behind > 0 {
-                Label("\(behind)", systemImage: "arrow.down")
+    /// Pushes the checked-out branch's commits, or publishes the branch;
+    /// a spinner while it does. Nothing where there is nothing to push.
+    @ViewBuilder
+    private func pushControl(_ review: RepositoryReview) -> some View {
+        if isPushing {
+            ProgressView().controlSize(.small)
+        } else if review.ahead > 0 || review.isUnpublished {
+            Button(action: push) {
+                Label(review.isUnpublished ? "Publish" : "Push \(review.ahead)", systemImage: "arrow.up")
             }
-            if ahead > 0 {
-                Label("\(ahead)", systemImage: "arrow.up")
-            }
-        }
-        .labelStyle(.titleAndIcon)
-        .font(.callout.monospacedDigit())
-        .foregroundStyle(.secondary)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("^[\(behind) commit](inflect: true) to pull, ^[\(ahead) commit](inflect: true) to push")
-        .help("Commits to pull and to push, as of the last fetch")
-    }
-}
-
-/// Each listed repository's current branch, or that its folder is gone.
-@MainActor
-@Observable
-final class RepositoryHeads {
-    enum Status: Equatable, Sendable {
-        case branch(String)
-        case detached(String)
-        case missing
-
-        var branch: String? {
-            switch self {
-            case .branch(let name), .detached(let name): name
-            case .missing: nil
-            }
-        }
-
-        var isDetached: Bool {
-            if case .detached = self { true } else { false }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help(review.isUnpublished ? "Publish this branch to its remote" : "Push these commits to \(review.upstream ?? "the remote")")
         }
     }
 
-    private(set) var statuses: [UUID: Status] = [:]
+    private var isGone: Bool {
+        path == nil || isMissing
+    }
 
-    /// Reads each repository's `HEAD`, and how it stands against its
-    /// upstream, one at a time, off the main thread. What it learns goes on
-    /// the status board too, for the rows' counts and the widgets.
-    func load(_ bookmarks: [RepositoryBookmark], from library: RepositoryLibrary) async {
-        RepositoryStatusBoard.shared.retain(Set(library.listedBookmarks.map(\.id)))
-        for bookmark in bookmarks {
-            guard !Task.isCancelled else { return }
-            let status: Status
-            do {
-                let access = try library.access(to: bookmark)
-                let read = await Self.status(at: access.url, id: bookmark.id, name: bookmark.name)
-                // Held until the read is done: the folder is only open while it is.
-                withExtendedLifetime(access) {}
-                status = read.status
-                if let summary = read.summary {
-                    RepositoryStatusBoard.shared.record(summary)
-                }
-            } catch {
-                status = .missing
-            }
-            statuses[bookmark.id] = status
+    /// Where `HEAD` is: the checked-out branch, or the commit it is detached at.
+    @ViewBuilder
+    private var head: some View {
+        if let name = review?.branch ?? review?.detachedAt {
+            let isDetached = review?.branch == nil
+            Label(name, systemImage: isDetached ? "smallcircle.filled.circle" : "arrow.triangle.branch")
+                .labelStyle(InlineLabelStyle())
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .help(isDetached ? "Detached HEAD" : "Current branch")
         }
     }
 
-    private nonisolated static func status(
-        at url: URL, id: UUID, name: String
-    ) async -> (status: Status, summary: RepositoryStatusSummary?) {
-        await Task.detached(priority: .utility) { () -> (Status, RepositoryStatusSummary?) in
-            guard Repository.exists(at: url), let repository = try? Repository(at: url),
-                  let head = try? await repository.head() else { return (.missing, nil) }
-            let status: Status = switch head {
-            case .branch(let name, _), .unborn(let name):
-                .branch(name.hasPrefix("refs/heads/") ? String(name.dropFirst("refs/heads/".count)) : name)
-            case .detached(let id): .detached(id.abbreviated())
-            }
-            let summary = try? await RepositoryStatusSummary.read(from: repository, id: id, name: name)
-            return (status, summary)
-        }.value
+    /// What stands out at the row's end: that checks failed, and how many
+    /// commits there are to pull. The commits to push are on the button.
+    @ViewBuilder
+    private func marks(_ review: RepositoryReview) -> some View {
+        if let first = review.failedChecks.first {
+            let branches = review.failedChecks.count == 1 ? "“\(first.branch)”" : "\(review.failedChecks.count) branches"
+            Image(systemName: CheckStatus.failure.symbol)
+                .foregroundStyle(CheckStatus.failure.color)
+                .accessibilityLabel("Checks failed on \(branches)")
+                .help("Checks failed on \(branches)")
+        }
+        if review.behind > 0 {
+            Label("\(review.behind)", systemImage: "arrow.down")
+                .font(.callout.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("^[\(review.behind) commit](inflect: true) to pull")
+                .help("Commits to pull, as of the last fetch")
+        }
     }
 }

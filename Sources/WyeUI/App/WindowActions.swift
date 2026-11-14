@@ -15,9 +15,6 @@ final class WindowActions {
     var isShowingActivity = false
     /// Pull All's sheet, which starts pulling as it appears.
     var isPullingAll = false
-    /// Whether the repository list shows the Review instead: everything
-    /// not committed or pushed, in every repository.
-    var isReviewing = false
     /// The address the clone sheet starts with, from a `wye://clone` link.
     var cloneAddress = ""
     /// Quick open on screen, and what it is choosing for.

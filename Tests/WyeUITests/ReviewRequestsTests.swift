@@ -445,7 +445,11 @@ private final class CountingOfflineTransport: HTTPTransport {
         stub.on("POST", "/graphql", json: ReviewRequestsTests.searchJSON(nodes: GitHubServiceTests.graphPullRequest))
         let clock = TestClock()
         let requests = ReviewRequests(accounts: accounts, transport: stub, now: { clock.now })
-        let model = ReviewModel(requests: requests)
+        // The checks of its branches are another test's: here no account reads them.
+        let noAccounts = AccountStore(secrets: MemorySecretStore(), preferences: MemoryAccountPreferences())
+        let model = ReviewModel(
+            requests: requests, checks: ReviewChecks(accounts: noAccounts, transport: stub, gate: requests.gate)
+        )
 
         // Nobody asks for a review: committed, pushed and level, it stays out.
         await model.load(library.listedBookmarks, from: library)
@@ -467,5 +471,95 @@ private final class CountingOfflineTransport: HTTPTransport {
         await model.load(library.listedBookmarks, from: library)
         #expect(model.needingAttention.first?.reviewRequests.count == 1)
         #expect(stub.requests.count == 2)
+    }
+
+    // MARK: Checks
+
+    @Test func readsTheUpstreamTipsOfActiveBranchesWhereAServiceCanBeAsked() async throws {
+        let scratch = try await Scratch()
+        defer { scratch.remove() }
+        // A remote on this disk has no service to ask.
+        #expect(try await ReviewModel.read(at: scratch.workURL, id: UUID(), name: "work").tips.isEmpty)
+        try await scratch.work.setURL("https://github.com/octo/project.git", ofRemote: "origin")
+        // A commit not pushed: the checks are those of what the remote has.
+        let pushed = try #require(try await scratch.work.head().target)
+        try await scratch.commit("Local", in: scratch.work, at: scratch.workURL)
+        var read = try await ReviewModel.read(at: scratch.workURL, id: UUID(), name: "work")
+        #expect(read.tips.map(\.branch) == [scratch.mainName, "topic"])
+        #expect(read.tips.map(\.upstream) == ["origin/" + scratch.mainName, "origin/topic"])
+        #expect(read.tips.map(\.commit) == [pushed, pushed])
+        #expect(read.status.ahead == 1)
+        #expect(read.status.branch == scratch.mainName)
+        #expect(!read.status.hasUncommittedChanges)
+        // A branch archived in the sidebar is not an active one.
+        var layout = RepositoryInterfaceState.Stored()
+        layout.archived = ["refs/heads/topic"]
+        read = try await ReviewModel.read(at: scratch.workURL, id: UUID(), name: "work", layout: layout)
+        #expect(read.tips.map(\.branch) == [scratch.mainName])
+    }
+
+    @Test func saysWhereADetachedHeadIs() async throws {
+        let scratch = try await Scratch()
+        defer { scratch.remove() }
+        let commit = try #require(try await scratch.work.head().target)
+        try await scratch.work.checkOut(commit: commit)
+        let review = try await ReviewModel.read(at: scratch.workURL, id: UUID(), name: "work").review
+        #expect(review.branch == nil)
+        #expect(review.detachedAt == commit.abbreviated())
+        #expect(review.matches(commit.abbreviated()))
+        #expect(!review.needsAttention)
+    }
+
+    @Test func showsARepositoryWhoseBranchFailedItsChecks() async throws {
+        let scratch = try await Scratch()
+        defer { scratch.remove() }
+        try await scratch.work.setURL("https://github.com/octo/project.git", ofRemote: "origin")
+        let tip = try #require(try await scratch.work.head().target)
+        let library = RepositoryLibrary(
+            storage: scratch.folder.appending(path: "Repositories.json"),
+            documents: scratch.folder.appending(path: "Documents"), filesStorage: nil
+        )
+        let bookmark = try #require(library.listedBookmarks.first)
+        let accounts = AccountStore(secrets: MemorySecretStore(), preferences: MemoryAccountPreferences())
+        try accounts.save(
+            HostingAccount(kind: .github, host: "github.com", login: "octo", signIn: .token), secret: HostingSecret(token: "tok")
+        )
+        // Pull requests and checks are both asked of GitHub's one address, so each has its own answers.
+        let pullRequests = StubTransport()
+        pullRequests.on("POST", "/graphql", json: ReviewRequestsTests.searchJSON(nodes: ""))
+        let checks = StubTransport()
+        checks.on("POST", "/graphql", json: #"{"data":{"repository":{"c0":{"statusCheckRollup":{"state":"FAILURE"}}}}}"#)
+        let requests = ReviewRequests(accounts: accounts, transport: pullRequests)
+        let model = ReviewModel(
+            requests: requests, checks: ReviewChecks(accounts: accounts, transport: checks, gate: requests.gate)
+        )
+
+        #expect(!model.hasLoaded)
+        await model.load(library.listedBookmarks, from: library)
+        #expect(model.hasLoaded)
+        #expect(model.missing.isEmpty)
+        let review = try #require(model.reviews[bookmark.id])
+        // Both branches are at the one commit, which is asked about once.
+        let query = try #require(checks.last("POST", "/graphql")?.jsonBody?["query"] as? String)
+        #expect(query.contains(#"c0: object(oid: "\#(tip.hex)")"#))
+        #expect(!query.contains("c1:"))
+        #expect(review.failedChecks.map(\.branch) == [scratch.mainName, "topic"])
+        #expect(review.failedChecks.first?.commit == tip)
+        #expect(review.failedChecks.first?.webURL?.absoluteString == "https://github.com/octo/project/commit/\(tip.hex)/checks")
+        #expect(!review.hasWork)
+        #expect(review.needsAttention)
+        #expect(review.summary == "checks failed on 2 branches")
+        #expect(ReviewTotals(Array(model.reviews.values)).sentence == "2 branches with failed checks in 1 repository")
+
+        // Read again, it is shown from the start with what was last heard, and nobody is asked.
+        await model.load(library.listedBookmarks, from: library)
+        #expect(model.reviews[bookmark.id]?.failedChecks.count == 2)
+        #expect(checks.requests.count == 1)
+
+        // Its folder gone, it is missing and nothing is known of it.
+        try FileManager.default.removeItem(at: scratch.workURL.appending(path: ".git"))
+        await model.load([bookmark], from: library)
+        #expect(model.missing == [bookmark.id])
+        #expect(model.reviews[bookmark.id] == nil)
     }
 }

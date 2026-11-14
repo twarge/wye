@@ -877,6 +877,10 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
+    "Checks failed on %@" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
     "Checks out a branch of a repository in Wye. A branch that is only on a remote is checked out as a local branch that tracks it." : {
       "extractionState" : "manual",
       "generatesSymbol" : false
@@ -1073,7 +1077,7 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
-    "Commits to pull and to push, as of the last fetch" : {
+    "Commits to pull, as of the last fetch" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
@@ -1486,10 +1490,6 @@
       "generatesSymbol" : false
     },
     "Everything Is Pushed and Up to Date" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
-    "Everything in every repository is committed, pushed and up to date, and no pull request waits for your review." : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
@@ -2153,10 +2153,6 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
-    "Name, folder or branch" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
     "Needs Attention" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
@@ -2465,10 +2461,6 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
-    "Nothing to Review" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
     "Nothing: these lines are removed" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
@@ -2553,6 +2545,10 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
+    "Open Checks in Browser" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
     "Open Recent" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
@@ -2614,10 +2610,6 @@
       "generatesSymbol" : false
     },
     "Open this commit’s checks on %@" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
-    "Open this repository" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
@@ -2954,10 +2946,6 @@
       "generatesSymbol" : false
     },
     "Read the checks again" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
-    "Reading repositories…" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
@@ -3302,26 +3290,6 @@
       "generatesSymbol" : false
     },
     "Revert %lld Commits" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
-    "Review" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
-    "Review Everything at Once" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
-    "Review Uncommitted and Unpushed" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
-    "Review everything not committed or pushed, in every repository" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
-    "Review lists what is not committed or pushed in every repository, so nothing is left only on this device." : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
@@ -3973,6 +3941,10 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
+    "The newest commit pushed to %@ failed its checks" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
     "The note’s text is lost. The commit itself does not change." : {
       "extractionState" : "manual",
       "generatesSymbol" : false
@@ -4360,18 +4332,6 @@
     "^[%lld commit](inflect: true) to pull" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
-    },
-    "^[%lld commit](inflect: true) to pull, ^[%lld commit](inflect: true) to push" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false,
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "^[%1$lld commit](inflect: true) to pull, ^[%2$lld commit](inflect: true) to push"
-          }
-        }
-      }
     },
     "^[%lld entry](inflect: true)" : {
       "extractionState" : "manual",

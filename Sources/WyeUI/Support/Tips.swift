@@ -31,22 +31,6 @@ struct DragCommitTip: Tip {
     var options: [any TipOption] { [Tips.MaxDisplayCount(3)] }
 }
 
-/// On the repository list's picker: there is a Review.
-struct ReviewTip: Tip {
-    static let reviewed = Tips.Event(id: "library.reviewed")
-
-    var title: Text { Text("Review Everything at Once") }
-    var message: Text? {
-        Text("Review lists what is not committed or pushed in every repository, so nothing is left only on this device.")
-    }
-    var image: Image? { Image(systemName: "tray.full") }
-
-    var rules: [Rule] {
-        #Rule(Self.reviewed) { $0.donations.count == 0 }
-    }
-    var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }
-}
-
 /// On a diff in the working copy: single lines can be staged.
 struct StageLinesTip: Tip {
     static let selected = Tips.Event(id: "diff.lineSelected")

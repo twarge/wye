@@ -83,18 +83,17 @@ final class ReviewRequests {
     private var kept: [String: Kept] = [:]
     /// The requests under way, by source: a second asker waits for the first.
     private var asking: [String: Task<Void, Never>] = [:]
-    /// Until when a source, by its id, or everything an account asks, by
-    /// the account's id, is left alone after a failure.
-    private var heldOff: [String: Date] = [:]
-    /// How many more requests may start now, and the ones waiting to.
-    private var free: Int
-    private var waiting: [CheckedContinuation<Void, Never>] = []
-    /// See `accountsChanged(to:)`.
-    private var accountChangesSeen: Int?
 
     private let accounts: AccountStore
     private let transport: any HTTPTransport
     private let now: @Sendable () -> Date
+    /// Lets a few requests through at a time and leaves a service that
+    /// failed alone for a while. `checks` asks through it too.
+    let gate: ReviewServiceGate
+    /// Who asks the same services how the checks of branch tips stand: as
+    /// the same accounts and through the same gate, so both keep to one
+    /// limit, and an account refused for one is not tried for the other.
+    private(set) lazy var checks = ReviewChecks(accounts: accounts, transport: transport, gate: gate, now: now)
 
     /// How long an answer stands before its service is asked again, in seconds.
     nonisolated static let lifetime: TimeInterval = 10 * 60
@@ -114,7 +113,7 @@ final class ReviewRequests {
         self.accounts = accounts
         self.transport = transport
         self.now = now
-        free = max(1, concurrentRequests)
+        gate = ReviewServiceGate(concurrentRequests: concurrentRequests, now: now)
     }
 
     // MARK: Asking
@@ -177,25 +176,25 @@ final class ReviewRequests {
             return
         }
         let task = Task {
-            await enter()
+            await gate.enter()
             // An earlier request may have found the account refused while this one waited.
-            if !isHeldOff(source) {
+            if !gate.isHeldOff(source.id, account: source.accountID) {
                 do {
                     kept[source.id] = Kept(answer: try await Self.ask(source), heardAt: now())
                 } catch is CancellationError {
                 } catch {
-                    holdOff(source, after: error)
+                    gate.holdOff(source.id, account: source.accountID, after: error)
                 }
             }
             asking[source.id] = nil
-            leave()
+            gate.leave()
         }
         asking[source.id] = task
         await task.value
     }
 
     private func isDue(_ source: ReviewRequestSource, asksAgain: Bool) -> Bool {
-        guard !isHeldOff(source) else { return false }
+        guard !gate.isHeldOff(source.id, account: source.accountID) else { return false }
         guard let kept = kept[source.id] else { return true }
         return now().timeIntervalSince(kept.heardAt) >= (asksAgain ? Self.lifetimeWhenAskedAgain : Self.lifetime)
     }
@@ -218,62 +217,11 @@ final class ReviewRequests {
         return answer
     }
 
-    // MARK: A few at a time
-
-    /// Waits for one of the few requests allowed at once.
-    private func enter() async {
-        if free > 0 {
-            free -= 1
-            return
-        }
-        await withCheckedContinuation { waiting.append($0) }
-    }
-
-    /// Lets the next request waiting start.
-    private func leave() {
-        if waiting.isEmpty {
-            free += 1
-        } else {
-            waiting.removeFirst().resume()
-        }
-    }
-
-    // MARK: Failures
-
-    private func isHeldOff(_ source: ReviewRequestSource) -> Bool {
-        let date = now()
-        return [source.id, source.accountID.uuidString].contains { key in
-            heldOff[key].map { $0 > date } ?? false
-        }
-    }
-
-    /// Leaves a source alone for a while after it failed, and everything
-    /// its account asks where the failure is the account's or the
-    /// network's: the next repository would only fail the same way.
-    private func holdOff(_ source: ReviewRequestSource, after error: any Error) {
-        let date = now()
-        let account = source.accountID.uuidString
-        switch error as? HostingError {
-        case .offline:
-            heldOff[account] = date.addingTimeInterval(30)
-        case .rateLimited(_, let reset):
-            heldOff[account] = date.addingTimeInterval(max(60, reset.map { $0.timeIntervalSince(date) } ?? 5 * 60))
-        case .unauthorized, .noAccount:
-            heldOff[account] = date.addingTimeInterval(15 * 60)
-        case .forbidden, .notFound, .unsupported, .rejected:
-            // This repository's alone: the account may not see it, or its service has no such list.
-            heldOff[source.id] = date.addingTimeInterval(15 * 60)
-        default:
-            heldOff[source.id] = date.addingTimeInterval(2 * 60)
-        }
-    }
-
     /// Takes how many times the accounts have changed, as
     /// `AccountChangeCounter` counts them. When that is more than it was,
     /// the services that failed are asked again: an account was added, or
     /// signed in again, and may be let in now.
     func accountsChanged(to count: Int) {
-        if let seen = accountChangesSeen, seen != count { heldOff = [:] }
-        accountChangesSeen = count
+        gate.accountsChanged(to: count)
     }
 }
