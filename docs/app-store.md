@@ -57,23 +57,22 @@ The app carries four extensions, each with its own bundle ID under the app's:
 
 The app writes the repositories' status where the widget reads it, the
 share extension leaves an address for the app, and the repositories shown
-in the Files app live in the File Provider's storage, all through an app
-group:
+in the Files app live in the File Provider's storage, all through one app
+group, `group.com.twarge.app.wye`, named in
+`Sources/WyeShared/SharedContainer.swift` and in the entitlements:
 
-- iOS: `group.com.twarge.app.wye`, in `App/Wye-iOS.entitlements`,
+- iOS: `App/Wye-iOS.entitlements`,
   `Extensions/Widgets/Widgets-iOS.entitlements`,
   `Extensions/Share/Share.entitlements` and
   `Extensions/Files/Files.entitlements`. The Files extension also names it
   as `NSExtensionFileProviderDocumentGroup` in `Extensions/Files/Info.plist`:
   its storage is the group container's `File Provider Storage` folder.
-- macOS: `257KW9ZJFP.com.twarge.app.wye`, the team-prefixed form, in
-  `App/Wye.entitlements`, `Extensions/Widgets/Widgets-macOS.entitlements`
-  and `Extensions/Finder/Finder.entitlements`.
-  A sandboxed Mac app may use a group named after its team without a
-  provisioning profile, which is what keeps `make build` working with no
-  profile installed. (The `group.` form on the Mac needs a profile for every
-  build, local ones included.) Both names are in
-  `Sources/WyeShared/SharedContainer.swift`.
+- macOS: `App/Wye.entitlements`,
+  `Extensions/Widgets/Widgets-macOS.entitlements` and
+  `Extensions/Finder/Finder.entitlements`. The `group.` form on the Mac
+  needs a provisioning profile that names the group for every build, local
+  ones included. (The Mac had the team-prefixed
+  `257KW9ZJFP.com.twarge.app.wye` before, which needs none.)
 
 What the owner has to do once, in Certificates, Identifiers & Profiles:
 
@@ -83,13 +82,11 @@ What the owner has to do once, in Certificates, Identifiers & Profiles:
    `com.twarge.app.wye.share`, `com.twarge.app.wye.files` and
    `com.twarge.app.wye.finder` as explicit App IDs (platform iOS, macOS
    checked too for the widgets one; for the share and files ones iOS is
-   enough; the finder one is macOS only and needs no capability, since
-   the Mac's group needs no registration).
-3. On each of the four App IDs (`com.twarge.app.wye`, `.widgets`,
-   `.share`, `.files`), enable **App Groups** and choose
+   enough; the finder one is macOS only).
+3. On each of the five App IDs (`com.twarge.app.wye`, `.widgets`,
+   `.share`, `.files`, `.finder`), enable **App Groups** and choose
    `group.com.twarge.app.wye`. The files one needs no other capability:
    a File Provider extension is an ordinary app extension.
-   The Mac's team-prefixed group needs no registration.
 4. Nothing else changes: the extensions are embedded in the app, ship in
    the same archive and upload, and need no App Store Connect record of
    their own. Cloud signing (`-allowProvisioningUpdates` with the API key)
@@ -97,10 +94,14 @@ What the owner has to do once, in Certificates, Identifiers & Profiles:
    profile does not include the App Groups entitlement, the step above was
    missed for that identifier.
 
-Local builds need none of this: `make build` signs the Mac app and its
-widget with the development certificate and the team-prefixed group (the
-Files and share extensions are iOS only and are not in the Mac build), the
-Simulator needs no profile, and CI builds with `CODE_SIGNING_ALLOWED=NO`.
+A local Mac build is signed with the development certificate and, for the
+app, its widgets and the Finder extension, a Mac team provisioning profile
+that names the group (the Files and share extensions are iOS only and are
+not in the Mac build). Xcode's automatic signing makes those profiles when
+signed in to the team, registering the group for them
+(`REGISTER_APP_GROUPS` in the project), and `make build` uses them once
+they are there. The Simulator needs no profile, and CI builds with
+`CODE_SIGNING_ALLOWED=NO`.
 Building for a real iPhone or iPad from Xcode does need the identifiers
 above (Xcode's automatic signing can register them itself when signed in
 to the team).

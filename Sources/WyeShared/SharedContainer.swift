@@ -2,19 +2,11 @@ import Foundation
 
 /// The folder the app and its extensions share.
 public enum SharedContainer {
-    /// The app group on iOS. The Mac uses the team-prefixed form, which a
-    /// sandboxed Mac app may use without a provisioning profile, so local
-    /// builds work before the group is registered.
-    public static let iOSGroupIdentifier = "group.com.twarge.app.wye"
-    public static let macOSGroupIdentifier = "257KW9ZJFP.com.twarge.app.wye"
-
-    public static var groupIdentifier: String {
-        #if os(macOS)
-        macOSGroupIdentifier
-        #else
-        iOSGroupIdentifier
-        #endif
-    }
+    /// The app group, the same on iOS and the Mac, as the entitlements of
+    /// the app and of each extension name it. A build is signed for it
+    /// through its provisioning profile, on the Mac too: the team-prefixed
+    /// name the Mac had before needed none.
+    public static let groupIdentifier = "group.com.twarge.app.wye"
 
     /// Overrides the folder; tests point it at a temporary one.
     nonisolated(unsafe) public static var directoryOverride: URL?
