@@ -101,6 +101,9 @@ struct HistoryView: View {
             }
             #if os(macOS)
             // Edit ▸ Copy while the list has focus: the selected commits' hashes.
+            // Not on an iPad, though iOS 27 has `copyable` too: a tap there
+            // selects a commit without giving the list the keyboard, so
+            // Copy never reaches it.
             .copyable(copiedHashes)
             #endif
             .onChange(of: ScrollRequest(target: history.scrollTarget, isBuilt: isBuilt)) {

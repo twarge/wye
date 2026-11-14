@@ -3449,6 +3449,10 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
+    "Share…" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
     "Show" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
@@ -4090,6 +4094,10 @@
       "generatesSymbol" : false
     },
     "Topology" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
+    "Touch and hold a repository to open it in a new window" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },

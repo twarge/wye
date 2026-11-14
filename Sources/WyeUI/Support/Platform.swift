@@ -93,6 +93,8 @@ enum Platform {
 
     /// Whether a file can be shown in the system's file browser. macOS has
     /// the Finder; iOS has no public way to open the Files app at a file.
+    /// A document picker given the folder to start in is no substitute: for
+    /// a repository in Wye's own Files location it opens somewhere else.
     static var canRevealFiles: Bool {
         #if os(macOS)
         true
@@ -130,13 +132,20 @@ enum Platform {
     }
 
     /// Whether a file can be opened in the app the system picks for it.
-    /// iOS opens files from Quick Look's share button instead.
+    /// iOS has no such app for a file: its share sheet lists the apps that
+    /// open one (`sharesFilesToOpenThem`).
     static var canOpenFilesInOtherApps: Bool {
         #if os(macOS)
         true
         #else
         false
         #endif
+    }
+
+    /// Whether a file's menu has Share, which is how a file gets to another
+    /// app where there is no Open.
+    static var sharesFilesToOpenThem: Bool {
+        !canOpenFilesInOtherApps
     }
 
     @MainActor static func openWithDefaultApp(_ url: URL) {
@@ -408,6 +417,17 @@ extension Platform {
         #endif
     }
 
+    /// Whether a repository can open beside the one on screen instead of in
+    /// its place: in a new tab on the Mac, in a window of its own on an
+    /// iPad. An iPhone has the one window. `openAsTab` opens it either way.
+    @MainActor static var opensRepositoriesBeside: Bool {
+        #if os(macOS)
+        true
+        #else
+        UIApplication.shared.supportsMultipleScenes
+        #endif
+    }
+
     /// Whether the app has windows besides its repository windows, such as
     /// the activity log; iOS shows those as sheets.
     static var hasAuxiliaryWindows: Bool {
@@ -420,6 +440,7 @@ extension Platform {
 
     /// Opens a new window with `open` and attaches it to the front window as
     /// a tab. SwiftUI can open a window but has no way to say "as a tab".
+    /// Where there are no tabs the window stays one of its own.
     @MainActor
     static func openAsTab(_ open: () -> Void) {
         #if os(macOS)

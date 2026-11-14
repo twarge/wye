@@ -15,11 +15,11 @@ Each item is marked:
 
 | Feature | Status |
 | --- | --- |
-| Tabs: several repositories in one window, Show All Tabs, Move Tab to New Window | Done. Window tabs on macOS (⌘T), with the system's Show All Tabs and Move Tab to New Window. |
+| Tabs: several repositories in one window, Show All Tabs, Move Tab to New Window | Done. Window tabs on macOS (⌘T), with the system's Show All Tabs and Move Tab to New Window; quick open's ⌘↩ opens a repository in a new tab. An iPad has windows instead: a repository in quick open opens in one of its own from its menu, by touch and hold. |
 | Back / Forward through the views visited (⌘[ ⌘]) | Done. ⌘[ and ⌘], and toolbar buttons; up to 50 places per window. |
 | Open Recent menu | Done. File ▸ Open Recent, with Clear Menu. |
 | "Show HEAD Branch" (⌘0): jump to the checked-out branch's history | Done. View ▸ Show HEAD selects `HEAD`'s commit in the history. |
-| Reveal in Finder / Files for the repository and for a file | Done on macOS: a changed file from its menu, the repository from the Working Copy row's menu, a worktree from its menu. iOS has no public way to open Files at a file. |
+| Reveal in Finder / Files for the repository and for a file | Done on macOS: a changed file from its menu, the repository from the Working Copy row's menu, a worktree from its menu. iOS has no public way to open Files at a file; a document picker told to start in the folder was tried and opens somewhere else for a repository in Wye's own Files location. |
 | Open in Terminal | Not planned (sandbox) |
 | Quick actions: one palette that runs any command, not only navigation | Done. Quick open (⇧⌘O) jumps to repositories, branches and tags and runs commands. |
 | Activity window: a log of every operation with its output and errors | Done. Window ▸ Activity on macOS, a sheet on iOS; kept for the session. Network operations keep what the server said (a hook's refusal, a link). The library's Activity button counts failures not yet looked at. |
@@ -52,7 +52,7 @@ Each item is marked:
 | Apply a patch file to the working copy; save changes as a patch | Done. Patches apply to the working copy; all, staged or selected changes save as a patch. |
 | Ignore a file, a folder or an extension from its menu; edit the ignore list | Done. In `.gitignore` or `.git/info/exclude`, offering to stop tracking files the rule matches; an editor in the working copy's menu. |
 | Stop tracking a file; mark assume-unchanged | Done |
-| Move a file to the Trash, rename it, open it, Quick Look it | Done. Rename stages the move as `git mv` does. Open is macOS only; on iOS, Quick Look's share button opens files elsewhere. |
+| Move a file to the Trash, rename it, open it, Quick Look it | Done. Rename stages the move as `git mv` does. Open is macOS only; on iOS the file's menu has Share instead, whose sheet lists the apps that open it and Save to Files. |
 | Restore one file from another revision | Done. From a file's menu in commit detail, into the working tree. |
 | Commit subject length marker and reflow of the description | Partial. The marker (limits set in Settings); no reflow. |
 | Commit message templates and a history of past messages | Done. The repository's `commit.template` when it is inside the repository, templates kept in Settings, and the last 20 messages. |

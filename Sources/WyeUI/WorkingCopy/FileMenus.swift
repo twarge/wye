@@ -113,6 +113,10 @@ private struct OpenFileButtons: View {
             Button("Quick Look", systemImage: "eye") {
                 model.fileRequests.quickLook = url
             }
+            if Platform.sharesFilesToOpenThem {
+                // The share sheet lists the apps that open the file.
+                ShareLink("Share…", item: url)
+            }
             if Platform.canRevealFiles {
                 Button(Platform.revealInFileBrowserTitle, systemImage: "folder") {
                     Platform.revealInFileBrowser(url)

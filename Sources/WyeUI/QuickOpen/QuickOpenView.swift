@@ -7,7 +7,7 @@ struct QuickOpenView: View {
     var currentBranch: String?
     var items: [QuickOpenItem]
     /// Called with the chosen item, and whether a repository should open in
-    /// a new tab rather than in this window.
+    /// a new tab, or on an iPad a new window, rather than in this window.
     var choose: (QuickOpenItem, _ inNewTab: Bool) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -40,8 +40,14 @@ struct QuickOpenView: View {
                 searchField
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if purpose == .jump, Platform.hasWindowTabs {
-                    Text("⌘↩ opens a repository in a new tab")
+                if purpose == .jump, Platform.opensRepositoriesBeside {
+                    Group {
+                        if Platform.hasWindowTabs {
+                            Text("⌘↩ opens a repository in a new tab")
+                        } else {
+                            Text("Touch and hold a repository to open it in a new window")
+                        }
+                    }
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 14)
@@ -130,10 +136,21 @@ struct QuickOpenView: View {
                 QuickOpenRow(item: result.item, match: result.match)
             }
             .buttonStyle(.plain)
+            .contextMenu { newWindowMenu(for: result.item) }
             .listRowBackground(
                 result.item.id == highlighted ? RoundedRectangle(cornerRadius: 6).fill(.tint.opacity(0.2)) : nil
             )
             .id(result.item.id)
+        }
+    }
+
+    /// A repository's menu on an iPad, by touch and hold: a window of its
+    /// own, where the Mac has ⌘↩ for a new tab. Empty anywhere else, and
+    /// then there is no menu.
+    @ViewBuilder
+    private func newWindowMenu(for item: QuickOpenItem) -> some View {
+        if purpose == .jump, !Platform.hasWindowTabs, Platform.opensRepositoriesBeside, case .repository = item.target {
+            Button("Open in New Window", systemImage: "macwindow.badge.plus") { choose(item, true) }
         }
     }
 

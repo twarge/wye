@@ -378,6 +378,16 @@ private func commit(_ id: OID, _ summary: String, parents: [OID] = []) -> Commit
         #expect(DiffAccessibility.label(forHunk: hunk) == "Changes at line 3: 2 added, 1 removed")
     }
 
+    @Test func aFileGetsToAnotherAppOneWayOnly() {
+        // Open where the system has an app for a file, Share where it has none.
+        #expect(Platform.canOpenFilesInOtherApps != Platform.sharesFilesToOpenThem)
+        #if os(macOS)
+        #expect(Platform.canOpenFilesInOtherApps)
+        // A repository opens beside another in a tab of the window.
+        #expect(Platform.opensRepositoriesBeside && Platform.hasWindowTabs)
+        #endif
+    }
+
     #if os(macOS)
     @Test func theMenuBarListsWhatNeedsAttention() {
         func summary(_ name: String, ahead: Int = 0, behind: Int = 0, changes: Bool = false, minutesAgo: Double) -> RepositoryStatusSummary {

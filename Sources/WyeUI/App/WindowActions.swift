@@ -120,7 +120,7 @@ private struct WindowActionsPresenter: ViewModifier {
         actions.chosen = nil
         switch (item.target, purpose) {
         case (.repository(let bookmark), _):
-            if inNewTab, Platform.hasWindowTabs {
+            if inNewTab, Platform.opensRepositoriesBeside {
                 // The new window picks the repository up as it appears.
                 library.openInNextWindow = bookmark.id
                 Platform.openAsTab { openWindow(id: WyeScene.windowID) }
