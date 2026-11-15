@@ -1,14 +1,16 @@
+import GitKit
 import SwiftUI
 
-/// How code looks in diffs, blame and the file viewer: font, size, tab width
-/// and syntax colours.
+/// How code looks in diffs, blame and the file viewer (font, size, tab width
+/// and syntax colours), and how every diff is read and drawn, in the working
+/// copy and in commit detail.
 struct AppearanceSettingsSection: View {
     @Bindable private var appearance = AppearancePreferences.shared
     @Bindable private var diff = DiffPreferences.shared
     @State private var families: [String] = []
 
     var body: some View {
-        Section {
+        Section("Code and Diffs") {
             Picker("Font", selection: $appearance.fontFamily) {
                 Text("System Monospaced").tag(String?.none)
                 if !families.isEmpty {
@@ -32,10 +34,18 @@ struct AppearanceSettingsSection: View {
                 ForEach(SyntaxTheme.all) { Text($0.name).tag($0.id) }
             }
             preview
-        } header: {
-            Text("Code")
-        } footer: {
-            Text("Used by diffs, blame and the file viewer. Every theme follows the system’s light or dark appearance.")
+            Picker("Context Lines", selection: $diff.contextLines) {
+                ForEach(DiffPreferences.contextChoices, id: \.self) { Text($0.formatted()).tag($0) }
+            }
+            Picker("Whitespace", selection: $diff.whitespace) {
+                ForEach(DiffOptions.Whitespace.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            Toggle("Show Invisible Characters", isOn: $diff.showsInvisibles)
+            Picker("Fold Files in a Commit", selection: $diff.collapseThreshold) {
+                ForEach(DiffPreferences.collapseChoices, id: \.self) { threshold in
+                    Text(threshold.map { "When More Than \($0.formatted()) Change" } ?? "Never").tag(threshold)
+                }
+            }
         }
         .task {
             families = await Task.detached(priority: .utility) { AppearancePreferences.fixedPitchFamilies() }.value

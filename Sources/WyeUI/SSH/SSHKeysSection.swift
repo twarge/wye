@@ -27,7 +27,7 @@ struct SSHKeysSection: View {
     @AppStorage(SSHKeyPreferences.syncsKey) private var syncsKeys = false
 
     var body: some View {
-        Section {
+        Section("SSH Keys") {
             if let notice = focus.sshKeyNotice {
                 Label {
                     VStack(alignment: .leading, spacing: 6) {
@@ -84,12 +84,6 @@ struct SSHKeysSection: View {
             }
             Toggle("Sync Keys with iCloud Keychain", isOn: Binding { syncsKeys } set: { setSynced($0) })
             NoticeRow(notice: $error)
-        } header: {
-            Text("SSH Keys")
-        } footer: {
-            Text(syncsKeys
-                ? "Kept in iCloud Keychain, end-to-end encrypted, on every device signed in to your Apple Account. Wye offers each key in turn to SSH remotes; add a key’s public half to your account on the host. Ed25519 and ECDSA keys work; RSA keys don’t."
-                : "Kept in the Keychain on this device. Wye offers each key in turn to SSH remotes; add a key’s public half to your account on the host. Ed25519 and ECDSA keys work; RSA keys don’t.")
         }
         .onAppear(perform: reload)
         .confirmationDialog(

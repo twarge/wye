@@ -13,7 +13,7 @@ struct RemoteMenu: View {
         let isTransferring = model.isTransferring
         Section {
             Button("Fetch", systemImage: "arrow.triangle.2.circlepath") {
-                Task { await model.fetch(remote: remote.name, prune: FetchPreferences.prune, tags: .automatic) }
+                Task { await model.fetch(remote: remote.name, prune: true, tags: .automatic) }
             }
             .disabled(isTransferring)
             .help("Fetch new commits, and remove remote branches that are gone from the remote")

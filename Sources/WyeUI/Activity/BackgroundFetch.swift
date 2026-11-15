@@ -183,12 +183,11 @@ final class BackgroundFetcher {
             return
         }
         let chosen = RepositoryPreferences.defaultRemote(for: bookmark.id)
-        let prune = FetchPreferences.prune
         let (id, name, url) = (bookmark.id, bookmark.name, access.url)
         let entry = ActivityLog.shared.begin("Fetch", repository: name, isBackground: true)
         let result = await Task.detached(priority: .utility) { () -> Result<QuietFetchResult, any Error> in
             do {
-                return .success(try await Self.quietFetch(at: url, id: id, name: name, chosenRemote: chosen, prune: prune))
+                return .success(try await Self.quietFetch(at: url, id: id, name: name, chosenRemote: chosen))
             } catch {
                 return .failure(error)
             }
@@ -225,7 +224,7 @@ final class BackgroundFetcher {
     /// Fetches one remote with only the credentials already saved: GitKit
     /// never prompts, so a remote that wants more simply fails.
     private nonisolated static func quietFetch(
-        at url: URL, id: UUID, name: String, chosenRemote: String?, prune: Bool
+        at url: URL, id: UUID, name: String, chosenRemote: String?
     ) async throws -> QuietFetchResult {
         let repository = try Repository(at: url)
         let before = try await repository.snapshot()
@@ -242,7 +241,7 @@ final class BackgroundFetcher {
         }
         guard let remote else { throw RemoteError.noRemotes }
         let upstreamBefore = Self.upstreamTarget(in: before)
-        try await repository.fetch(remote: remote, prune: prune, tags: .automatic, credentials: CredentialStore.shared)
+        try await repository.fetch(remote: remote, prune: true, tags: .automatic, credentials: CredentialStore.shared)
         let after = try await repository.snapshot()
         let hasChanges = try await !repository.status().isEmpty
         let headAfter = after.branches.first { $0.isHead }

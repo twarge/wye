@@ -2,8 +2,8 @@ import GitKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The identities commits are made as, how commits are signed, and whose
-/// signatures are trusted.
+/// The identities commits are made as, and signing: how commits are signed,
+/// and the other people whose signatures are trusted.
 struct IdentitySettingsSection: View {
     @Bindable private var profiles = AuthorProfiles.shared
     @State private var keys: [StoredSSHKey] = []
@@ -14,7 +14,7 @@ struct IdentitySettingsSection: View {
     @State private var error: Notice?
 
     var body: some View {
-        Section {
+        Section("Identities") {
             ForEach(profiles.profiles) { profile in
                 LabeledContent {
                     HStack {
@@ -46,13 +46,9 @@ struct IdentitySettingsSection: View {
                 editing = AuthorProfile(name: "", email: "")
             }
             NoticeRow(notice: $error)
-        } header: {
-            Text("Identities")
-        } footer: {
-            Text("The names and emails you commit as. The default is used everywhere unless a repository picks another, or you pick one for a single commit from the composer’s “As” menu.")
         }
 
-        Section {
+        Section("Signing") {
             Toggle("Sign Commits", isOn: $profiles.signsCommits)
             Picker("Signing Key", selection: $profiles.signingKeyID) {
                 Text(keys.first.map { "First Key (\(name(of: $0)))" } ?? "No Keys").tag(String?.none)
@@ -61,13 +57,6 @@ struct IdentitySettingsSection: View {
                 }
             }
             .disabled(keys.isEmpty)
-        } header: {
-            Text("Commit Signing")
-        } footer: {
-            Text("Commits are signed with an SSH key from below, as git does with gpg.format=ssh. Add the key’s public half to your hosting service as a signing key for it to show as verified there. An identity or a repository can turn signing on or off for itself.")
-        }
-
-        Section {
             ForEach(profiles.allowedSigners) { signer in
                 LabeledContent {
                     Button("Remove", systemImage: "minus.circle", role: .destructive) {
@@ -84,15 +73,11 @@ struct IdentitySettingsSection: View {
                 }
             }
             if profiles.allowedSigners.isEmpty {
-                Text("No other signers")
+                Text("No allowed signers")
                     .foregroundStyle(.secondary)
             }
-            Button("Add Signer…", systemImage: "plus") { isAddingSigner = true }
+            Button("Add Allowed Signer…", systemImage: "plus") { isAddingSigner = true }
             Button("Import allowed_signers File…", systemImage: "square.and.arrow.down") { isImportingSigners = true }
-        } header: {
-            Text("Allowed Signers")
-        } footer: {
-            Text("Other people’s SSH keys, trusted to sign as them. A commit signed by one of these, or by one of your own keys, shows as verified.")
         }
         .onAppear(perform: load)
         .sheet(item: $editing) { profile in

@@ -6,7 +6,7 @@ struct CommittingSettingsSection: View {
     @State private var editing: CommitTemplate?
 
     var body: some View {
-        Section {
+        Section("Committing") {
             Picker("Mark Subjects Longer Than", selection: $preferences.softLimit) {
                 ForEach(CommitPreferences.softLimitChoices, id: \.self) { limit in
                     Text(limit == 0 ? "Off" : "\(limit) Characters").tag(limit)
@@ -37,10 +37,6 @@ struct CommittingSettingsSection: View {
             Button("Add Template…", systemImage: "plus") {
                 editing = CommitTemplate(name: "", text: "")
             }
-        } header: {
-            Text("Committing")
-        } footer: {
-            Text("Templates show in the composer’s message menu, with the repository’s own commit.template when it is inside the repository. Lines starting with # are left out.")
         }
         .sheet(item: $editing) { template in
             TemplateEditor(template: template) { saved in

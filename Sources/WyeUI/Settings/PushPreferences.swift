@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 
 /// The app's defaults for pushing, kept in the user defaults. A repository
 /// can set its own choice over `pushesAllTags`, in its settings.
@@ -21,23 +20,5 @@ enum PushPreferences {
 
     static func setPushesNewTags(_ pushes: Bool, defaults: UserDefaults = .standard) {
         defaults.set(pushes, forKey: pushesNewTagsKey)
-    }
-}
-
-/// The Push section of Settings: whether a push takes the tags along.
-struct PushSettingsSection: View {
-    @AppStorage(PushPreferences.pushesAllTagsKey) private var pushesAllTags = true
-
-    var body: some View {
-        Section {
-            Toggle("Push All Tags", isOn: $pushesAllTags)
-        } header: {
-            Text("Push")
-        } footer: {
-            Text("Pushing a branch also sends every tag in the repository to the same remote, so tags made "
-                 + "without pushing them get there too. A tag the remote already has on another commit is left as "
-                 + "it is, and you’re told; tags are never forced, not even by a force push. "
-                 + "A repository’s own settings can choose otherwise.")
-        }
     }
 }

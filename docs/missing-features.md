@@ -161,7 +161,7 @@ Each item is marked:
 | --- | --- |
 | Author profiles, switched per repository | Done. Identities in Settings. |
 | Appearance: theme, diff font and size, tab width | Done. Code font, size, tab width and syntax theme. |
-| Global git configuration editor (default branch name, pull mode, pruning) | Partial. Pull mode and autostash are app settings, not git configuration. |
+| Global git configuration editor (default branch name, pull mode, pruning) | Partial. Pull mode and autostash are app settings, not git configuration. Pruning is not a setting: a fetch prunes unless the Fetch sheet is told otherwise for that fetch. |
 | Fetch in the background on a schedule | Done. While the app runs, and by background refresh on iOS. |
 | Notifications when a background fetch finds new commits | Done. |
 | iOS: Shortcuts actions, widgets, Files provider, share sheet "clone this URL" | Done. App Intents for Siri and Shortcuts (pull, push, fetch, status, commit, check out, stash, pull all, find unpushed work, clone); the Unpushed Changes widget and a Repository widget with Fetch and Pull buttons (also on the Mac desktop), Lock Screen widgets and a Fetch All control; a share extension that hands a URL to the clone sheet. A File Provider extension makes Wye a location in the Files app, with `.git` hidden. |

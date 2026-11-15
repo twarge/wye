@@ -12,7 +12,7 @@ struct AccountsSection: View {
     private var changes = AccountChangeCounter.shared
 
     var body: some View {
-        Section {
+        Section("Accounts") {
             ForEach(accounts) { account in
                 AccountRow(
                     account: account,
@@ -29,12 +29,6 @@ struct AccountsSection: View {
             }
             Button("Add Account…", systemImage: "plus") { isAdding = true }
             NoticeRow(notice: $error)
-        } header: {
-            Text("Accounts")
-        } footer: {
-            Text("Accounts on GitHub, GitLab, Bitbucket, Gitea and Forgejo, for cloning, publishing and pull requests, "
-                 + "and tokens git asked for. Tokens are kept in the Keychain. Each host uses its default account "
-                 + "unless a remote’s menu chooses another.")
         }
         .onAppear(perform: reload)
         .onChange(of: changes.count) { reload() }

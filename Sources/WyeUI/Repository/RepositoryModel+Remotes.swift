@@ -116,10 +116,9 @@ extension RepositoryModel {
 
     // MARK: Fetch
 
-    /// Fetches every remote, pruning remote branches that are gone unless
-    /// the setting says not to.
+    /// Fetches every remote, pruning remote branches that are gone.
     func fetch() async {
-        await fetch(remote: nil, prune: FetchPreferences.prune, tags: .automatic)
+        await fetch(remote: nil, prune: true, tags: .automatic)
     }
 
     /// Fetches one remote, or all of them, as the Fetch options say.

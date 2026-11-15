@@ -1,6 +1,5 @@
 import Foundation
 import GitKit
-import SwiftUI
 
 /// What to do when local changes would block or complicate a pull, a
 /// checkout, a merge or a rebase.
@@ -55,33 +54,6 @@ extension PullMode {
             "Moves the branch forward when it can; otherwise replays its own commits on top of the pulled ones, keeping the history in one line."
         case .fastForwardOnly:
             "Only moves the branch forward, and refuses when both sides have commits of their own."
-        }
-    }
-}
-
-/// The Pull section of Settings: how a pull joins the branches, and what
-/// happens to local changes in the way.
-struct PullSettingsSection: View {
-    @AppStorage(RemotePreferences.pullModeKey) private var pullMode = PullMode.merge
-    @AppStorage(RemotePreferences.autostashKey) private var autostash = AutostashPolicy.ask
-
-    var body: some View {
-        Section {
-            Picker("Pull By", selection: $pullMode) {
-                ForEach(PullMode.allCases, id: \.self) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            Picker("Stash Local Changes", selection: $autostash) {
-                ForEach(AutostashPolicy.allCases) { policy in
-                    Text(policy.title).tag(policy)
-                }
-            }
-        } header: {
-            Text("Pull")
-        } footer: {
-            Text("\(pullMode.explanation) A repository whose configuration sets pull.rebase or pull.ff uses that instead. "
-                 + "Stashed changes are put back after a pull, checkout, merge or rebase.")
         }
     }
 }

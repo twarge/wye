@@ -27,17 +27,10 @@ struct SettingsView: View {
     private var form: some View {
         Form {
             IdentitySettingsSection()
-            DiffSettingsSection()
-            AppearanceSettingsSection()
             CommittingSettingsSection()
-            FetchSettingsSection()
-            PullSettingsSection()
-            PushSettingsSection()
-            BranchSettingsSection()
-            SidebarSettingsSection()
-            NewRepositorySettingsSection()
-            SubmoduleSettingsSection()
-            FilesLocationSettingsSection()
+            AppearanceSettingsSection()
+            RemoteSettingsSection()
+            RepositorySettingsSection()
             SystemSettingsSection()
 
             AccountsSection()

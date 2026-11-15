@@ -263,13 +263,13 @@ private func commit(_ id: OID, _ summary: String, parents: [OID] = []) -> Commit
 @MainActor
 @Suite struct SettingsSyncTests {
     @Test func sendsOnlyWhatChanged() {
-        let known: [String: NSObject] = ["pullMode": "merge" as NSString, "fetch.prune": true as NSNumber]
+        let known: [String: NSObject] = ["pullMode": "merge" as NSString, "autostash": true as NSNumber]
         let local: [String: NSObject] = ["pullMode": "rebase" as NSString, "diff.tabWidth": 8 as NSNumber]
         let changes = SettingsSyncPlan.changed(local: local, known: known)
-        #expect(Set(changes.keys) == ["pullMode", "fetch.prune", "diff.tabWidth"])
+        #expect(Set(changes.keys) == ["pullMode", "autostash", "diff.tabWidth"])
         #expect(changes["pullMode"] == .some("rebase" as NSString))
         // A setting put back to its default is taken away, not left behind.
-        #expect(changes["fetch.prune"] == .some(nil))
+        #expect(changes["autostash"] == .some(nil))
         #expect(SettingsSyncPlan.changed(local: known, known: known).isEmpty)
     }
 

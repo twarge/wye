@@ -126,9 +126,9 @@ Two things use the user's iCloud, both off until the user turns them on.
 - **SSH keys in iCloud Keychain** (Settings ▸ SSH Keys). Needs nothing
   from the developer account: the keys are ordinary Keychain items marked
   to sync.
-- **Settings sync** (Settings ▸ iCloud), through iCloud's key-value
-  store. It is switched on in the build by three things, which go
-  together:
+- **Settings sync** (Settings ▸ System on the Mac, Settings ▸ iCloud on
+  iOS), through iCloud's key-value store. It is switched on in the build
+  by three things, which go together:
 
   1. Certificates, Identifiers & Profiles ▸ Identifiers ▸
      `com.twarge.app.wye`: **iCloud** enabled (no container is needed for

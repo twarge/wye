@@ -13,27 +13,23 @@ struct SystemSettingsSection: View {
 
     var body: some View {
         #if os(macOS)
-        Section {
+        Section("System") {
             Toggle("Show Wye in the Menu Bar", isOn: $showsMenuBarItem)
             LabeledContent("Finder Extension") {
                 Button("Extensions Settings…") {
                     FIFinderSyncController.showExtensionManagementInterface()
                 }
             }
-        } header: {
-            Text("Menu Bar and Finder")
-        } footer: {
-            Text("The menu bar item lists the repositories with something to push, pull or commit. The Finder extension, once turned on in System Settings, badges changed files in the repositories Wye lists and adds Open in Wye to Finder’s menus.")
+            if SettingsSync.isAvailable() { syncToggle }
+        }
+        #else
+        if SettingsSync.isAvailable() {
+            Section("iCloud") { syncToggle }
         }
         #endif
-        if SettingsSync.isAvailable() {
-            Section {
-                Toggle("Sync Settings with iCloud", isOn: $sync.isEnabled)
-            } header: {
-                Text("iCloud")
-            } footer: {
-                Text("Keeps repository groups, author profiles and these settings the same on your devices. What iCloud already has replaces what is set here. Repositories themselves, accounts and keys are not included.")
-            }
-        }
+    }
+
+    private var syncToggle: some View {
+        Toggle("Sync Settings with iCloud", isOn: $sync.isEnabled)
     }
 }

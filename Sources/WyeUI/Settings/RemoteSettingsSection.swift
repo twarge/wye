@@ -1,19 +1,14 @@
 import Foundation
+import GitKit
 import SwiftUI
 
 /// The app's defaults for fetching, kept in the user defaults.
 enum FetchPreferences {
-    static let pruneKey = "fetch.prune"
     static let backgroundIntervalKey = "fetch.backgroundInterval"
     static let backgroundOnExpensiveNetworksKey = "fetch.backgroundOnExpensiveNetworks"
     /// Set once notifications have been asked for, so turning background
     /// fetching off and on again does not ask again.
     static let askedForNotificationsKey = "fetch.askedForNotifications"
-
-    /// Whether a fetch removes remote branches that are gone from the remote.
-    static var prune: Bool {
-        UserDefaults.standard.object(forKey: pruneKey) as? Bool ?? true
-    }
 
     static var backgroundInterval: BackgroundFetchInterval {
         BackgroundFetchInterval(rawValue: UserDefaults.standard.integer(forKey: backgroundIntervalKey)) ?? .off
@@ -49,16 +44,21 @@ enum BackgroundFetchInterval: Int, CaseIterable, Identifiable {
     }
 }
 
-/// The Fetch section of Settings: pruning, and fetching in the background.
-struct FetchSettingsSection: View {
-    @AppStorage(FetchPreferences.pruneKey) private var prune = true
+/// The Fetch, Pull and Push section of Settings: fetching in the
+/// background, how a pull joins the branches and what happens to local
+/// changes in the way, and whether a push takes the tags along. Whether a
+/// fetch prunes is not a setting: it does, unless the Fetch sheet is told
+/// otherwise for that one fetch.
+struct RemoteSettingsSection: View {
     @AppStorage(FetchPreferences.backgroundIntervalKey) private var interval = BackgroundFetchInterval.off
     @AppStorage(FetchPreferences.backgroundOnExpensiveNetworksKey) private var onExpensiveNetworks = false
     @AppStorage(FetchPreferences.askedForNotificationsKey) private var askedForNotifications = false
+    @AppStorage(RemotePreferences.pullModeKey) private var pullMode = PullMode.merge
+    @AppStorage(RemotePreferences.autostashKey) private var autostash = AutostashPolicy.ask
+    @AppStorage(PushPreferences.pushesAllTagsKey) private var pushesAllTags = true
 
     var body: some View {
-        Section {
-            Toggle("Remove Deleted Remote Branches", isOn: $prune)
+        Section("Fetch, Pull and Push") {
             Picker("Fetch Automatically", selection: $interval) {
                 ForEach(BackgroundFetchInterval.allCases) { interval in
                     Text(interval.title).tag(interval)
@@ -66,44 +66,22 @@ struct FetchSettingsSection: View {
             }
             Toggle("Also on Cellular and Low Data Networks", isOn: $onExpensiveNetworks)
                 .disabled(interval == .off)
-        } header: {
-            Text("Fetch")
-        } footer: {
-            Text("While Wye is open it fetches each repository’s default remote on this schedule, quietly: "
-                 + "a remote that wants a token or key Wye doesn’t have is skipped, and a repository busy with "
-                 + "another operation waits. A notification tells you when new commits arrive for the branch you have checked out.")
+            Picker("Pull By", selection: $pullMode) {
+                ForEach(PullMode.allCases, id: \.self) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            Picker("Stash Local Changes", selection: $autostash) {
+                ForEach(AutostashPolicy.allCases) { policy in
+                    Text(policy.title).tag(policy)
+                }
+            }
+            Toggle("Push All Tags", isOn: $pushesAllTags)
         }
         .onChange(of: interval) {
             guard interval != .off, !askedForNotifications else { return }
             askedForNotifications = true
             Task { await FetchNotifications.requestPermission() }
         }
-    }
-}
-
-/// The New Repositories section of Settings.
-struct NewRepositorySettingsSection: View {
-    @AppStorage(NewRepositoryPreferences.defaultBranchKey) private var defaultBranch = NewRepositoryPreferences.standardBranch
-
-    var body: some View {
-        Section {
-            TextField("Default Branch Name", text: $defaultBranch, prompt: Text(NewRepositoryPreferences.standardBranch))
-                .autocorrectionDisabled()
-                .noAutocapitalization()
-        } header: {
-            Text("New Repositories")
-        } footer: {
-            Text("The branch a repository created in Wye starts on.")
-        }
-    }
-}
-
-enum NewRepositoryPreferences {
-    static let defaultBranchKey = "newRepository.defaultBranch"
-    static let standardBranch = "main"
-
-    static var defaultBranch: String {
-        let saved = UserDefaults.standard.string(forKey: defaultBranchKey)?.trimmingCharacters(in: .whitespaces) ?? ""
-        return saved.isEmpty ? standardBranch : saved
     }
 }

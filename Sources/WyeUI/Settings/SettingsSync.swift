@@ -9,7 +9,7 @@ enum SettingsSyncPlan {
     /// font (each platform has its own default size), and where Wye shows
     /// up on the Mac.
     static let keys: [String] = [
-        "fetch.prune", "fetch.backgroundInterval", "fetch.backgroundOnExpensiveNetworks",
+        "fetch.backgroundInterval", "fetch.backgroundOnExpensiveNetworks",
         "newRepository.defaultBranch", "push.allTags", "tag.pushToAllRemotes", "submoduleAutoUpdate",
         "branches.staleMonths", "branches.autoArchiveMonths", "sidebar.tagLimit",
         "pullMode", "autostash", "hosting.prefersSSH",
