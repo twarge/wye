@@ -116,6 +116,12 @@ struct RepositoryView: View {
             .modifier(notices(perColumn: true))
             // Opens at its narrowest, which still shows “Working Copy” whole.
             .navigationSplitViewColumnWidth(min: 170, ideal: 170, max: 380)
+            #if os(iOS)
+            // Beside the other columns the list's bar names the repository,
+            // so the sidebar's does not say it again. On an iPhone the
+            // sidebar is a screen of its own, and its title is the name.
+            .toolbar(removing: sizeClass == .compact ? nil : .title)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .navigation) {
                     Button("Repositories", systemImage: "square.grid.2x2", action: close)
