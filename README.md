@@ -26,8 +26,8 @@ connections are made in Swift with
   history and blame.
 - **Working copy:** stage and unstage files, hunks or single lines; discard;
   commit and amend; stash, or snapshot the changes and keep them in place;
-  compare the working tree, the index and `HEAD` as a whole; resolve conflicts. Changed files as a list or a
-  folder tree; ignore, stop tracking, rename, trash or restore a file from
+  compare the working tree, the index and `HEAD` as a whole; resolve conflicts. Changed files as folder
+  trees, the staged apart from the unstaged; ignore, stop tracking, rename, trash or restore a file from
   its menu; commit templates and recent messages; diff options for context
   lines and whitespace.
 - **Branching:** merge, rebase, cherry-pick, revert and reset, onto any

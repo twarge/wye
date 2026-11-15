@@ -18,6 +18,17 @@ enum Platform {
         #endif
     }
 
+    /// Whether a folder in the working copy's tree is selected like a file,
+    /// to stage it with the Stage button. Where a tap is all there is, it
+    /// folds the folder, and the folder's menu and a swipe stage it.
+    static var selectsFolders: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
+    }
+
     /// Whether the click being handled extends a selection to a range, as a
     /// shift-click does with a pointer. A tap on a touch screen never does:
     /// each tap adds or removes one item.

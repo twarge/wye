@@ -18,7 +18,7 @@ enum SettingsSyncPlan {
         "diff.autoCollapseFileCount",
         "history.showsGraph", "history.firstParentOnly", "history.order", "history.grouping", "history.rowSize",
         "history.showsHash", "history.showsAuthor", "history.showsDate", "history.showsChecks",
-        "appearance.syntaxTheme", "workingCopy.layout", "workingCopy.sort", "repositoryListOrder",
+        "appearance.syntaxTheme", "workingCopy.sort", "repositoryListOrder",
         "authorProfiles"
     ]
 

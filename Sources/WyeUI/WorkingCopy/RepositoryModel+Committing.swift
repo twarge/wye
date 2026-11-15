@@ -2,24 +2,42 @@ import Foundation
 import GitKit
 
 extension WorkingCopyState {
-    /// The selected files, for a list that selects several. Code that sets
-    /// `selection` alone, to show one file, also makes it the only one
-    /// selected here.
-    var selectedSet: Set<String> {
+    /// The selected rows, for the list of changes, which selects several.
+    /// Code that sets `selection` alone, to show one file, also makes that
+    /// file's row the only one selected here.
+    var listSelection: Set<ChangeRowID> {
         get {
-            guard let selection else { return [] }
-            return selectedPaths.contains(selection) ? selectedPaths : [selection]
+            // A folder's row shows no file, so it is selected on its own.
+            guard let selection else { return selectedRows.filter { $0.filePath == nil } }
+            guard selectedRows.contains(where: { $0.filePath == selection }) else { return [.item(selection)] }
+            return settled(selectedRows)
         }
         set {
-            selectedPaths = newValue
-            if let selection, newValue.contains(selection) { return }
-            selection = newValue.count == 1 ? newValue.first : newValue.sorted().first
+            selectedRows = newValue
+            let files = Set(newValue.compactMap(\.filePath))
+            if let selection, files.contains(selection) { return }
+            selection = files.sorted().first
         }
+    }
+
+    /// The rows as the list has them now: a file's row under Staged is the
+    /// file's only row once nothing of it is unstaged, and goes by its path.
+    private func settled(_ rows: Set<ChangeRowID>) -> Set<ChangeRowID> {
+        guard rows.contains(where: { $0 != .item($0.path) }) else { return rows }
+        let onBothSides = Set(entries.lazy.filter { $0.staged != nil && $0.unstaged != nil }.map(\.path))
+        return Set(rows.map { row in
+            row.filePath.map { onBothSides.contains($0) } == false ? .item(row.path) : row
+        })
+    }
+
+    /// The selected files, whichever section their rows are in.
+    var selectedPaths: Set<String> {
+        Set(listSelection.compactMap(\.filePath))
     }
 
     /// The selected files that have changes to stash, in the list's order.
     var selectedChangedPaths: [String] {
-        let selected = selectedSet
+        let selected = selectedPaths
         return entries.filter { selected.contains($0.path) && !$0.isConflicted }.map(\.path)
     }
 }

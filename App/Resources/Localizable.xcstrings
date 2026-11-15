@@ -1009,6 +1009,10 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
+    "Collapse" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
     "Collapse All" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
@@ -1493,6 +1497,10 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
+    "Expand" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
     "Expand All" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
@@ -1946,10 +1954,6 @@
       "generatesSymbol" : false
     },
     "Last Day" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
-    "Layout" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
@@ -2422,6 +2426,14 @@
       "generatesSymbol" : false
     },
     "No rules yet" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
+    "No staged changes" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
+    "No unstaged changes" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
@@ -3525,10 +3537,6 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
-    "Show the files as a list or under their folders" : {
-      "extractionState" : "manual",
-      "generatesSymbol" : false
-    },
     "Show the next match (⌘G)" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
@@ -3673,7 +3681,15 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
+    "Stage the selected files" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
     "Stage the submodule in the working copy to record the checked-out commit." : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
+    "Staged" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
@@ -4146,6 +4162,14 @@
       "generatesSymbol" : false
     },
     "Unstage every change" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
+    "Unstage the selected files" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
+    "Unstaged" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },

@@ -65,8 +65,9 @@ struct WorkingCopyState {
     var identity: GitIdentity?
     /// Set while the composer amends the last commit.
     var amend: AmendDraft?
-    /// Every selected file, when several are (`selection` is the one shown).
-    var selectedPaths: Set<String> = []
+    /// Every selected row of the list of changes (`selection` is the file
+    /// shown). See `listSelection`.
+    var selectedRows: Set<ChangeRowID> = []
     /// The author profile picked for the next commit only.
     var commitProfile: UUID?
 
@@ -290,15 +291,16 @@ final class RepositoryModel: Identifiable {
 
     // MARK: Working copy
 
-    /// Stages a file's changes, or unstages them if all of them are staged.
-    func toggleStaging(of entry: StatusEntry) async {
-        await perform(entry.unstaged == nil ? .unstage : .stage) { repository in
-            if entry.unstaged == nil {
-                try await repository.unstage([entry.path])
-            } else {
-                try await repository.stage([entry.path])
-            }
-        }
+    /// Stages every change to the files.
+    func stage(_ paths: [String]) async {
+        guard !paths.isEmpty else { return }
+        await perform(.stage) { try await $0.stage(paths) }
+    }
+
+    /// Unstages every staged change to the files.
+    func unstage(_ paths: [String]) async {
+        guard !paths.isEmpty else { return }
+        await perform(.unstage) { try await $0.unstage(paths) }
     }
 
     func stageAll() async {

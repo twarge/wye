@@ -16,13 +16,12 @@ struct WorkingCopyView: View {
     @State private var customIgnore: CustomIgnoreRequest?
     @State private var isEditingIgnoreRules = false
     @State private var filter = ""
-    /// Folders of the tree the user folded, by their IDs.
-    @State private var collapsedFolders: Set<String> = []
+    /// Folders of the trees the user folded, by their rows.
+    @State private var collapsedFolders: Set<ChangeRowID> = []
     /// The files left out of the list unless asked for, read on refresh.
     @State private var hidden = HiddenFiles()
 
-    @AppStorage("workingCopy.layout") private var layout = FileListLayout.list
-    @AppStorage("workingCopy.sort") private var sort = FileListSort.path
+    @AppStorage("workingCopy.sort") private var sort = FileListSort.name
     @AppStorage("workingCopy.showsIgnored") private var showsIgnored = false
     @AppStorage("workingCopy.showsAssumeUnchanged") private var showsAssumeUnchanged = false
 
@@ -40,61 +39,74 @@ struct WorkingCopyView: View {
 
     var body: some View {
         let conflicted = FileList.filtered(model.workingCopy.conflictedEntries, by: filter)
-        let changes = FileList.filtered(model.workingCopy.entries.filter { !$0.isConflicted }, by: filter)
+        let changes = model.workingCopy.entries.filter { !$0.isConflicted }
+        let sections = FileList.sections(
+            changes, matching: filter, sort: sort, collapsed: isFiltering ? [] : collapsedFolders
+        )
+        let selected = SelectedChanges(model.workingCopy.listSelection, in: sections)
         let ignored = showsIgnored ? filteredPaths(hidden.ignored) : []
         let assumed = showsAssumeUnchanged ? filteredPaths(hidden.assumeUnchanged) : []
-        List(selection: $model.workingCopy.selectedSet) {
-            if conflicted.isEmpty && ignored.isEmpty && assumed.isEmpty {
-                changeRows(changes)
-            } else {
-                if !conflicted.isEmpty {
-                    Section("Conflicts") {
-                        ForEach(conflicted) { entry in
-                            ConflictRow(entry: entry) { side in
-                                pendingResolution = ResolutionRequest(path: entry.path, side: side)
-                            } markResolved: {
-                                Task { await model.markResolved(entry.path) }
-                            } openResolver: {
-                                resolving = ConflictTarget(path: entry.path)
+        List(selection: $model.workingCopy.listSelection) {
+            if !conflicted.isEmpty {
+                Section("Conflicts") {
+                    ForEach(conflicted) { entry in
+                        ConflictRow(entry: entry) { side in
+                            pendingResolution = ResolutionRequest(path: entry.path, side: side)
+                        } markResolved: {
+                            Task { await model.markResolved(entry.path) }
+                        } openResolver: {
+                            resolving = ConflictTarget(path: entry.path)
+                        }
+                        .tag(ChangeRowID.item(entry.path))
+                    }
+                }
+            }
+            // What the commit takes first, under the commit. Both show
+            // while there are changes, so that there is always somewhere
+            // for a file to go; a filter shows only what it finds.
+            changeSection(.staged, in: sections, selected: selected, showsEmpty: !changes.isEmpty && !isFiltering)
+            changeSection(.unstaged, in: sections, selected: selected, showsEmpty: !changes.isEmpty && !isFiltering)
+            if !assumed.isEmpty {
+                Section("Assumed Unchanged") {
+                    ForEach(assumed, id: \.self) { path in
+                        HiddenFileRow(path: path, systemImage: "lock")
+                            .contextMenu {
+                                Button("Stop Assuming Unchanged", systemImage: "lock.open") {
+                                    Task { await model.setAssumeUnchanged(false, for: [path]) }
+                                }
+                                WorkingCopyHiddenFileMenu(model: model, path: path)
                             }
-                            .tag(entry.path)
-                        }
                     }
                 }
-                if !changes.isEmpty {
-                    Section("Changes") {
-                        changeRows(changes)
-                    }
-                }
-                if !assumed.isEmpty {
-                    Section("Assumed Unchanged") {
-                        ForEach(assumed, id: \.self) { path in
-                            HiddenFileRow(path: path, systemImage: "lock")
-                                .contextMenu {
-                                    Button("Stop Assuming Unchanged", systemImage: "lock.open") {
-                                        Task { await model.setAssumeUnchanged(false, for: [path]) }
-                                    }
-                                    WorkingCopyHiddenFileMenu(model: model, path: path)
-                                }
-                        }
-                    }
-                }
-                if !ignored.isEmpty {
-                    Section("Ignored") {
-                        ForEach(ignored, id: \.self) { path in
-                            HiddenFileRow(path: path, systemImage: "eye.slash")
-                                .contextMenu {
-                                    WorkingCopyHiddenFileMenu(model: model, path: path)
-                                }
-                        }
+            }
+            if !ignored.isEmpty {
+                Section("Ignored") {
+                    ForEach(ignored, id: \.self) { path in
+                        HiddenFileRow(path: path, systemImage: "eye.slash")
+                            .contextMenu {
+                                WorkingCopyHiddenFileMenu(model: model, path: path)
+                            }
                     }
                 }
             }
         }
         .listStyle(.plain)
+        // A file staged or unstaged moves from one section to the other.
+        .animation(Platform.reducesMotion ? nil : .snappy, value: model.workingCopy.entries)
+        .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
+            // As in any outline: left folds the selected folders, right opens them.
+            let folders = model.workingCopy.listSelection.filter { $0.filePath == nil }
+            guard !folders.isEmpty else { return .ignored }
+            if press.key == .leftArrow {
+                collapsedFolders.formUnion(folders)
+            } else {
+                collapsedFolders.subtract(folders)
+            }
+            return .handled
+        }
         .quickLookOnSpace(in: model.repository) {
             // The files on disk; one deleted there, as the index has it.
-            model.workingCopy.selectedSet.sorted().map { path in
+            model.workingCopy.selectedPaths.sorted().map { path in
                 PreviewItem(path: path, source: model.fileExists(path) ? .workingTree : .index)
             }
         }
@@ -108,7 +120,7 @@ struct WorkingCopyView: View {
                     systemImage: "checkmark.circle",
                     description: Text("The working copy matches the last commit.")
                 )
-            } else if conflicted.isEmpty && changes.isEmpty && ignored.isEmpty && assumed.isEmpty {
+            } else if conflicted.isEmpty && sections.isEmpty && ignored.isEmpty && assumed.isEmpty {
                 ContentUnavailableView.search(text: filter)
             }
         }
@@ -119,7 +131,7 @@ struct WorkingCopyView: View {
                 }
                 // The commit comes first, above the files it will take.
                 CommitComposer(model: model)
-                FileListControls(filter: $filter, layout: $layout, sort: $sort)
+                FileListControls(filter: $filter, sort: $sort, staging: selected.action, perform: perform)
             }
         }
         .task(id: HiddenTrigger(
@@ -185,6 +197,12 @@ struct WorkingCopyView: View {
                 }
                 .help("Stash or discard the local changes, and choose which files show")
             }
+            if Platform.selectsSeveralInEditMode {
+                // Tapping a file shows it; this is how to select files to stage.
+                ToolbarItem(placement: .primaryAction) {
+                    SelectionModeButton()
+                }
+            }
         }
         .confirmationDialog(
             pendingDiscard?.title ?? "",
@@ -229,53 +247,159 @@ struct WorkingCopyView: View {
         }
     }
 
-    /// The changed files, as a list or as a tree, in the chosen order.
+    /// Whether the filter leaves files out: then no folder is folded, and
+    /// a section with nothing found is left out.
+    private var isFiltering: Bool {
+        !filter.allSatisfy(\.isWhitespace)
+    }
+
+    /// The staged or the unstaged changes: the files under their folders.
     @ViewBuilder
-    private func changeRows(_ entries: [StatusEntry]) -> some View {
-        switch layout {
-        case .list:
-            ForEach(FileList.sorted(entries, by: sort)) { entry in
-                row(entry, depth: 0, showsFolder: true)
-            }
-        case .tree:
-            let rows = FileList.rows(FileList.tree(entries, sort: sort), collapsed: filter.isEmpty ? collapsedFolders : [])
-            ForEach(rows) { row in
-                switch row.node.kind {
-                case .folder(let entries):
-                    FolderRow(
-                        node: row.node, depth: row.depth, isCollapsed: filter.isEmpty && collapsedFolders.contains(row.id)
-                    ) {
-                        if collapsedFolders.contains(row.id) {
-                            collapsedFolders.remove(row.id)
-                        } else {
-                            collapsedFolders.insert(row.id)
+    private func changeSection(
+        _ side: WorkingCopySide, in sections: ChangeSections, selected: SelectedChanges, showsEmpty: Bool
+    ) -> some View {
+        let rows = sections[side]
+        if !rows.isEmpty || showsEmpty {
+            Section {
+                if rows.isEmpty {
+                    Text(side == .staged ? "No staged changes" : "No unstaged changes")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 2)
+                        .selectionDisabled()
+                } else {
+                    ForEach(rows) { row in
+                        switch row.node.kind {
+                        case .folder:
+                            folderRow(row, selected: selected)
+                        case .file(let entry):
+                            fileRow(entry, row, selected: selected)
                         }
-                    } toggleStaging: {
-                        Task { await model.toggleStaging(of: entries) }
                     }
-                    .fileDrag(model.fileExists(row.node.path)
-                              ? FileDrag(repository: model.repository, path: row.node.path, isFolder: true) : nil)
-                    .contextMenu {
-                        let state = StagingState(entries)
-                        Button(state == .staged ? "Unstage Folder" : "Stage Folder",
-                               systemImage: state == .staged ? "minus.square" : "plus.square") {
-                            Task { await model.toggleStaging(of: entries) }
-                        }
-                        Section {
-                            let paths = entries.filter { !$0.isConflicted }.map(\.path)
-                            Button("Stash Folder…", systemImage: "archivebox") {
-                                stashingFiles = StashFiles(paths: paths)
-                            }
-                            Button("Save Folder as Patch…", systemImage: "doc.badge.arrow.up") {
-                                Task { await model.savePatch(.files(paths)) }
-                            }
-                        }
-                        .disabled(entries.allSatisfy(\.isConflicted))
-                        WorkingCopyFolderMenu(model: model, node: row.node)
-                    }
-                case .file(let entry):
-                    self.row(entry, depth: row.depth, showsFolder: false)
                 }
+            } header: {
+                HStack {
+                    Text(side == .staged ? "Staged" : "Unstaged")
+                    Spacer()
+                    if !rows.isEmpty {
+                        Text(sections.fileCount(on: side).formatted())
+                            .monospacedDigit()
+                    }
+                }
+            }
+        }
+    }
+
+    private func folderRow(_ row: ChangeRow, selected: SelectedChanges) -> some View {
+        let symbol = row.side == .staged ? "minus.square" : "plus.square"
+        return FolderRow(node: row.node, depth: row.depth, isCollapsed: !isFiltering && collapsedFolders.contains(row.id)) {
+            if collapsedFolders.contains(row.id) {
+                collapsedFolders.remove(row.id)
+            } else {
+                collapsedFolders.insert(row.id)
+            }
+        }
+        .selectionDisabled(!Platform.selectsFolders)
+        .fileDrag(model.fileExists(row.node.path)
+                  ? FileDrag(repository: model.repository, path: row.node.path, isFolder: true) : nil)
+        .accessibilityAction(named: row.side == .staged ? "Unstage Folder" : "Stage Folder") {
+            perform(StagingAction(from: row.side, paths: row.node.entries.map(\.path)))
+        }
+        .contextMenu {
+            Button(stagingTitle(for: row, selected: selected), systemImage: symbol) {
+                perform(StagingAction(from: row.side, paths: selected.paths(for: row)))
+            }
+            Section {
+                // The folder as a whole, whichever section its row is in.
+                Button("Stash Folder…", systemImage: "archivebox") {
+                    stashingFiles = StashFiles(paths: changedPaths(in: row.node))
+                }
+                Button("Save Folder as Patch…", systemImage: "doc.badge.arrow.up") {
+                    Task { await model.savePatch(.files(changedPaths(in: row.node))) }
+                }
+            }
+            WorkingCopyFolderMenu(model: model, node: row.node)
+        }
+        .swipeActions(edge: .leading) {
+            Button(row.side == .staged ? "Unstage" : "Stage", systemImage: symbol) {
+                perform(StagingAction(from: row.side, paths: row.node.entries.map(\.path)))
+            }
+            .tint(.accentColor)
+        }
+    }
+
+    private func fileRow(_ entry: StatusEntry, _ row: ChangeRow, selected: SelectedChanges) -> some View {
+        let verb = row.side == .staged ? "Unstage" : "Stage"
+        let symbol = row.side == .staged ? "minus.square" : "plus.square"
+        return FileLabel(entry: entry, change: entry.change(on: row.side), showsFolder: false)
+            .padding(.vertical, 2)
+            // Past where a folder has its chevron, so files line up with folders.
+            .padding(.leading, CGFloat(row.depth) * FolderRow.indent + FolderRow.chevronWidth)
+            .fileDrag(model.fileExists(entry.path) ? FileDrag(repository: model.repository, path: entry.path) : nil)
+            .accessibilityAction(named: verb) { perform(StagingAction(from: row.side, paths: [entry.path])) }
+            .contextMenu {
+                Button(stagingTitle(for: row, selected: selected), systemImage: symbol) {
+                    perform(StagingAction(from: row.side, paths: selected.paths(for: row)))
+                }
+                if row.side == .unstaged {
+                    Divider()
+                    Button("Discard Changes…", systemImage: "trash", role: .destructive) {
+                        pendingDiscard = .file(entry.path, isUntracked: entry.unstaged == .untracked)
+                    }
+                }
+                Section {
+                    let paths = menuTargets(for: entry)
+                    Button(paths.count == 1 ? "Stash…" : "Stash \(paths.count.formatted()) Files…", systemImage: "archivebox") {
+                        stashingFiles = StashFiles(paths: paths)
+                    }
+                    Button(paths.count == 1 ? "Save as Patch…" : "Save \(paths.count.formatted()) Files as Patch…",
+                           systemImage: "doc.badge.arrow.up") {
+                        Task { await model.savePatch(.files(paths)) }
+                    }
+                }
+                Divider()
+                WorkingCopyFileMenu(model: model, entry: entry)
+            }
+            .swipeActions(edge: .leading) {
+                Button(verb, systemImage: symbol) {
+                    perform(StagingAction(from: row.side, paths: [entry.path]))
+                }
+                .tint(.accentColor)
+            }
+            .swipeActions(edge: .trailing) {
+                if row.side == .unstaged {
+                    // Not destructive in role: that would take the row away
+                    // before the discard is confirmed.
+                    Button("Discard", systemImage: "trash") {
+                        pendingDiscard = .file(entry.path, isUntracked: entry.unstaged == .untracked)
+                    }
+                    .tint(.red)
+                }
+            }
+    }
+
+    /// What a row's menu calls staging or unstaging: the row alone, or
+    /// with the rows selected with it, their files.
+    private func stagingTitle(for row: ChangeRow, selected: SelectedChanges) -> String {
+        let verb = row.side == .staged ? "Unstage" : "Stage"
+        if selected.includes(row) {
+            return "\(verb) \(selected.paths(for: row).count.formatted()) Files"
+        }
+        return row.node.isFolder ? "\(verb) Folder" : verb
+    }
+
+    /// Every changed file in a folder, staged or not.
+    private func changedPaths(in folder: FileTreeNode) -> [String] {
+        model.workingCopy.entries.filter { $0.path.hasPrefix(folder.id) && !$0.isConflicted }.map(\.path)
+    }
+
+    /// Stages what the action takes from Unstaged, or unstages what it
+    /// takes from Staged.
+    private func perform(_ action: StagingAction) {
+        Task {
+            switch action.from {
+            case .unstaged: await model.stage(action.paths)
+            case .staged: await model.unstage(action.paths)
             }
         }
     }
@@ -302,54 +426,6 @@ struct WorkingCopyView: View {
         }
         guard !Task.isCancelled else { return }
         hidden = files
-    }
-
-    private func row(_ entry: StatusEntry, depth: Int, showsFolder: Bool) -> some View {
-        StatusRow(entry: entry, showsFolder: showsFolder) {
-            Task { await model.toggleStaging(of: entry) }
-        }
-        .padding(.leading, CGFloat(depth) * FolderRow.indent)
-        .tag(entry.path)
-        .fileDrag(model.fileExists(entry.path) ? FileDrag(repository: model.repository, path: entry.path) : nil)
-        .contextMenu {
-            Button(entry.unstaged == nil ? "Unstage" : "Stage", systemImage: entry.unstaged == nil ? "minus.square" : "plus.square") {
-                Task { await model.toggleStaging(of: entry) }
-            }
-            if entry.unstaged != nil {
-                Divider()
-                Button("Discard Changes…", systemImage: "trash", role: .destructive) {
-                    pendingDiscard = .file(entry.path, isUntracked: entry.unstaged == .untracked)
-                }
-            }
-            Section {
-                let paths = menuTargets(for: entry)
-                Button(paths.count == 1 ? "Stash…" : "Stash \(paths.count.formatted()) Files…", systemImage: "archivebox") {
-                    stashingFiles = StashFiles(paths: paths)
-                }
-                Button(paths.count == 1 ? "Save as Patch…" : "Save \(paths.count.formatted()) Files as Patch…",
-                       systemImage: "doc.badge.arrow.up") {
-                    Task { await model.savePatch(.files(paths)) }
-                }
-            }
-            Divider()
-            WorkingCopyFileMenu(model: model, entry: entry)
-        }
-        .swipeActions(edge: .leading) {
-            Button(entry.unstaged == nil ? "Unstage" : "Stage", systemImage: entry.unstaged == nil ? "minus.square" : "plus.square") {
-                Task { await model.toggleStaging(of: entry) }
-            }
-            .tint(.accentColor)
-        }
-        .swipeActions(edge: .trailing) {
-            if entry.unstaged != nil {
-                // Not destructive in role: that would take the row away
-                // before the discard is confirmed.
-                Button("Discard", systemImage: "trash") {
-                    pendingDiscard = .file(entry.path, isUntracked: entry.unstaged == .untracked)
-                }
-                .tint(.red)
-            }
-        }
     }
 
     /// What a row's menu acts on: every selected file when the row is one
@@ -421,105 +497,73 @@ private struct ResolutionRequest {
     }
 }
 
-private struct StatusRow: View {
-    var entry: StatusEntry
-    var showsFolder = true
-    var toggle: () -> Void
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Button(action: toggle) {
-                Image(systemName: stagingSymbol)
-                    .font(.title3)
-                    .foregroundStyle(entry.staged == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
-            }
-            // Borderless, so pressing it does not also select the row.
-            .buttonStyle(.borderless)
-            .accessibilityLabel(entry.unstaged == nil ? "Unstage" : "Stage")
-            .accessibilityValue(stagingValue)
-
-            FileLabel(entry: entry, showsFolder: showsFolder)
-        }
-        .padding(.vertical, 2)
-    }
-
-    private var stagingSymbol: String {
-        StagingState([entry]).symbol
-    }
-
-    private var stagingValue: String {
-        StagingState([entry]).accessibilityValue
-    }
-}
-
-extension StagingState {
-    var symbol: String {
-        switch self {
-        case .unstaged: "square"
-        case .staged: "checkmark.square.fill"
-        case .partlyStaged: "minus.square.fill"
-        }
-    }
-
-    var accessibilityValue: String {
-        switch self {
-        case .unstaged: "Not staged"
-        case .staged: "Staged"
-        case .partlyStaged: "Partly staged"
-        }
-    }
-}
-
-/// A folder of the tree of changed files: it folds, and its checkbox stages
-/// or unstages everything under it.
+/// A folder of a tree of changed files, which folds. Where folders are
+/// selected, the chevron folds it and the rest of the row selects it;
+/// elsewhere the whole row folds it.
 private struct FolderRow: View {
     static let indent: CGFloat = 16
+    /// The room the chevron takes, which a file's row leaves empty.
+    static let chevronWidth: CGFloat = 16
 
     var node: FileTreeNode
     var depth: Int
     var isCollapsed: Bool
     var toggleCollapsed: () -> Void
-    var toggleStaging: () -> Void
 
     var body: some View {
-        let state = StagingState(node.entries)
-        HStack(spacing: 8) {
-            Button(action: toggleStaging) {
-                Image(systemName: state.symbol)
-                    .font(.title3)
-                    .foregroundStyle(state == .unstaged ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel(state == .staged ? "Unstage Folder" : "Stage Folder")
-            .accessibilityValue(state.accessibilityValue)
-
-            Button(action: toggleCollapsed) {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .rotationEffect(isCollapsed ? .zero : .degrees(90))
-                        .frame(width: 10)
-                    Image(systemName: "folder")
-                        .foregroundStyle(.secondary)
-                    Text(node.name)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Spacer(minLength: 8)
-                    Text(node.entries.count.formatted())
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+        Group {
+            if Platform.selectsFolders {
+                HStack(spacing: 0) {
+                    Button(action: toggleCollapsed) {
+                        chevron
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isCollapsed ? "Expand" : "Collapse")
+                    label
+                        .accessibilityElement(children: .combine)
+                        .accessibilityValue(isCollapsed ? "Collapsed" : "Expanded")
                 }
-                .contentShape(.rect)
+            } else {
+                Button(action: toggleCollapsed) {
+                    HStack(spacing: 0) {
+                        chevron
+                        label
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(node.name)
+                .accessibilityValue(isCollapsed ? "Collapsed" : "Expanded")
+                .accessibilityHint(isCollapsed ? "Shows the files in this folder" : "Hides the files in this folder")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(node.name)
-            .accessibilityValue(isCollapsed ? "Collapsed" : "Expanded")
-            .accessibilityHint(isCollapsed ? "Shows the files in this folder" : "Hides the files in this folder")
         }
         .padding(.vertical, 2)
         .padding(.leading, CGFloat(depth) * Self.indent)
+    }
+
+    private var chevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .rotationEffect(isCollapsed ? .zero : .degrees(90))
+            .frame(width: Self.chevronWidth, alignment: .leading)
+            .frame(maxHeight: .infinity)
+            .contentShape(.rect)
+    }
+
+    private var label: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "folder")
+                .foregroundStyle(.secondary)
+            Text(node.name)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 8)
+            Text(node.entries.count.formatted())
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
     }
 }
 
@@ -551,13 +595,18 @@ private struct HiddenFileRow: View {
     }
 }
 
-/// The search field, the list or tree switch and the order of the files.
+/// The filter, the button that stages or unstages the selected files, and
+/// the order of the files.
 private struct FileListControls: View {
     @Binding var filter: String
-    @Binding var layout: FileListLayout
     @Binding var sort: FileListSort
+    /// What the button does with the selected rows, if they can be staged
+    /// or unstaged.
+    var staging: StagingAction?
+    var perform: (StagingAction) -> Void
 
     var body: some View {
+        let unstages = staging?.from == .staged
         HStack(spacing: 8) {
             HStack(spacing: 4) {
                 Image(systemName: "line.3.horizontal.decrease")
@@ -577,15 +626,19 @@ private struct FileListControls: View {
             .padding(.vertical, 4)
             .background(.fill.tertiary, in: .rect(cornerRadius: 6))
 
-            Picker("Layout", selection: $layout) {
-                ForEach(FileListLayout.allCases) { layout in
-                    Label(layout.title, systemImage: layout.systemImage).tag(layout)
-                }
+            Button {
+                if let staging { perform(staging) }
+            } label: {
+                // As wide as the longer of its titles, so that the filter
+                // keeps its width when the selection changes sides.
+                Text("Unstage")
+                    .hidden()
+                    .overlay { Text(unstages ? "Unstage" : "Stage") }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            .help("Show the files as a list or under their folders")
+            .buttonStyle(.bordered)
+            .disabled(staging == nil)
+            .accessibilityLabel(unstages ? "Unstage" : "Stage")
+            .help(unstages ? "Unstage the selected files" : "Stage the selected files")
 
             Menu {
                 Picker("Sort By", selection: $sort) {
@@ -653,12 +706,14 @@ private struct ConflictRow: View {
 /// A file's badge, name and folder.
 private struct FileLabel: View {
     var entry: StatusEntry
+    /// The change the badge shows: in a section, the one on its side.
+    var change: FileChange?
     var showsFolder = true
 
     var body: some View {
         let path = entry.path.splitPath
         HStack(spacing: 8) {
-            FileChangeBadge(change: entry.change)
+            FileChangeBadge(change: change ?? entry.change)
             VStack(alignment: .leading, spacing: 1) {
                 Text(path.name)
                     .lineLimit(1)

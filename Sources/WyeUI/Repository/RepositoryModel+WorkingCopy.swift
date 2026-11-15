@@ -48,19 +48,6 @@ extension RepositoryModel {
         await perform(.discard(paths: [file.path])) { try await $0.discard(lines: lines, of: file, options: options) }
     }
 
-    /// Stages every change among `entries`, or when all of them are staged
-    /// already, unstages them: what a folder's checkbox does.
-    func toggleStaging(of entries: [StatusEntry]) async {
-        let entries = entries.filter { !$0.isConflicted }
-        let unstaged = entries.filter { $0.unstaged != nil }.map(\.path)
-        if unstaged.isEmpty {
-            let staged = entries.filter { $0.staged != nil }.map(\.path)
-            await perform(.unstage) { try await $0.unstage(staged) }
-        } else {
-            await perform(.stage) { try await $0.stage(unstaged) }
-        }
-    }
-
     // MARK: Discarding
 
     func discardChanges(in paths: [String]) async {

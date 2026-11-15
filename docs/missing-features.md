@@ -43,8 +43,8 @@ Each item is marked:
 
 | Feature | Status |
 | --- | --- |
-| View changed files as a folder tree | Done. A List / Tree switch; folders fold, and a folder's checkbox stages everything under it. |
-| Sort by status or by name; filter the file list | Done. By path, name or status, and a filter field. |
+| View changed files as a folder tree | Done. Always a tree, in two sections, Staged above Unstaged; folders fold. The Stage button stages the selected files and folders, or unstages them when they are under Staged. |
+| Sort by status or by name; filter the file list | Done. By name or status, and a filter field. |
 | Show unchanged files, ignored files, assume-unchanged files | Partial. Ignored and assume-unchanged files on request; unchanged files not. |
 | Compare working tree to `HEAD`, working tree to index, index to `HEAD` as whole-tree views | Done. From the Working Copy row's menu and the Working Copy menu: every changed file with its diff, untracked files left out as git leaves them out. |
 | Snapshots: stash the changes and keep them in place | Done. Untracked files included, staged changes staged again; listed with the stashes, marked as snapshots. |
