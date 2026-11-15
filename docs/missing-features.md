@@ -78,7 +78,7 @@ Each item is marked:
 | Group by day or week, or not at all | Done |
 | Compact and regular row sizes | Done on macOS; iOS switches by width. |
 | Filter by author, date range, branch | Done. A Filter menu with tokens in the search field. |
-| Select several commits and act on them together | Done. Cherry-pick, revert, copy hashes or info, compare first and last. |
+| Select several commits and act on them together | Done. Cherry-pick, revert, copy hashes or info, compare first and last. On iOS, where selecting several takes Edit, these are the buttons of the bar under the list while it is on, and the subtitle counts the selection. |
 | Drag a commit onto a branch to cherry-pick; drag branches to merge or rebase | Done. Every drop asks before acting. |
 | Save a commit as a patch file; export a commit's files | Done. Save as Patch writes `git format-patch`'s format; Export Files writes the commit's files to a zip, as `git archive` does, executable bits and symbolic links kept and submodules as empty folders. `export-ignore` and `export-subst` are not applied, and archives past 4 GB or 65,535 files are refused (no Zip64). |
 | Compare a commit with any other revision from its menu | Done |

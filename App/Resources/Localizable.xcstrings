@@ -597,6 +597,10 @@
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
+    "Apply the selected commits’ changes on top of HEAD, oldest first" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
     "Apply the stash’s changes and keep the stash" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
@@ -1198,6 +1202,10 @@
       "generatesSymbol" : false
     },
     "Copy the public key, to add to a hosting service" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
+    "Copy the selected commits’ hashes, or their authors, dates and messages" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },
@@ -4074,6 +4082,10 @@
       "generatesSymbol" : false
     },
     "Undo the choice for this conflict" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false
+    },
+    "Undo the selected commits’ changes, newest first, one commit each" : {
       "extractionState" : "manual",
       "generatesSymbol" : false
     },

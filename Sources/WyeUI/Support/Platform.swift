@@ -594,6 +594,24 @@ struct SelectionModeButton: View {
     }
 }
 
+extension View {
+    /// Keeps `isOn` with the edit mode that `SelectionModeButton` turns on
+    /// and off, so that what else is on screen can follow it. The mode is
+    /// otherwise the list's and the button's own, which nothing beside
+    /// them can read.
+    func selectionMode(_ isOn: Binding<Bool>) -> some View {
+        #if os(macOS)
+        self
+        #else
+        environment(\.editMode, Binding {
+            isOn.wrappedValue ? .active : .inactive
+        } set: { mode in
+            isOn.wrappedValue = mode.isEditing
+        })
+        #endif
+    }
+}
+
 // MARK: Home folder
 
 extension Platform {

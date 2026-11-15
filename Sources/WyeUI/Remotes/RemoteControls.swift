@@ -25,7 +25,13 @@ private struct RemoteControls: ViewModifier {
                 if let activity = model.remotes.activity {
                     RemoteActivityView(activity: activity) { model.cancelRemoteOperation() }
                 }
-                RemoteButtons(model: model)
+                if model.selection?.historyScope != nil, model.history.isSelectingSeveral {
+                    // In the history's Edit, the bar is about the commits
+                    // being selected, as the bars of iOS's own lists are.
+                    SelectedCommitsBar(model: model)
+                } else {
+                    RemoteButtons(model: model)
+                }
             }
     }
 }

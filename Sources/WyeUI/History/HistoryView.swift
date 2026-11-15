@@ -188,7 +188,9 @@ struct HistoryView: View {
         .navigationSubtitle(subtitle)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                if history.multipleSelection.count > 1 {
+                // Where selecting several takes Edit, the bar under the
+                // list has their actions: see `SelectedCommitsBar`.
+                if !Platform.selectsSeveralInEditMode, history.multipleSelection.count > 1 {
                     Menu("\(history.multipleSelection.count) Selected", systemImage: "checklist") {
                         MultipleCommitsMenu(model: model, commits: history.commits(history.multipleSelection))
                     }
@@ -203,6 +205,12 @@ struct HistoryView: View {
                     SelectionModeButton()
                 }
             }
+        }
+        // Outside the toolbar, so its button and the list share the mode.
+        .selectionMode($history.isSelectingSeveral)
+        .onDisappear {
+            // Edit is over once the sidebar shows something else.
+            history.isSelectingSeveral = false
         }
         .sheet(isPresented: $isCreatingBranch) {
             NewBranchSheet(model: model, startingPoint: history.selection)
@@ -383,6 +391,11 @@ struct HistoryView: View {
 
     private var subtitle: String {
         let search = model.history.search
+        if model.history.isSelectingSeveral {
+            // In Edit: how many the bar's buttons would act on.
+            let count = model.history.listSelection.count
+            return count == 0 ? "Select Commits" : "\(count.formatted()) Selected"
+        }
         if search.isActive {
             let count = search.results.count
             let found = "\(count.formatted()) \(count == 1 ? "Result" : "Results")"

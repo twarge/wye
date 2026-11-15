@@ -240,3 +240,59 @@ struct MultipleCommitsMenu: View {
         }
     }
 }
+
+/// What the history's Edit is for, as the buttons of the bar under the
+/// list on iOS: `MultipleCommitsMenu`'s actions, there from the moment Edit
+/// is on, and dimmed until enough commits are selected. They say what they
+/// do in words where the bar has the room, and are symbols where it has not.
+struct SelectedCommitsBar: View {
+    var model: RepositoryModel
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 20) { buttons }
+                .labelStyle(.titleOnly)
+            HStack(spacing: 20) { buttons }
+        }
+    }
+
+    @ViewBuilder
+    private var buttons: some View {
+        let history = model.history
+        // Newest first, as the history lists them.
+        let commits = history.commits(history.listSelection)
+        let ids = commits.map(\.id)
+        Button("Cherry-Pick", systemImage: "arrow.down.to.line") {
+            // The history is about to change under the selection.
+            history.isSelectingSeveral = false
+            Task { await model.cherryPick(ids) }
+        }
+        .disabled(commits.isEmpty || model.isBusy || ids.contains { $0 == model.snapshot?.head.target })
+        .help("Apply the selected commits’ changes on top of HEAD, oldest first")
+        Button("Revert", systemImage: "arrow.uturn.backward") {
+            history.isSelectingSeveral = false
+            Task { await model.revert(ids) }
+        }
+        .disabled(commits.isEmpty || model.isBusy)
+        .help("Undo the selected commits’ changes, newest first, one commit each")
+        Button("Compare", systemImage: "arrow.left.arrow.right") {
+            if let oldest = commits.last, let newest = commits.first {
+                history.requests.compare = CompareRequest(from: oldest.id.hex, to: newest.id.hex)
+            }
+        }
+        .disabled(commits.count < 2)
+        .help("Compare the oldest selected commit with the newest")
+        Menu("Copy", systemImage: "doc.on.doc") {
+            Button(commits.count == 1 ? "Copy Hash" : "Copy Hashes", systemImage: "doc.on.doc") {
+                Platform.copyToClipboard(ids.map(\.hex).joined(separator: "\n"))
+            }
+            Button("Copy Commit Info", systemImage: "info.circle") {
+                Platform.copyToClipboard(commits.map(\.info).joined(separator: "\n\n"))
+            }
+        }
+        // The one symbol that needs no words.
+        .labelStyle(.iconOnly)
+        .disabled(commits.isEmpty)
+        .help("Copy the selected commits’ hashes, or their authors, dates and messages")
+    }
+}

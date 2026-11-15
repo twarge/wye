@@ -49,6 +49,17 @@ final class HistoryModel {
     /// `selection` names stays in detail while it is among them.
     private(set) var multipleSelection: Set<OID> = []
 
+    /// Whether commits are being chosen to act on together, where that
+    /// takes a mode of its own: iOS's Edit. The bar under the list then
+    /// holds what can be done with them. Leaving the mode ends a selection
+    /// of several; the list there drops what is left of it too, as it
+    /// does on the way in.
+    var isSelectingSeveral = false {
+        didSet {
+            if !isSelectingSeveral { multipleSelection = [] }
+        }
+    }
+
     /// The list's selection: one commit, or several.
     var listSelection: Set<OID> {
         get {
