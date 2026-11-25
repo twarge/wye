@@ -31,7 +31,9 @@ set -eu
 
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
-INTERMEDIATES="${1:-.build/xcode/Build/Intermediates.noindex}/Wye.build"
+# The Xcode intermediates folder (OBJROOT, in Xcode's DerivedData); `make
+# strings` passes it.
+INTERMEDIATES="${1:?usage: sync-strings.sh <Xcode OBJROOT> (run make strings)}/Wye.build"
 COMPILED="$ROOT/.build/strings-data/macos"
 
 mkdir -p "$COMPILED"

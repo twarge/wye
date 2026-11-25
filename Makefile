@@ -1,7 +1,8 @@
 # Wye — the single build entry point.
 #
 # Every app target here drives `xcodebuild` against Wye.xcodeproj, so
-# `make build` produces exactly what Build & Run in Xcode produces.
+# `make build` produces exactly what Build & Run in Xcode produces: the same
+# build settings, into Xcode's default DerivedData.
 #
 # Package.swift stays: the Xcode project consumes it as a local package for
 # GitKit and WyeUI, and `make test` runs its tests.
@@ -24,11 +25,10 @@ PROJECT     := Wye.xcodeproj
 SCHEME      := Wye
 CONFIG      ?= Debug
 DESTINATION ?= platform=macOS
-DERIVED     := .build/xcode
 # Extra xcodebuild settings, e.g. CI passing CODE_SIGNING_ALLOWED=NO.
 XCODE_FLAGS ?=
 
-XCODEBUILD := xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIG) -derivedDataPath $(DERIVED)
+XCODEBUILD := xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIG)
 
 LIBGIT2 := Vendor/libgit2/include/git2.h
 
@@ -48,7 +48,10 @@ build: deps
 
 ## run: build the macOS app, then launch it
 run: build
-	open $(DERIVED)/Build/Products/$(CONFIG)/Wye.app
+	@app="$$($(XCODEBUILD) -destination '$(DESTINATION)' -showBuildSettings 2>/dev/null \
+		| awk -F' = ' '/ BUILT_PRODUCTS_DIR = /{print $$2 "/Wye.app"; exit}')"; \
+		echo "==> Launching $$app"; \
+		open "$$app"
 
 ## release: Release build of the macOS app
 release:
@@ -72,7 +75,8 @@ symbol:
 
 ## strings: bring the string catalogs up to date with the sources
 strings: deps
-	scripts/sync-strings.sh
+	scripts/sync-strings.sh "$$($(XCODEBUILD) -destination '$(DESTINATION)' -showBuildSettings 2>/dev/null \
+		| awk -F' = ' '/ OBJROOT = /{print $$2; exit}')"
 
 # ---------------------------------------------------------------------------
 # App Store distribution
@@ -114,11 +118,11 @@ upload:
 		-allowProvisioningUpdates \
 		$(XCODE_FLAGS)
 
-# Removes .build, which holds Xcode's products and the SwiftPM directory
-# `make test` uses. It leaves build/ alone: that holds release archives, not
-# build output.
+# Cleans Xcode's products and the SwiftPM directory `make test` uses. It leaves
+# build/ alone: that holds release archives, not build output.
 ## clean: remove build products
 clean:
+	$(XCODEBUILD) -destination '$(DESTINATION)' clean
 	rm -rf .build
 
 ## help: list targets

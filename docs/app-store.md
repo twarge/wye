@@ -151,7 +151,7 @@ Two things use the user's iCloud, both off until the user turns them on.
 
 ## Each release
 
-1. Bump `MARKETING_VERSION` in `Wye.xcodeproj/project.pbxproj` (the
+1. Bump `MARKETING_VERSION` in `Wye.xcodeproj/project.xcproj` (the
    project's two configurations, which every target inherits so the app and
    its extensions always carry the same version), or leave it and give the
    version when running.
